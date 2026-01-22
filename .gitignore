@@ -1,0 +1,85 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+mox
+mox.exe
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.txt
+coverage.html
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Dependency directories (not needed with Go modules)
+vendor/
+
+# Go build cache
+.cache/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.iml
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Mox-specific
+mox.conf
+domains.conf
+data/
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Debug files
+debug
+debug.test
+__debug_bin
+
+# OS-specific
+Thumbs.db
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Profiling data
+*.prof
+*.pprof
+cpu.prof
+mem.prof
+trace.out
+
+# Documentation builds
+docs/_build/
+site/
+
+# Node modules (if using any frontend tooling)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build outputs
+build/
+dist/
+bin/
+
+mox/
