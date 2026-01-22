@@ -45,6 +45,17 @@ domains.conf
 data/
 *.log
 
+# MailRaven-specific
+mailraven
+mailraven.exe
+bin/
+*.db
+*.db-shm
+*.db-wal
+config.yaml
+storage/
+logs/
+
 # Temporary files
 tmp/
 temp/

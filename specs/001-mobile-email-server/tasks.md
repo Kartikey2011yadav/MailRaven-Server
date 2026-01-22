@@ -38,12 +38,12 @@
 
 **Purpose**: Create repository structure and initialize Go module
 
-- [ ] T001 Create project directory structure per plan.md (cmd/, internal/core/, internal/adapters/, tests/)
-- [ ] T002 Initialize Go module with `go mod init github.com/mailraven/mailraven-server`
-- [ ] T003 [P] Create go.mod with dependencies: modernc.org/sqlite, go-chi/chi/v5, golang.org/x/crypto
-- [ ] T004 [P] Create Makefile with build, test, lint targets
-- [ ] T005 [P] Setup .gitignore for Go project (bin/, *.db, *.log, vendor/)
-- [ ] T006 [P] Create README.md with project overview and build instructions
+- [X] T001 Create project directory structure per plan.md (cmd/, internal/core/, internal/adapters/, tests/)
+- [X] T002 Initialize Go module with `go mod init github.com/Kartikey2011yadav/mailraven-server`
+- [X] T003 [P] Create go.mod with dependencies: modernc.org/sqlite, go-chi/chi/v5, golang.org/x/crypto
+- [X] T004 [P] Create Makefile with build, test, lint targets
+- [X] T005 [P] Setup .gitignore for Go project (bin/, *.db, *.log, vendor/)
+- [X] T006 [P] Create README.md with project overview and build instructions
 
 ---
 
