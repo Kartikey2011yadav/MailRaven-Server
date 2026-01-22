@@ -114,32 +114,32 @@
 
 ### SPF/DKIM/DMARC Validation (Ported from mox)
 
-- [ ] T034 [P] [US2] Implement SPF validation in internal/adapters/smtp/validators/spf.go (DNS lookups, mechanism evaluation per RFC 7208)
+- [X] T034 [P] [US2] Implement SPF validation in internal/adapters/smtp/validators/spf.go (DNS lookups, mechanism evaluation per RFC 7208)
 - [ ] T035 [P] [US2] Add SPF test cases in internal/adapters/smtp/validators/spf_test.go (table-driven tests with RFC test vectors)
-- [ ] T036 [P] [US2] Implement DKIM verification in internal/adapters/smtp/validators/dkim.go (signature parsing, DNS key retrieval, validation per RFC 6376)
+- [X] T036 [P] [US2] Implement DKIM verification in internal/adapters/smtp/validators/dkim.go (signature parsing, DNS key retrieval, validation per RFC 6376)
 - [ ] T037 [P] [US2] Add DKIM test cases in internal/adapters/smtp/validators/dkim_test.go (valid/invalid signatures, missing keys)
-- [ ] T038 [P] [US2] Implement DMARC evaluation in internal/adapters/smtp/validators/dmarc.go (policy retrieval, alignment checks per RFC 7489)
+- [X] T038 [P] [US2] Implement DMARC evaluation in internal/adapters/smtp/validators/dmarc.go (policy retrieval, alignment checks per RFC 7489)
 - [ ] T039 [P] [US2] Add DMARC test cases in internal/adapters/smtp/validators/dmarc_test.go (policy enforcement scenarios)
-- [ ] T040 [P] [US2] Add RFC section comments to all validator code (e.g., `// RFC 7208 section 4.6.4`)
+- [X] T040 [P] [US2] Add RFC section comments to all validator code (e.g., `// RFC 7208 section 4.6.4`)
 
 ### MIME Parsing
 
-- [ ] T041 [P] [US2] Implement MIME parser in internal/adapters/smtp/mime/parser.go (multipart message parsing per RFC 2045)
-- [ ] T042 [P] [US2] Add body text extraction in MIME parser (plaintext and HTML parts, generate 200-char snippet)
+- [X] T041 [P] [US2] Implement MIME parser in internal/adapters/smtp/mime/parser.go (multipart message parsing per RFC 2045)
+- [X] T042 [P] [US2] Add body text extraction in MIME parser (plaintext and HTML parts, generate 200-char snippet)
 - [ ] T043 [P] [US2] Add MIME parser tests in internal/adapters/smtp/mime/parser_test.go (multipart messages, attachments, edge cases)
 
 ### SMTP Server & Middleware
 
-- [ ] T044 [US2] Define Middleware interface in internal/adapters/smtp/middleware.go (MessageHandler func type, Chain function)
-- [ ] T045 [US2] Implement SPF validator middleware in internal/adapters/smtp/validators/spf.go (wraps SPF validation as middleware)
-- [ ] T046 [US2] Implement DKIM validator middleware in internal/adapters/smtp/validators/dkim.go (wraps DKIM validation as middleware)
-- [ ] T047 [US2] Implement DMARC validator middleware in internal/adapters/smtp/validators/dmarc.go (wraps DMARC evaluation as middleware)
-- [ ] T048 [US2] Create SMTP server in internal/adapters/smtp/server.go (net/smtp based, port 25 listener)
-- [ ] T049 [US2] Implement SMTP command handler in internal/adapters/smtp/handler.go (EHLO, MAIL FROM, RCPT TO, DATA commands per RFC 5321)
-- [ ] T050 [US2] Wire middleware pipeline in SMTP handler (SPF → DKIM → DMARC → storage)
-- [ ] T051 [US2] Add SMTP session logging in handler (session ID, remote IP, sender, recipients, SPF/DMARC results)
-- [ ] T052 [US2] Implement atomic storage in handler (begin transaction, save to EmailRepository, write to BlobStore, commit, fsync, then "250 OK")
-- [ ] T053 [US2] Add error handling in handler (4xx for temporary failures, 5xx for permanent failures, rollback on error)
+- [X] T044 [US2] Define Middleware interface in internal/adapters/smtp/middleware.go (MessageHandler func type, Chain function)
+- [X] T045 [US2] Implement SPF validator middleware in internal/adapters/smtp/validators/spf.go (wraps SPF validation as middleware)
+- [X] T046 [US2] Implement DKIM validator middleware in internal/adapters/smtp/validators/dkim.go (wraps DKIM validation as middleware)
+- [X] T047 [US2] Implement DMARC validator middleware in internal/adapters/smtp/validators/dmarc.go (wraps DMARC evaluation as middleware)
+- [X] T048 [US2] Create SMTP server in internal/adapters/smtp/server.go (net/smtp based, port 25 listener)
+- [X] T049 [US2] Implement SMTP command handler in internal/adapters/smtp/handler.go (EHLO, MAIL FROM, RCPT TO, DATA commands per RFC 5321)
+- [X] T050 [US2] Wire middleware pipeline in SMTP handler (SPF → DKIM → DMARC → storage)
+- [X] T051 [US2] Add SMTP session logging in handler (session ID, remote IP, sender, recipients, SPF/DMARC results)
+- [X] T052 [US2] Implement atomic storage in handler (begin transaction, save to EmailRepository, write to BlobStore, commit, fsync, then "250 OK")
+- [X] T053 [US2] Add error handling in handler (4xx for temporary failures, 5xx for permanent failures, rollback on error)
 
 ### Integration Tests for US2
 
