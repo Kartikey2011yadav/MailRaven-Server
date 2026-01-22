@@ -11,19 +11,19 @@ type Metrics struct {
 	mu sync.RWMutex
 
 	// SMTP metrics
-	MessagesReceived  int64
-	MessagesRejected  int64
-	SMTPConnections   int64
-	SMTPErrors        int64
+	MessagesReceived int64
+	MessagesRejected int64
+	SMTPConnections  int64
+	SMTPErrors       int64
 
 	// API metrics
-	APIRequests       int64
-	APIErrors         int64
-	
+	APIRequests int64
+	APIErrors   int64
+
 	// Storage metrics
-	StorageWrites     int64
-	StorageReads      int64
-	StorageErrors     int64
+	StorageWrites int64
+	StorageReads  int64
+	StorageErrors int64
 
 	// Request duration histogram (simplified for MVP)
 	APIRequestDurations []time.Duration
@@ -103,7 +103,7 @@ func (m *Metrics) IncrementStorageErrors() {
 func (m *Metrics) RecordAPIRequestDuration(duration time.Duration) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	// Keep last 1000 durations for simple P95 calculation
 	if len(m.APIRequestDurations) >= 1000 {
 		m.APIRequestDurations = m.APIRequestDurations[1:]
@@ -117,15 +117,15 @@ func (m *Metrics) GetSnapshot() MetricsSnapshot {
 	defer m.mu.RUnlock()
 
 	return MetricsSnapshot{
-		MessagesReceived:    m.MessagesReceived,
-		MessagesRejected:    m.MessagesRejected,
-		SMTPConnections:     m.SMTPConnections,
-		SMTPErrors:          m.SMTPErrors,
-		APIRequests:         m.APIRequests,
-		APIErrors:           m.APIErrors,
-		StorageWrites:       m.StorageWrites,
-		StorageReads:        m.StorageReads,
-		StorageErrors:       m.StorageErrors,
+		MessagesReceived:     m.MessagesReceived,
+		MessagesRejected:     m.MessagesRejected,
+		SMTPConnections:      m.SMTPConnections,
+		SMTPErrors:           m.SMTPErrors,
+		APIRequests:          m.APIRequests,
+		APIErrors:            m.APIErrors,
+		StorageWrites:        m.StorageWrites,
+		StorageReads:         m.StorageReads,
+		StorageErrors:        m.StorageErrors,
 		RequestDurationCount: len(m.APIRequestDurations),
 	}
 }

@@ -9,12 +9,12 @@ import (
 
 // Config represents the MailRaven server configuration
 type Config struct {
-	Domain string      `yaml:"domain"` // Primary mail domain (e.g., mail.example.com)
-	SMTP   SMTPConfig  `yaml:"smtp"`
-	API    APIConfig   `yaml:"api"`
+	Domain  string        `yaml:"domain"` // Primary mail domain (e.g., mail.example.com)
+	SMTP    SMTPConfig    `yaml:"smtp"`
+	API     APIConfig     `yaml:"api"`
 	Storage StorageConfig `yaml:"storage"`
-	DKIM   DKIMConfig  `yaml:"dkim"`
-	Logging LogConfig   `yaml:"logging"`
+	DKIM    DKIMConfig    `yaml:"dkim"`
+	Logging LogConfig     `yaml:"logging"`
 }
 
 // SMTPConfig contains SMTP server settings

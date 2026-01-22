@@ -55,32 +55,32 @@
 
 ### Core Domain & Ports
 
-- [ ] T007 [P] Create domain entities in internal/core/domain/message.go (Message, MessageBody structs)
-- [ ] T008 [P] Create domain entities in internal/core/domain/user.go (User, AuthToken structs)
-- [ ] T009 [P] Create domain entities in internal/core/domain/smtp.go (SMTPSession struct)
-- [ ] T010 [P] Define EmailRepository interface in internal/core/ports/repositories.go
-- [ ] T011 [P] Define UserRepository interface in internal/core/ports/repositories.go
-- [ ] T012 [P] Define BlobStore interface in internal/core/ports/storage.go
-- [ ] T013 [P] Define SearchIndex interface in internal/core/ports/search.go
-- [ ] T014 [P] Define common errors in internal/core/ports/errors.go (ErrNotFound, ErrAlreadyExists, etc.)
+- [X] T007 [P] Create domain entities in internal/core/domain/message.go (Message, MessageBody structs)
+- [X] T008 [P] Create domain entities in internal/core/domain/user.go (User, AuthToken structs)
+- [X] T009 [P] Create domain entities in internal/core/domain/smtp.go (SMTPSession struct)
+- [X] T010 [P] Define EmailRepository interface in internal/core/ports/repositories.go
+- [X] T011 [P] Define UserRepository interface in internal/core/ports/repositories.go
+- [X] T012 [P] Define BlobStore interface in internal/core/ports/storage.go
+- [X] T013 [P] Define SearchIndex interface in internal/core/ports/search.go
+- [X] T014 [P] Define common errors in internal/core/ports/errors.go (ErrNotFound, ErrAlreadyExists, etc.)
 
 ### Storage Layer (SQLite + File System)
 
-- [ ] T015 Create SQLite schema in internal/adapters/storage/sqlite/migrations/001_init.sql (users, messages, indexes)
-- [ ] T016 Add FTS5 virtual table to migrations/001_init.sql (messages_fts for full-text search)
-- [ ] T017 [P] Implement EmailRepository in internal/adapters/storage/sqlite/email_repo.go (Save, FindByID, FindByUser, UpdateReadState, CountByUser, FindSince methods)
-- [ ] T018 [P] Implement UserRepository in internal/adapters/storage/sqlite/user_repo.go (Create, FindByEmail, Authenticate, UpdateLastLogin methods)
-- [ ] T019 [P] Implement SearchIndex in internal/adapters/storage/sqlite/search_repo.go (Index, Search, Delete methods using FTS5)
-- [ ] T020 [P] Implement BlobStore in internal/adapters/storage/disk/blob_store.go (Write with gzip compression, Read with decompression, Delete, Verify methods)
-- [ ] T021 Add connection pooling and WAL mode setup in internal/adapters/storage/sqlite/connection.go
-- [ ] T022 Add database integrity check on startup in internal/adapters/storage/sqlite/connection.go (PRAGMA integrity_check)
+- [X] T015 Create SQLite schema in internal/adapters/storage/sqlite/migrations/001_init.sql (users, messages, indexes)
+- [X] T016 Add FTS5 virtual table to migrations/001_init.sql (messages_fts for full-text search)
+- [X] T017 [P] Implement EmailRepository in internal/adapters/storage/sqlite/email_repo.go (Save, FindByID, FindByUser, UpdateReadState, CountByUser, FindSince methods)
+- [X] T018 [P] Implement UserRepository in internal/adapters/storage/sqlite/user_repo.go (Create, FindByEmail, Authenticate, UpdateLastLogin methods)
+- [X] T019 [P] Implement SearchIndex in internal/adapters/storage/sqlite/search_repo.go (Index, Search, Delete methods using FTS5)
+- [X] T020 [P] Implement BlobStore in internal/adapters/storage/disk/blob_store.go (Write with gzip compression, Read with decompression, Delete, Verify methods)
+- [X] T021 Add connection pooling and WAL mode setup in internal/adapters/storage/sqlite/connection.go
+- [X] T022 Add database integrity check on startup in internal/adapters/storage/sqlite/connection.go (PRAGMA integrity_check)
 
 ### Configuration & Observability
 
-- [ ] T023 [P] Create Config struct in internal/config/config.go (domain, ports, storage paths, DKIM settings)
-- [ ] T024 [P] Implement YAML config loader in internal/config/config.go using gopkg.in/yaml.v3
-- [ ] T025 [P] Create structured logger in internal/observability/logger.go using log/slog
-- [ ] T026 [P] Create Prometheus metrics in internal/observability/metrics.go (messages_received, messages_rejected, api_request_duration, etc.)
+- [X] T023 [P] Create Config struct in internal/config/config.go (domain, ports, storage paths, DKIM settings)
+- [X] T024 [P] Implement YAML config loader in internal/config/config.go using gopkg.in/yaml.v3
+- [X] T025 [P] Create structured logger in internal/observability/logger.go using log/slog
+- [X] T026 [P] Create Prometheus metrics in internal/observability/metrics.go (messages_received, messages_rejected, api_request_duration, etc.)
 
 **Checkpoint**: Foundation complete - user story implementation can begin
 
@@ -94,13 +94,13 @@
 
 ### Implementation for US1
 
-- [ ] T027 [P] [US1] Implement DKIM key generation in internal/config/dkim.go (RSA-2048 private/public key pair)
-- [ ] T028 [P] [US1] Create DNS record generator in internal/config/dns.go (MX, SPF, DKIM, DMARC record formatting)
-- [ ] T029 [US1] Implement quickstart command in cmd/mailraven/quickstart.go (calls DKIM gen, config gen, DNS gen)
-- [ ] T030 [US1] Add user creation logic to quickstart (prompt for admin password, call UserRepository.Create)
-- [ ] T031 [US1] Add config file writer to quickstart (generate /etc/mailraven/config.yaml with default values)
-- [ ] T032 [US1] Format and print DNS records to console in quickstart command
-- [ ] T033 [US1] Add server start validation in quickstart (check ports available, config valid)
+- [X] T027 [P] [US1] Implement DKIM key generation in internal/config/dkim.go (RSA-2048 private/public key pair)
+- [X] T028 [P] [US1] Create DNS record generator in internal/config/dns.go (MX, SPF, DKIM, DMARC record formatting)
+- [X] T029 [US1] Implement quickstart command in cmd/mailraven/quickstart.go (calls DKIM gen, config gen, DNS gen)
+- [X] T030 [US1] Add user creation logic to quickstart (prompt for admin password, call UserRepository.Create)
+- [X] T031 [US1] Add config file writer to quickstart (generate /etc/mailraven/config.yaml with default values)
+- [X] T032 [US1] Format and print DNS records to console in quickstart command
+- [X] T033 [US1] Add server start validation in quickstart (check ports available, config valid)
 
 **Checkpoint**: Administrator can run quickstart and get working config
 
