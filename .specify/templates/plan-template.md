@@ -31,14 +31,15 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-Verify compliance with [Mox Constitution](../../.specify/memory/constitution.md):
+Verify compliance with [MailRaven Constitution](../../.specify/memory/constitution.md):
 
-- [ ] **Code Quality**: Feature design includes RFC cross-referencing plan for protocol code
-- [ ] **Testing Standards**: Test strategy defined (unit, integration, fuzz, manual client testing)
-- [ ] **User Experience**: Client compatibility verified (Thunderbird, iOS, Android, Outlook)
-- [ ] **Performance**: Resource targets specified (response times, memory, CPU)
-- [ ] **Security**: TLS/authentication/validation requirements identified
-- [ ] **Package Reusability**: Non-server code designed as standalone packages where applicable
+- [ ] **Reliability**: Feature identifies data write operations and ensures "250 OK" = fsync (SQLite + File)
+- [ ] **Protocol Parity**: RFC compliance verified, matches mox's SPF/DKIM/DMARC implementation approach
+- [ ] **Mobile-First Architecture**: APIs support pagination, delta updates, compression; optimized for bandwidth/latency
+- [ ] **Dependency Minimalism**: Uses Go stdlib where possible, CGO-free (modernc.org/sqlite), dependencies justified
+- [ ] **Observability**: SMTP interaction logging planned (structured logs), Prometheus metrics identified
+- [ ] **Testing Standards**: Test strategy includes unit, integration, durability (kill -9), SPF/DKIM/DMARC, mobile API tests
+- [ ] **Security**: TLS/auth requirements specified, input validation planned, rate limiting considered
 
 **Violations Requiring Justification**: [List any principle violations with rationale or state "None"]
 

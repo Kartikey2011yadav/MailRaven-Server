@@ -1,123 +1,287 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version Change: INITIAL → 1.0.0
-Created: 2026-01-22
-Type: Initial Constitution
+Version Change: 1.1.0 → 1.2.0
+Amendment Date: 2026-01-22
+Type: Principle Revision - Mobile-First Backend Focus (MINOR)
 
-Principles Established:
-- Code Quality: Standards compliance, Go idioms, RFC cross-referencing
-- Testing Standards: Comprehensive test coverage, interoperability validation
-- User Experience Consistency: Protocol compliance, client compatibility
-- Performance Requirements: Operational metrics, resource efficiency
+Changes:
+- PROJECT CONTEXT CLARIFIED: MailRaven is a mobile-first email backend, not a full mail server
+- REVISED: Principle I - Reliability (emphasized "250 OK" commitment, SQLite + File storage)
+- NEW: Principle II - Protocol Parity (strict RFC adherence matching mox implementation)
+- NEW: Principle III - Mobile-First Architecture (pagination, delta updates, bandwidth optimization)
+- REVISED: Principle IV - Dependency Minimalism (CGO-free mandate, modernc.org/sqlite)
+- REVISED: Principle V - Observability (SMTP interaction focus for delivery debugging)
+- REMOVED: Security by Default, Idiomatic Go as standalone principles (subsumed into other sections)
+- REMOVED: Modularity as standalone principle (implicit in architecture)
+
+Section Updates:
+- Protocol Compliance: Now emphasizes matching mox's strict RFC implementation
+- Performance Requirements: Added mobile client considerations (bandwidth, latency)
+- Development Workflow: No changes
 
 Templates Status:
-✅ plan-template.md - Constitution Check section ready
+✅ plan-template.md - Constitution Check section updated for mobile-first context
 ✅ spec-template.md - Requirements section aligns
 ✅ tasks-template.md - Testing discipline aligned
 ✅ checklist-template.md - No updates needed
 ✅ agent-file-template.md - No updates needed
 
-Follow-up Actions: None - all templates compatible with established principles.
+Rationale for Changes:
+- MailRaven is a mobile app backend, not a standalone mail server like mox
+- Mobile-first APIs require different design patterns (pagination, delta sync)
+- CGO-free deployment simplifies cross-platform mobile backend hosting
+- Protocol parity with mox ensures battle-tested RFC compliance
+
+Follow-up Actions: Update plan-template.md constitution check to reflect mobile-first principles.
 -->
 
-# Mox Constitution
+# MailRaven Constitution
 
 ## Core Principles
 
-### I. Code Quality and Standards Compliance
+### I. Reliability - Email Acceptance is a Commitment (NON-NEGOTIABLE)
 
-Code MUST adhere to the highest quality standards with explicit traceability:
+Once we reply "250 OK" to SMTP, the data MUST be durably persisted:
 
-- **RFC Cross-Referencing**: All protocol implementation code MUST include inline comments
+- **250 OK Means Synced**: Before sending "250 OK" response to SMTP, the message MUST be
+  written to both SQLite database AND file storage, with `fsync()` called on both. No
+  exceptions.
+- **Dual Storage Strategy**: Messages stored in SQLite (metadata, headers, indexing) AND
+  as files (full message body). Both must succeed atomically before acknowledging receipt.
+- **Atomic Transactions**: Use SQLite transactions with PRAGMA synchronous=FULL. A message
+  is either fully committed (DB + file + fsync) or rejected.
+- **Crash Recovery**: On startup, verify SQLite integrity (`PRAGMA integrity_check`) and
+  reconcile file storage. Orphaned files or DB entries must be logged and handled gracefully.
+- **Testing for Durability**: Include tests that kill -9 the server immediately after "250 OK"
+  and verify the message is recoverable on restart.
+- **No Shortcuts**: Never use async writes, write-ahead logs, or delayed fsync. Email
+  acceptance is a promise we MUST keep, even if it costs performance.
+
+**Rationale**: Email is irreplaceable. Users trust us when we accept their messages. Data loss
+destroys reputation and trust. Fsync overhead (10-50ms) is acceptable compared to the cost of
+lost email.
+
+### II. Protocol Parity - Match Mox's RFC Adherence
+
+MailRaven follows mox's proven approach to email protocols:
+
+- **Strict RFC Implementation**: SPF (RFC 7208), DKIM (RFC 6376), DMARC (RFC 7489), SMTP
+  (RFC 5321), IMAP4 (RFC 3501) must be implemented according to specifications. Study mox's
+  implementation as reference.
+- **No Lenient Parsing**: Reject malformed headers, invalid DKIM signatures, and RFC
+  violations. Match mox's strict parsing behavior. Better to reject than accept broken email.
+- **SPF/DKIM/DMARC Checks**: All inbound email MUST pass through SPF, DKIM, and DMARC
+  verification. Results stored for each message. Mobile clients can display authentication
+  status.
+- **DNS Validation**: Validate SPF records, DKIM keys, and DMARC policies from DNS. Cache
+  results with appropriate TTLs. Handle DNSSEC where available.
+- **Cross-Reference with RFCs**: Protocol implementation code MUST include inline comments
   referencing specific RFC sections (format: `// RFC 5321 section 4.5.3.1`).
-- **Go Idioms**: Code MUST follow idiomatic Go practices including error handling,
-  interface design, and standard library patterns.
-- **Package Reusability**: Non-server packages MUST be designed as standalone, reusable
-  libraries with clear boundaries and minimal dependencies.
-- **Code Documentation**: All exported types, functions, and packages MUST have godoc
-  comments explaining purpose, behavior, and usage.
-- **Static Analysis**: Code MUST pass `go vet`, `staticcheck`, and configured linters
-  without warnings before merge.
+- **Interoperability Testing**: Test against major mail providers (Gmail, Outlook, Yahoo)
+  and verify SPF/DKIM/DMARC headers are correctly interpreted.
 
-**Rationale**: Email protocols are complex and standards-heavy. RFC cross-referencing
-ensures correctness and maintainability. Reusable packages enable external adoption and
-focused testing.
+**Rationale**: Email protocols are complex and security-critical. Mox has battle-tested
+implementations. Strict adherence prevents security vulnerabilities and deliverability issues.
 
-### II. Testing Standards
+### III. Mobile-First Architecture
+
+MailRaven is a backend for mobile apps. APIs MUST optimize for mobile constraints:
+
+- **Low-Bandwidth Design**: APIs return only essential data. Use pagination (limit/offset or
+  cursor-based) for all list endpoints. Default page size: 20-50 items.
+- **Delta Updates**: Support incremental sync (e.g., "messages since timestamp", "changes
+  since version"). Avoid forcing clients to re-download full mailboxes.
+- **Compression**: Support gzip/brotli compression for API responses. Especially important
+  for message bodies and attachment metadata.
+- **High-Latency Tolerance**: APIs must be idempotent. Retry-safe operations (use idempotency
+  keys for non-idempotent operations like "send email").
+- **Offline-First Considerations**: Mobile clients may cache data and sync later. APIs should
+  support conflict resolution (last-write-wins or version vectors).
+- **Minimal Payloads**: Use JSON with concise field names. Consider field filtering
+  (e.g., `?fields=id,subject,from,date` to reduce response size).
+- **Push Notifications**: Support webhooks or push notification integration for new message
+  delivery (avoid polling where possible).
+
+**Rationale**: Mobile networks are slow and expensive. Users expect fast, responsive apps even
+on 3G/4G. Battery life matters. Bandwidth-efficient APIs improve UX and reduce infrastructure
+costs.
+
+### IV. Dependency Minimalism
+
+Minimize external dependencies. Prefer Go standard library:
+
+- **CGO-Free Mandate**: Use `modernc.org/sqlite` for SQLite access (pure Go, no CGO). This
+  enables cross-compilation and simplifies deployment.
+- **Standard Library First**: Use `net/http`, `encoding/json`, `crypto/*`, `net/smtp`,
+  `net/textproto` from stdlib. Only add external dependencies when stdlib is clearly
+  insufficient.
+- **Justified Dependencies**: Each external dependency must be documented with rationale.
+  Consider maintenance burden, security surface area, and licensing.
+- **No Frameworks**: Avoid heavyweight frameworks (ORMs, web frameworks, DI containers).
+  Direct use of stdlib is clearer and more maintainable.
+- **Dependency Audit**: Review all dependencies quarterly for security advisories. Update
+  vulnerable dependencies within 7 days of disclosure.
+- **Vendoring**: Consider vendoring critical dependencies to protect against upstream
+  breakage or disappearance.
+
+**Rationale**: Dependencies increase attack surface, deployment complexity, and maintenance
+burden. CGO complicates cross-compilation. Pure Go enables easy deployment to any platform
+(Linux, macOS, Windows, ARM).
+
+### V. Observability - SMTP Interaction Logging
+
+All SMTP interactions MUST be logged structurally for debugging delivery issues:
+
+- **Structured Logging**: Use structured logging (e.g., `log/slog` or custom structured
+  logger) for all SMTP operations. Every log entry includes: timestamp, session ID,
+  remote IP, sender, recipients, message ID, operation, result.
+- **SMTP Session Tracing**: Log complete SMTP sessions: connection established, EHLO/HELO,
+  MAIL FROM, RCPT TO, DATA, delivery result (250 OK or error), disconnection. Include
+  SPF/DKIM/DMARC results.
+- **Delivery Debugging**: When delivery fails, logs must contain enough context for operators
+  to diagnose: rejected by which check? SPF fail? DKIM invalid? Greylisting? Quota exceeded?
+- **Performance Metrics**: Log duration of expensive operations: DNS lookups, SPF/DKIM
+  verification, database writes, file fsync. Alert on P95/P99 latency regressions.
+- **Prometheus Metrics**: Export key metrics: messages received/delivered/rejected, SMTP
+  sessions, SPF/DKIM/DMARC pass/fail counts, storage operations, API request counts.
+- **Privacy Considerations**: Don't log message content or sensitive headers. Log metadata
+  only (IDs, timestamps, sizes, authentication results).
+
+**Rationale**: Email delivery issues are hard to debug without detailed logs. Operators need
+visibility into why messages were accepted or rejected. Structured logs enable automated
+analysis and alerting.
+
+## Testing Standards
 
 Comprehensive testing is NON-NEGOTIABLE for reliability:
 
 - **Test Coverage**: All new code MUST include tests. Minimum 80% coverage for core email
-  handling logic (SMTP, IMAP, DKIM, SPF, DMARC).
+  handling logic (SMTP, SPF/DKIM/DMARC validation, storage operations).
 - **Unit Tests**: Every package MUST have `*_test.go` files testing public APIs and critical
-  internal logic.
-- **Integration Tests**: SMTP, IMAP, and protocol implementations MUST have integration tests
-  validating interoperability with reference implementations (e.g., Postfix, Dovecot).
-- **Fuzz Testing**: Parser code (email headers, DKIM signatures, DNS records) MUST include
-  fuzz tests to discover edge cases and security vulnerabilities.
-- **Manual Interoperability**: New email client features MUST be manually tested against
-  major clients (Thunderbird, iOS Mail, Android Mail, Outlook) before release.
-- **Test-First Discipline**: For bug fixes, write a failing test that reproduces the issue
-  before implementing the fix.
+  internal logic. Use table-driven tests with subtests for multiple scenarios.
+- **Integration Tests**: SMTP protocol implementation MUST have integration tests validating
+  interoperability with major mail senders (Gmail, Outlook, Yahoo).
+- **Durability Tests**: Test crash recovery with kill -9 simulation immediately after "250 OK".
+  Verify message is recoverable on restart with both SQLite and file storage intact.
+- **SPF/DKIM/DMARC Tests**: Test all validation paths: valid signatures, invalid signatures,
+  missing signatures, DNS lookup failures, policy evaluation edge cases.
+- **Mobile API Tests**: Test pagination, delta updates, and bandwidth-constrained scenarios.
+  Verify APIs work correctly with high-latency/flaky connections.
+- **CGO-Free Verification**: CI must verify `CGO_ENABLED=0` builds succeed. Prevents
+  accidental CGO dependencies.
 
-**Rationale**: Email infrastructure requires bulletproof reliability. Integration and fuzz
-testing catch real-world issues that unit tests miss. Manual client testing ensures UX
-consistency.
+**Rationale**: Email infrastructure requires bulletproof reliability. Durability tests validate
+our "250 OK" commitment. Protocol tests catch RFC compliance issues. Mobile API tests ensure
+good UX under real network conditions.
 
-### III. User Experience Consistency
+## Protocol Compliance - Matching Mox's Standards
 
-Email clients expect predictable, standards-compliant behavior:
+MailRaven adopts mox's proven approach to RFC compliance:
 
-- **Protocol Compliance**: MUST implement SMTP, IMAP4, and related protocols according to
-  RFCs. No custom extensions that break standard clients.
-- **Client Compatibility**: Features MUST work correctly with the big four ecosystems:
-  Gmail, Outlook.com, Yahoo Mail, and self-hosted clients (Thunderbird, mutt).
-- **Error Messages**: User-facing errors (webmail, admin interface, CLI) MUST be clear,
-  actionable, and avoid technical jargon where possible.
-- **Configuration Simplicity**: The quickstart process MUST get a domain operational in
-  under 10 minutes for users with basic DNS knowledge.
-- **Upgrade Path**: Configuration file changes MUST provide clear migration guides and
-  automated upgrade tools where feasible.
+- **SPF Validation (RFC 7208)**: Implement complete SPF validation matching mox. Support all
+  mechanisms (a, mx, ip4, ip6, include, exists) and qualifiers (+, -, ~, ?). Handle DNS
+  lookup limits (10 lookups max).
+- **DKIM Validation (RFC 6376)**: Verify DKIM signatures on all inbound email. Support RSA
+  and Ed25519 keys. Validate signature headers, body hashes, and key retrieval from DNS.
+  Match mox's strict parsing.
+- **DMARC Policy Evaluation (RFC 7489)**: Retrieve and evaluate DMARC policies. Combine
+  SPF and DKIM results. Support all policy actions (none, quarantine, reject). Log
+  aggregate data for DMARC reporting.
+- **SMTP Protocol (RFC 5321)**: Implement SMTP receiver strictly. Support ESMTP extensions
+  (SIZE, STARTTLS, AUTH). Match mox's error handling and response codes.
+- **Strict Parsing**: No lenient mode. Reject malformed headers, invalid signatures, and
+  RFC violations. Study mox's implementation for edge cases.
+- **Interoperability**: Test against Gmail, Outlook, Yahoo, and other major providers.
+  Verify SPF/DKIM/DMARC results match industry behavior.
 
-**Rationale**: Email is critical infrastructure. Users cannot tolerate proprietary quirks or
-complex setup. Standards compliance prevents vendor lock-in.
+**Rationale**: Mox has battle-tested implementations refined over years. Matching their approach
+inherits their expertise and avoids common pitfalls. Strict parsing prevents security issues.
 
-### IV. Performance Requirements
+## Mobile API Design Principles
 
-Operational efficiency is mandatory for self-hosted deployments:
+APIs optimized for mobile client constraints:
 
-- **Resource Efficiency**: Mox MUST run on modest hardware (2GB RAM, 2 CPU cores) serving
-  100+ users with 10k+ messages per day.
-- **Response Times**: IMAP operations MUST respond within 100ms for folders with <10k
-  messages. SMTP delivery attempts MUST begin within 1 second of queue insertion.
-- **Metrics and Observability**: All critical operations (message delivery, IMAP commands,
-  authentication) MUST export Prometheus metrics for monitoring.
-- **Structured Logging**: Operations MUST use structured logging (mlog package) with
-  appropriate log levels to enable debugging without excessive noise.
-- **Database Performance**: Queries MUST use appropriate indexes. The database schema MUST
-  be tested with 100k+ messages to validate performance characteristics.
+- **RESTful Conventions**: Use standard HTTP methods (GET, POST, PUT, DELETE) and status
+  codes. JSON request/response bodies.
+- **Pagination Required**: All list endpoints MUST support pagination. Use cursor-based
+  pagination for large datasets. Include `next_cursor` in responses.
+- **Minimal Responses**: Return only requested data. Support field filtering via query
+  params (e.g., `?fields=id,subject,from`). Default to essential fields only.
+- **Versioned APIs**: API paths include version (`/v1/messages`). Breaking changes require
+  new version. Maintain backward compatibility for at least 6 months.
+- **Idempotency Keys**: Non-idempotent operations (send email, mark read) accept optional
+  `Idempotency-Key` header. Duplicate requests with same key return cached result.
+- **Delta Sync Support**: Provide endpoints for incremental updates (e.g., `/messages/changes?since=timestamp`).
+  Reduce data transfer on app launch.
+- **Compression**: Enable gzip compression for responses >1KB. Mobile clients can request
+  compression via `Accept-Encoding: gzip`.
 
-**Rationale**: Self-hosted deployments run on limited resources. Observable systems enable
-operators to diagnose issues before they escalate. Performance must be validated, not assumed.
+**Rationale**: Mobile networks are slow and expensive. Pagination prevents overwhelming clients.
+Delta sync enables fast app launches. Idempotency handles retry scenarios gracefully.
 
 ## Security Requirements
 
-Email security is paramount:
+Security is built into every layer:
 
-- **TLS by Default**: All network services (SMTP, IMAP, HTTP admin) MUST use TLS.
-  Let's Encrypt integration MUST be automatic via ACME.
-- **Authentication**: Admin and webmail interfaces MUST require strong authentication.
-  Password policies MUST enforce minimum 12 characters.
-- **Input Validation**: All external inputs (email headers, DNS records, API requests)
-  MUST be validated and sanitized against injection attacks.
-- **Dependency Hygiene**: Dependencies MUST be reviewed for security advisories.
-  Update vulnerable dependencies within 7 days of disclosure.
-- **Audit Logging**: Security-sensitive operations (login attempts, configuration changes,
-  message deletions) MUST be logged with sufficient detail for forensic analysis.
+- **TLS Mandatory**: All API endpoints MUST use HTTPS. SMTP submission MUST use STARTTLS
+  or direct TLS. No plain-text protocols in production.
+- **Authentication**: Mobile API uses token-based auth (JWT or opaque tokens). SMTP
+  submission uses SASL AUTH. Admin endpoints require separate admin credentials.
+- **Rate Limiting**: Prevent abuse with rate limits: 10 req/sec per IP for unauthenticated
+  endpoints, 100 req/sec for authenticated users. Stricter limits on email sending.
+- **Input Validation**: Validate all inputs (email addresses, headers, API params). Reject
+  invalid data early. Use allowlists for email domains if applicable.
+- **Audit Logging**: Log all security-sensitive operations: logins, password changes, email
+  sends, configuration updates. Include IP address, user ID, timestamp.
+- **Dependency Security**: Quarterly security audits of all dependencies. Update vulnerable
+  dependencies within 7 days.
 
-**Rationale**: Email is a high-value attack target. Defense in depth requires secure defaults,
-proactive dependency management, and comprehensive audit trails.
+**Rationale**: Mobile backends are internet-facing and must be secure by default. Rate limiting
+prevents abuse. Audit logs enable forensic analysis of security incidents.
+
+## Performance Requirements
+
+Optimize for mobile backend use cases:
+
+- **Low-Latency APIs**: Mobile API endpoints MUST respond within 100ms (P95) for simple
+  queries, 500ms for complex operations. Measure and alert on regressions.
+- **SMTP Acceptance Speed**: "250 OK" response MUST be sent within 200ms of DATA completion
+  (including fsync). This is the user-facing latency for email acceptance.
+- **Database Performance**: SQLite queries MUST use appropriate indexes. Test performance
+  with 100k+ messages. Use EXPLAIN QUERY PLAN to verify index usage.
+- **Connection Pooling**: Reuse database connections. Connection pool size: 10-50 based on
+  load. Monitor pool exhaustion.
+- **Mobile Client Considerations**: APIs should minimize round trips. Batch operations where
+  possible (e.g., mark multiple messages read in one request).
+- **Fsync Overhead Acceptable**: Data safety takes priority over speed. 10-50ms fsync latency
+  is acceptable for "250 OK" response.
+- **Resource Efficiency**: Backend should run on modest hardware (2GB RAM, 2 CPU cores) serving
+  100+ mobile users with 1000+ messages/day.
+
+**Rationale**: Mobile users expect fast responses. Latency adds up across network hops. Database
+indexing is critical for performance at scale. Data safety cannot be compromised for speed.
+
+## Go Code Standards
+
+Follow idiomatic Go practices:
+
+- **Error Handling**: Never ignore errors. Return and wrap errors with context using
+  `fmt.Errorf("context: %w", err)`. Handle errors at appropriate levels. No panic() in
+  production paths.
+- **Interfaces**: Define small, focused interfaces (1-3 methods). Accept interfaces, return
+  structs. Use interfaces for testability and loose coupling.
+- **Table-Driven Tests**: Use table-driven tests with subtests for multiple scenarios.
+  Example: `t.Run(tc.name, func(t *testing.T) {...})`.
+- **Godoc Comments**: All exported types, functions, packages MUST have godoc comments.
+  Comments explain purpose and usage, not just restate the signature.
+- **RFC Cross-References**: Protocol implementation code includes inline comments referencing
+  RFC sections (e.g., `// RFC 7208 section 4.6.4`).
+- **Static Analysis**: Code MUST pass `go vet`, `staticcheck`, and `golangci-lint` before
+  merge. Configure linters to catch common issues.
+
+**Rationale**: Idiomatic Go code is maintainable and benefits from tooling. Explicit error
+handling prevents silent failures. Good documentation reduces onboarding time.
 
 ## Development Workflow
 
@@ -154,4 +318,4 @@ This constitution defines non-negotiable principles:
   one release cycle (typically 4 weeks) or explicitly documented as technical debt with
   timeline.
 
-**Version**: 1.0.0 | **Ratified**: 2026-01-22 | **Last Amended**: 2026-01-22
+**Version**: 1.2.0 | **Ratified**: 2026-01-22 | **Last Amended**: 2026-01-22
