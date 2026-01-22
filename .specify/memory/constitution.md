@@ -1,39 +1,35 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version Change: 1.1.0 → 1.2.0
+Version Change: 1.2.0 → 1.3.0
 Amendment Date: 2026-01-22
-Type: Principle Revision - Mobile-First Backend Focus (MINOR)
+Type: Architecture Principles Addition (MINOR)
 
 Changes:
-- PROJECT CONTEXT CLARIFIED: MailRaven is a mobile-first email backend, not a full mail server
-- REVISED: Principle I - Reliability (emphasized "250 OK" commitment, SQLite + File storage)
-- NEW: Principle II - Protocol Parity (strict RFC adherence matching mox implementation)
-- NEW: Principle III - Mobile-First Architecture (pagination, delta updates, bandwidth optimization)
-- REVISED: Principle IV - Dependency Minimalism (CGO-free mandate, modernc.org/sqlite)
-- REVISED: Principle V - Observability (SMTP interaction focus for delivery debugging)
-- REMOVED: Security by Default, Idiomatic Go as standalone principles (subsumed into other sections)
-- REMOVED: Modularity as standalone principle (implicit in architecture)
+- NEW: Principle VI - Interface-Driven Design (repository pattern, storage abstraction)
+- NEW: Principle VII - Extensibility (middleware pattern for SMTP pipeline)
+- REVISED: Principle I - Reliability (clarified atomic writes requirement)
+- NEW: Principle VIII - Protocol Isolation (separation of core logic from access protocols)
+- Core principles expanded from 5 to 8 to support future-proof architecture
 
 Section Updates:
-- Protocol Compliance: Now emphasizes matching mox's strict RFC implementation
-- Performance Requirements: Added mobile client considerations (bandwidth, latency)
-- Development Workflow: No changes
+- Testing Standards: Add interface mock testing requirements
+- Go Code Standards: Add interface design guidelines
 
 Templates Status:
-✅ plan-template.md - Constitution Check section updated for mobile-first context
+✅ plan-template.md - Constitution Check section to be updated
 ✅ spec-template.md - Requirements section aligns
 ✅ tasks-template.md - Testing discipline aligned
 ✅ checklist-template.md - No updates needed
 ✅ agent-file-template.md - No updates needed
 
 Rationale for Changes:
-- MailRaven is a mobile app backend, not a standalone mail server like mox
-- Mobile-first APIs require different design patterns (pagination, delta sync)
-- CGO-free deployment simplifies cross-platform mobile backend hosting
-- Protocol parity with mox ensures battle-tested RFC compliance
+- Repository pattern enables database migration (SQLite → Postgres) without business logic changes
+- Middleware pattern allows spam filtering and antivirus injection without core SMTP changes
+- Protocol isolation enables supporting both IMAP and REST API simultaneously
+- Interface-driven design improves testability and maintainability
 
-Follow-up Actions: Update plan-template.md constitution check to reflect mobile-first principles.
+Follow-up Actions: Update plan-template.md with new architecture principle checks.
 -->
 
 # MailRaven Constitution
@@ -50,7 +46,8 @@ Once we reply "250 OK" to SMTP, the data MUST be durably persisted:
 - **Dual Storage Strategy**: Messages stored in SQLite (metadata, headers, indexing) AND
   as files (full message body). Both must succeed atomically before acknowledging receipt.
 - **Atomic Transactions**: Use SQLite transactions with PRAGMA synchronous=FULL. A message
-  is either fully committed (DB + file + fsync) or rejected.
+  is either fully committed (DB + file + fsync) or rejected. All writes MUST be atomic -
+  no partial states. Use database transactions and ensure rollback on any failure.
 - **Crash Recovery**: On startup, verify SQLite integrity (`PRAGMA integrity_check`) and
   reconcile file storage. Orphaned files or DB entries must be logged and handled gracefully.
 - **Testing for Durability**: Include tests that kill -9 the server immediately after "250 OK"
@@ -60,7 +57,7 @@ Once we reply "250 OK" to SMTP, the data MUST be durably persisted:
 
 **Rationale**: Email is irreplaceable. Users trust us when we accept their messages. Data loss
 destroys reputation and trust. Fsync overhead (10-50ms) is acceptable compared to the cost of
-lost email.
+lost email. Atomic operations prevent data corruption.
 
 ### II. Protocol Parity - Match Mox's RFC Adherence
 
@@ -152,6 +149,70 @@ All SMTP interactions MUST be logged structurally for debugging delivery issues:
 visibility into why messages were accepted or rejected. Structured logs enable automated
 analysis and alerting.
 
+### VI. Interface-Driven Design
+
+Storage and business logic MUST be decoupled through Go interfaces:
+
+- **Repository Pattern**: Define storage operations as Go interfaces (e.g., `MessageRepository`,
+  `UserRepository`). Business logic depends on interfaces, not concrete implementations.
+- **Interface First**: Before implementing any storage code, define the interface contract.
+  Interfaces should be minimal and focused (typically 5-10 methods per repository).
+- **Implementation Independence**: SQLite implementation lives in `internal/storage/sqlite/`,
+  Postgres in `internal/storage/postgres/`. Core business logic in `internal/service/` knows
+  nothing about database choice.
+- **Constructor Injection**: Use dependency injection via constructors. Services receive
+  repository interfaces as parameters, not concrete types.
+- **Mock-Friendly Testing**: Interfaces enable mock implementations for unit tests. No need
+  for real database in unit tests of business logic.
+- **Future Database Migration**: The repository pattern MUST allow swapping SQLite for
+  Postgres without changing business logic code. Only update DI wiring in `main.go`.
+
+**Rationale**: Tight coupling to SQLite makes future migration painful. Repository pattern
+enables database evolution without rewriting business logic. Testability improves dramatically
+with interface mocking.
+
+### VII. Extensibility - Middleware Pattern
+
+The SMTP ingestion pipeline MUST support middleware for extensibility:
+
+- **Middleware Chain**: SMTP message processing uses a middleware/handler chain pattern.
+  Each middleware can inspect, modify, or reject messages before passing to next handler.
+- **Core Pipeline Unchanged**: Adding spam filtering or antivirus scanning MUST NOT require
+  modifying core SMTP listener code. Middleware is registered at startup.
+- **Middleware Interface**: Define `type Middleware func(ctx context.Context, msg *Message, next Handler) error`.
+  Each middleware decides whether to call `next()` or short-circuit the chain.
+- **Standard Middleware**: Provide built-in middleware for SPF validation, DMARC checks, size
+  limits. Custom middleware (spam, antivirus) can be inserted at any point.
+- **Configuration-Driven**: Middleware chain order is defined in config file, not hardcoded.
+  Operators can enable/disable/reorder middleware without code changes.
+- **Observable Pipeline**: Each middleware logs entry/exit with duration. Operators can see
+  which middleware rejected a message and why.
+
+**Rationale**: Email processing requirements evolve. Spam filtering and antivirus are expensive
+to add if tightly coupled to SMTP listener. Middleware pattern enables zero-downtime feature
+additions via configuration.
+
+### VIII. Protocol Isolation
+
+Core email storage logic MUST be independent of access protocol:
+
+- **Protocol-Agnostic Core**: The `internal/service/` package handles email storage, retrieval,
+  and manipulation WITHOUT knowing about IMAP, REST API, or any protocol details.
+- **Protocol Adapters**: IMAP server in `internal/imapserver/` and REST API in `internal/api/`
+  are thin adapters that translate protocol requests to service method calls.
+- **Shared Business Logic**: Mark-as-read, delete message, fetch message body - these operations
+  have single implementation in service layer, callable from any protocol adapter.
+- **Simultaneous Protocols**: System MUST support both IMAP (port 143) and REST API (port 443)
+  simultaneously. Both access same storage through same service interfaces.
+- **Protocol-Specific Logic**: Authentication, session management, wire protocol are isolated
+  in protocol adapters. Core services receive authenticated user context, not protocol details.
+- **Future Protocol Addition**: Adding WebDAV or JMAP protocol adapter MUST NOT require
+  changes to core service layer. Only add new adapter calling existing service methods.
+
+**Rationale**: MailRaven starts with REST API but users may want IMAP compatibility later.
+Protocol isolation enables supporting multiple access methods without core logic duplication.
+Reduces testing burden - test core logic once, protocol adapters separately.
+
 ## Testing Standards
 
 Comprehensive testing is NON-NEGOTIABLE for reliability:
@@ -160,20 +221,28 @@ Comprehensive testing is NON-NEGOTIABLE for reliability:
   handling logic (SMTP, SPF/DKIM/DMARC validation, storage operations).
 - **Unit Tests**: Every package MUST have `*_test.go` files testing public APIs and critical
   internal logic. Use table-driven tests with subtests for multiple scenarios.
+- **Interface Mock Testing**: Business logic (services) MUST be tested with mock repository
+  implementations. No real database required for unit tests. Use interfaces to inject test
+  doubles.
 - **Integration Tests**: SMTP protocol implementation MUST have integration tests validating
   interoperability with major mail senders (Gmail, Outlook, Yahoo).
+- **Middleware Testing**: Each SMTP middleware MUST have unit tests. Test middleware chain
+  composition with various orderings to ensure correct pass-through behavior.
 - **Durability Tests**: Test crash recovery with kill -9 simulation immediately after "250 OK".
   Verify message is recoverable on restart with both SQLite and file storage intact.
 - **SPF/DKIM/DMARC Tests**: Test all validation paths: valid signatures, invalid signatures,
   missing signatures, DNS lookup failures, policy evaluation edge cases.
 - **Mobile API Tests**: Test pagination, delta updates, and bandwidth-constrained scenarios.
   Verify APIs work correctly with high-latency/flaky connections.
+- **Protocol Adapter Tests**: Test IMAP and REST API adapters independently. Verify they
+  correctly translate protocol requests to service method calls without business logic
+  duplication.
 - **CGO-Free Verification**: CI must verify `CGO_ENABLED=0` builds succeed. Prevents
   accidental CGO dependencies.
 
 **Rationale**: Email infrastructure requires bulletproof reliability. Durability tests validate
-our "250 OK" commitment. Protocol tests catch RFC compliance issues. Mobile API tests ensure
-good UX under real network conditions.
+our "250 OK" commitment. Protocol tests catch RFC compliance issues. Interface mocking enables
+fast unit tests without database overhead. Protocol adapter tests ensure proper isolation.
 
 ## Protocol Compliance - Matching Mox's Standards
 
@@ -269,8 +338,17 @@ Follow idiomatic Go practices:
 - **Error Handling**: Never ignore errors. Return and wrap errors with context using
   `fmt.Errorf("context: %w", err)`. Handle errors at appropriate levels. No panic() in
   production paths.
-- **Interfaces**: Define small, focused interfaces (1-3 methods). Accept interfaces, return
-  structs. Use interfaces for testability and loose coupling.
+- **Repository Pattern Interfaces**: Define repository interfaces in `internal/repository/`
+  package. Keep interfaces small (5-10 methods). Each repository manages one entity type
+  (MessageRepository, UserRepository).
+- **Dependency Injection**: Use constructor injection. Services receive dependencies as
+  interface parameters: `func NewEmailService(repo MessageRepository) *EmailService`.
+- **Interface Design**: Accept interfaces, return structs. Define interfaces where they're
+  consumed, not where they're implemented (consumer-driven interface design).
+- **Middleware Pattern**: SMTP middleware signature: `type Middleware func(ctx context.Context, msg *Message, next Handler) error`.
+  Middleware calls `next()` to continue chain or returns error to short-circuit.
+- **Protocol Adapters**: Protocol-specific code lives in `internal/imapserver/` and
+  `internal/api/`. Adapters translate protocol to service method calls without business logic.
 - **Table-Driven Tests**: Use table-driven tests with subtests for multiple scenarios.
   Example: `t.Run(tc.name, func(t *testing.T) {...})`.
 - **Godoc Comments**: All exported types, functions, packages MUST have godoc comments.
@@ -318,4 +396,4 @@ This constitution defines non-negotiable principles:
   one release cycle (typically 4 weeks) or explicitly documented as technical debt with
   timeline.
 
-**Version**: 1.2.0 | **Ratified**: 2026-01-22 | **Last Amended**: 2026-01-22
+**Version**: 1.3.0 | **Ratified**: 2026-01-22 | **Last Amended**: 2026-01-22

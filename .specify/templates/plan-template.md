@@ -33,13 +33,15 @@
 
 Verify compliance with [MailRaven Constitution](../../.specify/memory/constitution.md):
 
-- [ ] **Reliability**: Feature identifies data write operations and ensures "250 OK" = fsync (SQLite + File)
+- [ ] **Reliability**: Feature identifies data write operations and ensures "250 OK" = fsync (SQLite + File), all writes are atomic
 - [ ] **Protocol Parity**: RFC compliance verified, matches mox's SPF/DKIM/DMARC implementation approach
 - [ ] **Mobile-First Architecture**: APIs support pagination, delta updates, compression; optimized for bandwidth/latency
 - [ ] **Dependency Minimalism**: Uses Go stdlib where possible, CGO-free (modernc.org/sqlite), dependencies justified
 - [ ] **Observability**: SMTP interaction logging planned (structured logs), Prometheus metrics identified
-- [ ] **Testing Standards**: Test strategy includes unit, integration, durability (kill -9), SPF/DKIM/DMARC, mobile API tests
-- [ ] **Security**: TLS/auth requirements specified, input validation planned, rate limiting considered
+- [ ] **Interface-Driven Design**: Storage uses repository pattern, business logic depends on interfaces not concrete implementations
+- [ ] **Extensibility**: SMTP pipeline uses middleware pattern for spam/antivirus injection without core changes
+- [ ] **Protocol Isolation**: Core logic (email storage) separated from access protocols (IMAP vs REST API)
+- [ ] **Testing Standards**: Test strategy includes unit, integration, durability (kill -9), interface mocks, middleware tests, protocol adapter tests
 
 **Violations Requiring Justification**: [List any principle violations with rationale or state "None"]
 
