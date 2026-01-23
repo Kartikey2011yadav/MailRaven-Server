@@ -1,9 +1,41 @@
-# Feature Specification: Mobile Email Server
+# Feature Specification: Modular Email Server
 
 **Feature Branch**: `001-mobile-email-server`  
 **Created**: 2026-01-22  
 **Status**: Draft  
-**Input**: User description: "Build a modern, mobile-centric email server inspired by 'Mox'. The server must: 1. Core: Listen on ports 25 (SMTP) and 443 (HTTPS). 2. Inbound: Accept emails, parse MIME parts, and validate sender reputation (SPF/DMARC) using logic adapted from the local 'mox' repository. 3. Storage: Store email metadata (Sender, Subject, Snippet, ReadState) in a local SQLite database for instant querying by the API. Store full raw bodies in a compressed file store. 4. Client API: Instead of IMAP, expose a secure JSON REST API for the 'MailRaven' Android app to sync emails. 5. Administration: Replicate Mox's 'Quickstart' feature—on first run, generate config and print required DNS records (MX, SPF, DKIM) to the console."
+**Input**: User description: "Build a modular, minimalistic email server. The system is designed in layers: 1. The Listener Layer: Currently SMTP (Inbound). Designed to accept IMAP/POP3 listeners in the future. 2. The Logic Layer: Handles routing, DNS validation (SPF/DMARC), and Rules. 3. The Storage Layer: Currently SQLite + File System. Must be behind an interface to allow migration to Distributed SQL (Postgres) + Object Storage (S3) for High Availability later. 4. The API Layer: REST/JSON for the MailRaven Android Client. 5. Search: Use SQLite FTS5 for now, but design the search query method to be swappable for Elasticsearch/Bleve later."
+
+## Architecture Overview
+
+MailRaven is built as a layered system with clear separation of concerns:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Listener Layer: SMTP (port 25) → future: IMAP, POP3   │
+└─────────────────────┬───────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────────────┐
+│  Logic Layer: Routing, SPF/DMARC, Rules, Middleware    │
+└─────────────────────┬───────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────────────┐
+│  Storage Layer (Interface): SQLite+FS → Postgres+S3    │
+└─────────────────────┬───────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────────────┐
+│  Search (Interface): FTS5 → Elasticsearch/Bleve        │
+└─────────────────────┬───────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────────────┐
+│  API Layer: REST/JSON (port 443) for mobile clients    │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Design Principles**:
+- Each layer communicates through well-defined Go interfaces
+- Storage and Search implementations are swappable via dependency injection
+- Current implementation: SMTP listener + SQLite + FTS5 + REST API
+- Future expansion: Add IMAP/POP3 listeners, migrate to Postgres+S3, upgrade to Elasticsearch
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -57,7 +89,24 @@ MailRaven Android app connects to the server's JSON REST API over HTTPS to retri
 
 ---
 
-### User Story 4 - Authentication and Authorization (Priority: P2)
+### User Story 4 - Search Emails via API (Priority: P2)
+
+Mobile app users need to find specific emails quickly by searching sender, subject, or message content. App submits search query to API and receives matching results.
+
+**Why this priority**: Search is essential for usability with large mailboxes. Users expect to find emails without endless scrolling.
+
+**Independent Test**: Store 1000 emails, submit search query via GET /api/v1/messages/search?q=keyword, verify results return matching emails ranked by relevance.
+
+**Acceptance Scenarios**:
+
+1. **Given** user has 1000+ emails in mailbox, **When** app calls GET /api/v1/messages/search?q=invoice, **Then** API returns messages containing "invoice" in subject or body, using SQLite FTS5
+2. **Given** search query matches 50 emails, **When** app requests paginated results (limit=20), **Then** API returns first 20 matches with next_cursor for remaining results
+3. **Given** user searches for sender "john@example.com", **When** app calls search endpoint with from:john@example.com query, **Then** API returns all messages from that sender
+4. **Given** search query contains special characters ("meeting @ 3pm"), **When** app submits query, **Then** server handles special chars correctly without SQL injection
+
+---
+
+### User Story 5 - Authentication and Authorization (Priority: P2)
 
 Mobile app and administrators authenticate to the server using secure credentials. API endpoints require valid authentication tokens to prevent unauthorized access.
 
@@ -74,7 +123,7 @@ Mobile app and administrators authenticate to the server using secure credential
 
 ---
 
-### User Story 5 - Send Outbound Email via API (Priority: P3)
+### User Story 6 - Send Outbound Email via API (Priority: P3)
 
 Mobile app allows users to compose and send emails. App submits message via API endpoint, server generates DKIM signature, and delivers email to recipient's mail server via SMTP.
 
@@ -105,67 +154,95 @@ Mobile app allows users to compose and send emails. App submits message via API 
 
 ### Functional Requirements
 
-**Core Server Infrastructure:**
+**Layer 1: Listener Layer**
 
-- **FR-001**: System MUST listen on port 25 (SMTP) for inbound email from external mail servers
-- **FR-002**: System MUST listen on port 443 (HTTPS) for secure API connections from mobile clients
-- **FR-003**: System MUST run on Linux servers with Go runtime (CGO-free deployment)
-
-**Email Reception & Validation:**
-
+- **FR-001**: System MUST implement SMTP listener on port 25 for inbound email from external mail servers
+- **FR-002**: SMTP listener MUST be decoupled from business logic via middleware/handler pattern
+- **FR-003**: Listener layer MUST be designed to support future addition of IMAP (port 143) and POP3 (port 110) without modifying core logic
 - **FR-004**: System MUST accept SMTP connections and implement RFC 5321 SMTP protocol
-- **FR-005**: System MUST validate sender reputation using SPF (RFC 7208) checks by performing DNS lookups
-- **FR-006**: System MUST validate DMARC (RFC 7489) policies for received emails
-- **FR-007**: System MUST parse MIME structure (RFC 2045) of received emails including multipart messages
-- **FR-008**: System MUST extract text and HTML body parts from MIME messages for snippet generation
-- **FR-009**: System MUST reply "250 OK" to SMTP DATA command ONLY after message is durably stored (SQLite + file + fsync)
 
-**Storage & Durability:**
+**Layer 2: Logic Layer**
 
-- **FR-010**: System MUST store email metadata in SQLite database with fields: message_id, sender, recipient, subject, snippet (first 200 chars), read_state, timestamp, spf_result, dmarc_result
-- **FR-011**: System MUST store full raw email message body in compressed file store (gzip compression)
-- **FR-012**: System MUST use atomic transactions with PRAGMA synchronous=FULL for SQLite writes
-- **FR-013**: System MUST call fsync() on both SQLite database and message files before SMTP acknowledgment
-- **FR-014**: System MUST verify SQLite database integrity on startup using PRAGMA integrity_check
-- **FR-015**: System MUST reconcile SQLite metadata with file store on startup and log any inconsistencies
+- **FR-005**: Logic layer MUST handle email routing decisions (which user/folder receives the message)
+- **FR-006**: System MUST validate sender reputation using SPF (RFC 7208) checks by performing DNS lookups
+- **FR-007**: System MUST validate DMARC (RFC 7489) policies for received emails
+- **FR-008**: Logic layer MUST support middleware pipeline where SPF/DMARC validators are pluggable components
+- **FR-009**: System MUST parse MIME structure (RFC 2045) of received emails including multipart messages
+- **FR-010**: System MUST extract text and HTML body parts from MIME messages for snippet generation
+- **FR-011**: Logic layer MUST support rules engine for future spam filtering and custom routing rules
 
-**Mobile REST API:**
+**Layer 3: Storage Layer (Interface-Driven)**
 
-- **FR-016**: System MUST expose JSON REST API on /api/v1/* endpoints over HTTPS
-- **FR-017**: API MUST support GET /api/v1/messages endpoint with pagination (limit, offset) returning message metadata array
-- **FR-018**: API MUST support GET /api/v1/messages/{id} endpoint returning full message content
-- **FR-019**: API MUST support PATCH /api/v1/messages/{id} endpoint to update read_state
-- **FR-020**: API MUST support POST /api/v1/auth/login endpoint for authentication returning JWT token
-- **FR-021**: API MUST validate JWT tokens on all /api/v1/* endpoints except /auth/login
-- **FR-022**: API responses MUST support gzip compression when client sends Accept-Encoding: gzip header
-- **FR-023**: API MUST enforce maximum page size of 1000 messages per request
+- **FR-012**: Storage operations MUST be defined by Go interfaces (MessageRepository, UserRepository)
+- **FR-013**: Initial implementation MUST use SQLite for metadata + file system for message bodies
+- **FR-014**: Storage interface MUST support future migration to Postgres (metadata) + S3 (message bodies) without logic layer changes
+- **FR-015**: System MUST store email metadata with fields: message_id, sender, recipient, subject, snippet, read_state, timestamp, spf_result, dmarc_result
+- **FR-016**: System MUST store full raw email message body in compressed format (gzip)
+- **FR-017**: All storage writes MUST be atomic - message is either fully committed (metadata + body) or rejected
+- **FR-018**: System MUST use PRAGMA synchronous=FULL for SQLite writes and fsync() for file writes
+- **FR-019**: System MUST reply "250 OK" to SMTP ONLY after storage layer confirms durable persistence
+- **FR-020**: System MUST verify storage integrity on startup (SQLite integrity_check, file reconciliation)
+
+**Layer 4: Search (Interface-Driven)**
+
+- **FR-021**: Search operations MUST be defined by Go interface (SearchRepository)
+- **FR-022**: Initial implementation MUST use SQLite FTS5 for full-text search of subject and body
+- **FR-023**: Search interface MUST support future migration to Elasticsearch or Bleve without API layer changes
+- **FR-024**: Search MUST index message sender, recipient, subject, and body content
+- **FR-025**: Search queries MUST support basic operators: exact phrase, sender filter (from:), date range
+- **FR-026**: Search results MUST return paginated results with relevance ranking
+
+**Layer 5: API Layer**
+
+- **FR-027**: System MUST expose JSON REST API on /api/v1/* endpoints over HTTPS (port 443)
+- **FR-028**: API layer MUST translate HTTP requests to storage/search interface calls without business logic duplication
+- **FR-029**: API MUST support GET /api/v1/messages endpoint with pagination (limit, offset/cursor)
+- **FR-030**: API MUST support GET /api/v1/messages/{id} endpoint returning full message content
+- **FR-031**: API MUST support PATCH /api/v1/messages/{id} endpoint to update read_state
+- **FR-032**: API MUST support GET /api/v1/messages/search endpoint with query parameter
+- **FR-033**: API MUST support POST /api/v1/auth/login endpoint for authentication returning JWT token
+- **FR-034**: API MUST validate JWT tokens on all /api/v1/* endpoints except /auth/login
+- **FR-035**: API responses MUST support gzip compression when client sends Accept-Encoding: gzip header
+- **FR-036**: API MUST enforce maximum page size of 1000 items per request
 
 **Administration & Configuration:**
 
-- **FR-024**: System MUST provide quickstart command that accepts email address and generates initial configuration
-- **FR-025**: Quickstart MUST generate DKIM private key and public key for DNS TXT record
-- **FR-026**: Quickstart MUST print to console the DNS records required: MX record, SPF TXT record, DKIM TXT record, DMARC TXT record
-- **FR-027**: System MUST load configuration from file on startup specifying domain, listen ports, storage paths, DKIM key path
+- **FR-037**: System MUST provide quickstart command that accepts email address and generates initial configuration
+- **FR-038**: Quickstart MUST generate DKIM private key and public key for DNS TXT record
+- **FR-039**: Quickstart MUST print to console the DNS records required: MX, SPF, DKIM, DMARC
+- **FR-040**: System MUST load configuration from file specifying domain, ports, storage backend, search backend
 
 **Security:**
 
-- **FR-028**: System MUST use TLS for HTTPS API endpoints with valid certificates
-- **FR-029**: System MUST support STARTTLS for SMTP connections (optional but recommended)
-- **FR-030**: System MUST hash and salt passwords for authentication (use bcrypt or argon2)
-- **FR-031**: System MUST implement rate limiting on API endpoints (100 requests/minute per IP)
-- **FR-032**: System MUST log all authentication attempts (success and failure) with IP address and timestamp
+- **FR-041**: System MUST use TLS for HTTPS API endpoints with valid certificates
+- **FR-042**: System MUST support STARTTLS for SMTP connections (optional but recommended)
+- **FR-043**: System MUST hash and salt passwords for authentication (use bcrypt or argon2)
+- **FR-044**: API MUST implement rate limiting (100 requests/minute per IP)
+- **FR-045**: System MUST log all authentication attempts (success and failure) with IP address and timestamp
 
 ### Key Entities
 
-- **Message**: Represents an email message. Attributes: unique ID, sender address, recipient address, subject line, message snippet (first 200 chars of body), read state (boolean), received timestamp, SPF validation result, DMARC validation result, file store path.
+**Domain Models (Logic Layer):**
 
-- **MessageBody**: Full raw email message stored in compressed file format. Attributes: message ID (references Message), file path, compressed size, original size, compression algorithm.
+- **Message**: Core email representation. Attributes: unique ID, sender address, recipient address, subject line, message snippet (first 200 chars), read state (boolean), received timestamp, SPF validation result, DMARC validation result.
 
-- **User**: Represents a mailbox user with credentials. Attributes: email address, password hash, created timestamp, last login timestamp.
+- **MessageBody**: Full raw email content. Attributes: message ID, raw MIME content, compressed size, original size.
+
+- **User**: Mailbox owner with credentials. Attributes: email address, password hash, created timestamp, last login timestamp.
 
 - **AuthToken**: JWT token for API authentication. Attributes: token string, user email, expiration timestamp, issued timestamp.
 
 - **SMTPSession**: Temporary state for active SMTP connection. Attributes: session ID, remote IP, sender (MAIL FROM), recipients (RCPT TO list), connection timestamp, bytes received.
+
+**Storage Interfaces (Abstraction Boundary):**
+
+- **MessageRepository**: Interface defining storage operations for messages. Methods: Save(msg Message) error, FindByID(id string) (Message, error), FindByUser(email string, limit int, offset int) ([]Message, error), UpdateReadState(id string, read bool) error.
+
+- **UserRepository**: Interface defining user account operations. Methods: Create(user User) error, FindByEmail(email string) (User, error), Authenticate(email string, password string) (User, error).
+
+- **SearchRepository**: Interface defining search operations. Methods: Index(msg Message) error, Search(query string, limit int, offset int) ([]Message, error).
+
+**Configuration:**
 
 - **DNSRecord**: Generated DNS configuration for domain. Attributes: record type (MX/SPF/DKIM/DMARC), record name, record value, TTL.
 
@@ -190,21 +267,32 @@ Mobile app allows users to compose and send emails. App submits message via API 
 - **SC-007**: API pagination allows app to scroll through 10,000 messages without loading entire dataset (memory stays under 100MB)
 - **SC-008**: API serves 100 concurrent mobile clients without response time degradation beyond 20%
 
+**Search Performance:**
+
+- **SC-009**: Search queries return results within 200ms for mailboxes containing up to 10,000 messages
+- **SC-010**: Search relevance ranking places exact subject matches in top 5 results 95% of the time
+
 **Reliability & Data Safety:**
 
-- **SC-009**: Zero data loss after 1000 simulated crashes (kill -9) during various SMTP phases
-- **SC-010**: SQLite database integrity check passes 100% after crash recovery tests
-- **SC-011**: Server handles disk full scenario gracefully by rejecting new emails with SMTP 4xx (no "250 OK" followed by silent loss)
+- **SC-011**: Zero data loss after 1000 simulated crashes (kill -9) during various SMTP phases
+- **SC-012**: SQLite database integrity check passes 100% after crash recovery tests
+- **SC-013**: Server handles disk full scenario gracefully by rejecting new emails with SMTP 4xx (no "250 OK" followed by silent loss)
 
 **Security:**
 
-- **SC-012**: API rejects 100% of requests without valid JWT token (no unauthorized access)
-- **SC-013**: Rate limiting prevents single IP from exceeding 100 requests/minute (tested with load generator)
+- **SC-014**: API rejects 100% of requests without valid JWT token (no unauthorized access)
+- **SC-015**: Rate limiting prevents single IP from exceeding 100 requests/minute (tested with load generator)
+
+**Extensibility (Interface-Driven Design):**
+
+- **SC-016**: Developer can swap SQLite for Postgres implementation by providing alternative MessageRepository/UserRepository without modifying Logic Layer code
+- **SC-017**: Developer can add IMAP protocol support by implementing new Listener without modifying Logic/Storage Layers
+- **SC-018**: Developer can replace FTS5 with Elasticsearch by implementing SearchRepository interface without modifying API Layer
 
 **Developer Experience:**
 
-- **SC-014**: Developer can set up local test environment and send test email to server in under 15 minutes following quickstart guide
-- **SC-015**: DNS record generation by quickstart produces valid records that pass syntax validation (dig, nslookup)
+- **SC-019**: Developer can set up local test environment and send test email to server in under 15 minutes following quickstart guide
+- **SC-020**: DNS record generation by quickstart produces valid records that pass syntax validation (dig, nslookup)
 
 ## Assumptions
 
@@ -215,19 +303,29 @@ Mobile app allows users to compose and send emails. App submits message via API 
 - **A-005**: Initial deployment targets <1000 users with <50,000 total messages (scaling beyond this is future work)
 - **A-006**: SPF/DMARC validation will use mox's implementation patterns but may not implement 100% of edge cases initially
 - **A-007**: Email size limit is 25MB (standard industry practice)
-- **A-008**: SQLite is sufficient for single-server deployment (distributed storage not required for MVP)
-- **A-009**: DKIM signing for outbound email uses RSA-2048 keys (Ed25519 support is optional)
-- **A-010**: API authentication uses JWT with 7-day expiration (refresh tokens are future enhancement)
+- **A-008**: Storage layer interfaces are designed for future migration: SQLite → Postgres, File system → S3/object storage
+- **A-009**: Search layer interfaces are designed for future migration: FTS5 → Elasticsearch or Bleve
+- **A-010**: Listener layer is designed for future protocol addition: SMTP-only → SMTP + IMAP + POP3
+- **A-011**: SQLite is sufficient for single-server deployment (distributed storage not required for MVP)
+- **A-012**: DKIM signing for outbound email uses RSA-2048 keys (Ed25519 support is optional)
+- **A-013**: API authentication uses JWT with 7-day expiration (refresh tokens are future enhancement)
 
-## Out of Scope (Explicitly Excluded)
+## Out of Scope (MVP Exclusions - Future Enhancements via Layered Architecture)
 
-- **OS-001**: IMAP/POP3 protocols - MailRaven uses custom JSON API instead
-- **OS-002**: Web-based email client (webmail) - mobile app is primary interface
-- **OS-003**: Email forwarding rules and filters - simple storage only for MVP
-- **OS-004**: Calendar, contacts, tasks integration - email-only focus
-- **OS-005**: Multi-user admin panel - single admin via config file
-- **OS-006**: Spam filtering and machine learning - rely on SPF/DMARC only for MVP
-- **OS-007**: Backup/restore tooling - administrator uses standard file backup
-- **OS-008**: High availability clustering - single server deployment
-- **OS-009**: Email search with full-text indexing - simple metadata queries only
-- **OS-010**: Attachment virus scanning - client-side handling
+**Not Implemented in MVP (but architecture supports future addition via interfaces):**
+
+- **OS-001**: IMAP/POP3 protocols - MailRaven uses custom JSON API for MVP. Listener Layer design allows adding IMAP/POP3 without Logic Layer changes.
+- **OS-002**: Web-based email client (webmail) - mobile app is primary interface for MVP
+- **OS-003**: Advanced email forwarding rules and filters - Logic Layer middleware pattern supports adding rules engine
+- **OS-004**: Calendar, contacts, tasks integration - email-only focus for MVP
+- **OS-005**: Multi-user admin panel - single admin via config file for MVP
+- **OS-006**: Spam filtering and machine learning - rely on SPF/DMARC only for MVP. Logic Layer middleware pattern supports adding spam filter as pluggable component.
+- **OS-007**: Backup/restore tooling - administrator uses standard file backup for MVP
+- **OS-008**: High availability clustering - single server deployment for MVP. Storage Layer interfaces support future distributed database migration.
+- **OS-009**: Attachment virus scanning - client-side handling for MVP. Logic Layer middleware pattern supports adding virus scanner.
+
+**Explicitly Excluded (not aligned with project vision):**
+
+- **OS-010**: Desktop email client support - mobile-first architecture
+- **OS-011**: On-premise Exchange Server integration - cloud-native design
+- **OS-012**: Legacy protocol support (UUCP, X.400) - modern protocols only
