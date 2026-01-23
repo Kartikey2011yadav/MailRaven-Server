@@ -94,5 +94,6 @@ build/
 dist/
 bin/
 
-mox/tests/testdata/
+mox/
 tests/testdata/
+!tests/testdata/fixtures/

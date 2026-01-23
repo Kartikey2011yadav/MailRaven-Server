@@ -196,19 +196,19 @@
 
 ### Implementation for US4
 
-- [ ] T073 [P] [US4] Create JWT utilities in internal/adapters/http/auth/jwt.go (GenerateToken, ValidateToken functions)
-- [ ] T074 [P] [US4] Implement POST /v1/auth/login handler in internal/adapters/http/handlers/auth.go (calls UserRepository.Authenticate, returns JWT)
-- [ ] T075 [US4] Create auth middleware in internal/adapters/http/middleware/auth.go (extract JWT from Authorization header, validate, set user context)
-- [ ] T076 [US4] Apply auth middleware to protected routes in internal/adapters/http/routes.go (all /v1/* except /auth/login)
-- [ ] T077 [US4] Add error responses for auth failures in handlers (401 Unauthorized with JSON error message)
+- [X] T073 [P] [US4] Create JWT utilities in internal/adapters/http/auth/jwt.go (GenerateToken, ValidateToken functions)
+- [X] T074 [P] [US4] Implement POST /v1/auth/login handler in internal/adapters/http/handlers/auth.go (calls UserRepository.Authenticate, returns JWT)
+- [X] T075 [US4] Create auth middleware in internal/adapters/http/middleware/auth.go (extract JWT from Authorization header, validate, set user context)
+- [X] T076 [US4] Apply auth middleware to protected routes in internal/adapters/http/routes.go (all /v1/* except /auth/login)
+- [X] T077 [US4] Add error responses for auth failures in handlers (401 Unauthorized with JSON error message)
 
 ### Integration Tests for US4
 
-- [ ] T078 [US4] Create auth integration test in tests/api_test.go (login with valid credentials, receive token)
-- [ ] T079 [US4] Add unauthorized test in tests/api_test.go (call API without token, verify 401)
-- [ ] T080 [US4] Add expired token test in tests/api_test.go (use token past expiration, verify 401)
+- [X] T078 [US4] Create auth integration test in tests/api_test.go (login with valid credentials, receive token)
+- [X] T079 [US4] Add unauthorized test in tests/api_test.go (call API without token, verify 401)
+- [X] T080 [US4] Add expired token test in tests/api_test.go (use token past expiration, verify 401)
 
-**Checkpoint**: API is secured with JWT authentication
+**Checkpoint**: API is secured with JWT authentication ✅
 
 ---
 
@@ -245,26 +245,26 @@
 ### Observability
 
 - [ ] T091 [P] Add Prometheus /metrics endpoint in cmd/mailraven/main.go
-- [ ] T092 [P] Add structured logging to all SMTP sessions (session ID, remote IP, SPF/DMARC results)
-- [ ] T093 [P] Add API request logging (endpoint, method, duration, status code)
-- [ ] T094 [P] Add metrics collection (messages_received, messages_sent, api_requests, storage_operations)
+- [X] T092 [P] Add structured logging to all SMTP sessions (session ID, remote IP, SPF/DMARC results)
+- [X] T093 [P] Add API request logging (endpoint, method, duration, status code)
+- [X] T094 [P] Add metrics collection (messages_received, messages_sent, api_requests, storage_operations)
 
 ### Application Entrypoint
 
-- [ ] T095 Create main.go in cmd/mailraven/main.go (parse CLI args, load config, wire dependencies)
-- [ ] T096 Add serve command in cmd/mailraven/serve.go (start SMTP server and HTTP server concurrently)
-- [ ] T097 Add graceful shutdown in serve command (handle SIGTERM/SIGINT, close connections cleanly)
-- [ ] T098 Add startup checks in serve command (verify config valid, ports available, database accessible)
+- [X] T095 Create main.go in cmd/mailraven/main.go (parse CLI args, load config, wire dependencies)
+- [X] T096 Add serve command in cmd/mailraven/serve.go (start SMTP server and HTTP server concurrently)
+- [X] T097 Add graceful shutdown in serve command (handle SIGTERM/SIGINT, close connections cleanly)
+- [X] T098 Add startup checks in serve command (verify config valid, ports available, database accessible)
 
 ### Documentation
 
-- [ ] T099 [P] Create deployment/mailraven.service (systemd service file)
-- [ ] T100 [P] Create deployment/config.example.yaml (example configuration with comments)
-- [ ] T101 [P] Update README.md with build instructions, quickstart guide link, license info
+- [X] T099 [P] Create deployment/mailraven.service (systemd service file)
+- [X] T100 [P] Create deployment/config.example.yaml (example configuration with comments)
+- [X] T101 [P] Update README.md with build instructions, quickstart guide link, license info
 
 ### Testing Infrastructure
 
-- [ ] T102 [P] Add test fixtures in tests/testdata/ (sample MIME messages, SPF records, DKIM keys)
+- [X] T102 [P] Add test fixtures in tests/testdata/ (sample MIME messages, SPF records, DKIM keys)
 - [ ] T103 [P] Create test helper functions in tests/helpers.go (setup test database, generate test users, seed messages)
 - [ ] T104 [P] Add integration test suite runner in tests/integration_test.go (orchestrate SMTP + API + storage tests)
 

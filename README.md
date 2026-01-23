@@ -44,52 +44,141 @@ MailRaven follows the Ports and Adapters (Hexagonal) pattern with 5 distinct lay
 ### Prerequisites
 
 - Go 1.22 or higher
-- Linux server (Ubuntu 20.04+)
-- Domain with DNS access
+- Linux server (Ubuntu 20.04+, Debian 11+, CentOS 8+, or Windows 10/11)
+- Domain with DNS access (for production email)
 
-### Build
+### Installation
+
+#### Option 1: Build from Source
 
 ```bash
+# Clone the repository
+git clone https://github.com/Kartikey2011yadav/mailraven-server.git
+cd mailraven-server
+
+# Build the binary
+go build -o mailraven ./cmd/mailraven
+
+# (Optional) Install to system path
+sudo cp mailraven /usr/local/bin/
+```
+
+#### Option 2: Using Make
+
+```bash
+# Build
 make build
+
+# Build and install
+make install
 ```
 
 ### Run Quickstart Setup
 
 ```bash
-sudo ./bin/mailraven quickstart
+# Linux/macOS
+sudo mailraven quickstart
+
+# Windows (run as Administrator)
+mailraven.exe quickstart
 ```
 
 This interactive command will:
-1. Generate DKIM keys
-2. Configure DNS records (MX, SPF, DKIM, DMARC)
-3. Set up TLS certificates
-4. Create initial configuration
+1. Generate DKIM keys (2048-bit RSA)
+2. Create configuration file with crypto-secure JWT secret
+3. Display DNS records to configure (MX, SPF, DKIM, DMARC)
+4. Create initial admin user account
+5. Initialize database and storage directories
 
-For detailed setup instructions, see [specs/001-mobile-email-server/quickstart.md](specs/001-mobile-email-server/quickstart.md).
+For detailed setup instructions, see [Quickstart Guide](specs/001-mobile-email-server/quickstart.md).
 
 ### Start Server
 
 ```bash
-sudo ./bin/mailraven serve
+# Linux/macOS with default config
+sudo mailraven serve
+
+# Custom config path
+mailraven serve --config /path/to/config.yaml
+
+# Windows (run as Administrator)
+mailraven.exe serve
 ```
+
+The server will start:
+- **SMTP Server**: Port 2525 (or 25 in production)
+- **HTTP API**: Port 8443 with TLS (or 8080 without TLS)
 
 ### Test Email Reception
 
 ```bash
+# Using swaks (SMTP test tool)
+swaks --to user@yourdomain.com \
+  --from sender@example.com \
+  --server localhost:2525 \
+  --body "Test message from MailRaven"
+
+# Using mail command
 echo "Test message" | mail -s "Test" user@yourdomain.com
 ```
 
 ### Test Mobile API
 
 ```bash
-# Login
-curl -X POST http://localhost:8080/auth/login \
+# 1. Login to get JWT token
+curl -X POST https://localhost:8443/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@yourdomain.com","password":"your_password"}'
+  -d '{"email":"admin@yourdomain.com","password":"your_password"}' \
+  --insecure
 
-# List messages
-curl -X GET http://localhost:8080/messages \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+# Response: {"token":"eyJhbGc...","expires_at":"2026-01-30T..."}
+
+# 2. List messages
+curl -X GET https://localhost:8443/api/v1/messages \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  --insecure
+
+# 3. Get specific message
+curl -X GET https://localhost:8443/api/v1/messages/msg-123 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  --insecure
+
+# 4. Mark message as read
+curl -X PATCH https://localhost:8443/api/v1/messages/msg-123 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"read_state":true}' \
+  --insecure
+
+# 5. Search messages
+curl -X GET 'https://localhost:8443/api/v1/messages/search?q=invoice' \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  --insecure
+```
+
+### Deployment
+
+#### Systemd Service (Linux)
+
+```bash
+# Copy service file
+sudo cp deployment/mailraven.service /etc/systemd/system/
+
+# Create mailraven user
+sudo useradd -r -s /bin/false mailraven
+
+# Create directories
+sudo mkdir -p /var/lib/mailraven /var/log/mailraven
+sudo chown mailraven:mailraven /var/lib/mailraven /var/log/mailraven
+
+# Enable and start service
+sudo systemctl daemon-reload
+sudo systemctl enable mailraven
+sudo systemctl start mailraven
+
+# Check status
+sudo systemctl status mailraven
+sudo journalctl -u mailraven -f
 ```
 
 ## Development
@@ -192,11 +281,31 @@ See [.specify/memory/constitution.md](.specify/memory/constitution.md) for detai
 
 ## License
 
-[License information to be added]
+Dual-licensed under:
+- **Mozilla Public License 2.0** (MPLv2.0) - See [LICENSE.MPLv2.0](LICENSE.MPLv2.0)
+- **MIT License** - See [LICENSE.MIT](LICENSE.MIT)
+
+You may use, distribute, and modify this code under the terms of either license.
 
 ## Contributing
 
-[Contributing guidelines to be added]
+Contributions are welcome! Please:
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes following the project's code style
+4. Write tests for new functionality
+5. Ensure all tests pass (`go test ./...`)
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
+
+### Development Guidelines
+
+- Follow the [Constitution](.specify/memory/constitution.md) principles
+- Write tests for all new features
+- Document public APIs with godoc comments
+- Keep dependencies minimal (CGO-free preferred)
+- Use semantic commit messages
 
 ## Acknowledgments
 

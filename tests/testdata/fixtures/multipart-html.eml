@@ -1,0 +1,37 @@
+From: sender@example.com
+To: recipient@example.com
+Subject: HTML Email with Inline Images
+Message-ID: <html-001@example.com>
+Date: Mon, 23 Jan 2026 11:00:00 +0000
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="boundary-html"
+
+--boundary-html
+Content-Type: text/plain; charset=utf-8
+
+This is the plain text version of the HTML email.
+
+Visit our website for more information.
+
+--boundary-html
+Content-Type: text/html; charset=utf-8
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>HTML Email</title>
+</head>
+<body>
+    <h1>Welcome to MailRaven!</h1>
+    <p>This is an <strong>HTML email</strong> with formatting.</p>
+    <p>Visit our <a href="https://example.com">website</a> for more information.</p>
+    <ul>
+        <li>Feature 1: Email reception</li>
+        <li>Feature 2: Full-text search</li>
+        <li>Feature 3: Mobile API</li>
+    </ul>
+</body>
+</html>
+
+--boundary-html--

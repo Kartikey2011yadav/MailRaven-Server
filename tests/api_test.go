@@ -11,16 +11,19 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	httpAdapter "github.com/Kartikey2011yadav/mailraven-server/internal/adapters/http"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/http/dto"
+	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/http/middleware"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/storage/disk"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/storage/sqlite"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/config"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/domain"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/observability"
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -612,4 +615,55 @@ func (e *testEnvironment) decodeJSON(t *testing.T, r io.Reader, v interface{}) {
 // boolPtr returns pointer to bool value
 func boolPtr(b bool) *bool {
 	return &b
+}
+
+// TestExpiredToken verifies that expired JWT tokens are rejected (T080)
+func TestExpiredToken(t *testing.T) {
+	env := setupTestEnvironment(t)
+	defer env.cleanup()
+
+	// Create expired token manually (token that expired 1 hour ago)
+	expiredToken := generateExpiredToken(t, "test@example.com", time.Now().Add(-1*time.Hour))
+
+	// Attempt to access protected endpoint with expired token
+	req := env.newRequest(t, "GET", "/api/v1/messages", nil, expiredToken)
+	resp := env.doRequest(t, req)
+
+	if resp.StatusCode != http.StatusUnauthorized {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		t.Errorf("Expected 401 Unauthorized for expired token, got %d. Body: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var errorResp dto.ErrorResponse
+	if err := json.NewDecoder(resp.Body).Decode(&errorResp); err == nil {
+		// JWT library returns "token is expired" in the error, but our API returns it in Message field
+		errorMsg := strings.ToLower(errorResp.Error + " " + errorResp.Message)
+		if !strings.Contains(errorMsg, "expired") && !strings.Contains(errorMsg, "invalid") {
+			t.Errorf("Expected error message to mention token expiration/invalid, got Error: '%s', Message: '%s'",
+				errorResp.Error, errorResp.Message)
+		}
+	}
+}
+
+// generateExpiredToken creates a JWT token with specified expiration time
+func generateExpiredToken(t *testing.T, email string, expiresAt time.Time) string {
+	// JWT secret from test config (matches what quickstart generates)
+	jwtSecret := "test-secret-key-for-testing-only"
+
+	claims := &middleware.Claims{
+		Email: email,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expiresAt),
+			IssuedAt:  jwt.NewNumericDate(time.Now().Add(-8 * 24 * time.Hour)), // Issued 8 days ago
+			Issuer:    "mailraven",
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte(jwtSecret))
+	if err != nil {
+		t.Fatalf("Failed to generate expired token: %v", err)
+	}
+
+	return tokenString
 }

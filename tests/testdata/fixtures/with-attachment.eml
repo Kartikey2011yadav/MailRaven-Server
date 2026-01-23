@@ -1,0 +1,33 @@
+From: sender@example.com
+To: recipient@example.com
+Subject: Email with PDF Attachment
+Message-ID: <attachment-001@example.com>
+Date: Mon, 23 Jan 2026 12:00:00 +0000
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="boundary-mixed"
+
+--boundary-mixed
+Content-Type: text/plain; charset=utf-8
+
+Please find attached the PDF document you requested.
+
+Best regards,
+Sender
+
+--boundary-mixed
+Content-Type: application/pdf; name="document.pdf"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="document.pdf"
+
+JVBERi0xLjQKJeLjz9MKMyAwIG9iago8PC9UeXBlL1BhZ2UvUGFyZW50IDIgMCBSL1Jlc291cmNl
+cyA8PC9Gb250PDwvRjEgNCAwIFI+Pj4+L0NvbnRlbnRzIDUgMCBSPj4KZW5kb2JqCjQgMCBvYmoK
+PDwvVHlwZS9Gb250L1N1YnR5cGUvVHlwZTEvQmFzZUZvbnQvVGltZXMtUm9tYW4+PgplbmRvYmoK
+NSAwIG9iago8PC9MZW5ndGggNDQ+PnN0cmVhbQpCVAovRjEgMTIgVGYKMSAwIDAgMSAxMDAgNTAw
+IFRtCihUZXN0IFBERikgVGoKRVQKZW5kc3RyZWFtCmVuZG9iagoyIDAgb2JqCjw8L1R5cGUvUGFn
+ZXMvS2lkc1szIDAgUl0vQ291bnQgMS9NZWRpYUJveFswIDAgNjEyIDc5Ml0+PgplbmRvYmoKMSAw
+IG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgMiAwIFI+PgplbmRvYmoKeHJlZgowIDYKMDAwMDAw
+MDAwMCA2NTUzNSBmIAowMDAwMDAwMzYxIDAwMDAwIG4gCjAwMDAwMDAzMDAgMDAwMDAgbiAKMDAw
+MDAwMDAxNSAwMDAwMCBuIAowMDAwMDAwMTI1IDAwMDAwIG4gCjAwMDAwMDAxOTQgMDAwMDAgbiAK
+dHJhaWxlcgo8PC9TaXplIDYvUm9vdCAxIDAgUj4+CnN0YXJ0eHJlZgo0MTAKJSVFT0YK
+
+--boundary-mixed--
