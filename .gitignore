@@ -95,3 +95,4 @@ dist/
 bin/
 
 mox/tests/testdata/
+tests/testdata/
