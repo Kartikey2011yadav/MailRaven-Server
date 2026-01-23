@@ -122,3 +122,11 @@ func ToSearchResult(msg *domain.Message, relevance float64) SearchResult {
 		Relevance:      relevance,
 	}
 }
+
+// SendRequest represents a request to send an email
+type SendRequest struct {
+	From    string `json:"from"` // added From, handler logic infers from JWT but maybe we allow it?
+	To      string `json:"to"`
+	Subject string `json:"subject"`
+	Body    string `json:"body"`
+}

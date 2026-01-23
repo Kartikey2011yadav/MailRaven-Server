@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
@@ -13,19 +12,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/http/dto"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/http/middleware"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/smtp/dkim"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/domain"
-	"github.com/Kartikey2011yadav/mailraven-server/internal/observability"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/ports"
+	"github.com/Kartikey2011yadav/mailraven-server/internal/observability"
 	"github.com/google/uuid"
 )
-
-type SendRequest struct {
-	To      string `json:"to"`
-	Subject string `json:"subject"`
-	Body    string `json:"body"`
-}
 
 type SendHandler struct {
 	queueRepo  ports.QueueRepository
@@ -45,9 +39,6 @@ func NewSendHandler(
 	selector string,
 	privateKeyPath string,
 ) (*SendHandler, error) {
-	// If key path is empty, we warn but allow creating handler (sending will fail or be unsigned if we handled that)
-	// But requirement implies signing.
-	
 	if privateKeyPath == "" {
 		return nil, fmt.Errorf("DKIM private key path is required")
 	}
@@ -56,14 +47,14 @@ func NewSendHandler(
 	if err != nil {
 		return nil, fmt.Errorf("failed to read DKIM key from %s: %w", privateKeyPath, err)
 	}
-	
+
 	block, _ := pem.Decode(pemBytes)
 	if block == nil {
 		return nil, fmt.Errorf("failed to decode PEM block containing DKIM key")
 	}
-	
+
 	var key *rsa.PrivateKey
-	
+
 	// Try PKCS1
 	if k, err := x509.ParsePKCS1PrivateKey(block.Bytes); err == nil {
 		key = k
@@ -92,7 +83,7 @@ func NewSendHandler(
 	}, nil
 }
 
-func (h *SendHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
+func (h *SendHandler) Send(w http.ResponseWriter, r *http.Request) {
 	// Auth user from context
 	email, ok := r.Context().Value(middleware.UserEmailKey).(string)
 	if !ok || email == "" {
@@ -100,7 +91,7 @@ func (h *SendHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req SendRequest
+	var req dto.SendRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -114,23 +105,22 @@ func (h *SendHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 	// Construct raw MIME message
 	messageID := fmt.Sprintf("<%s@%s>", uuid.New().String(), h.domain)
 	date := time.Now().UTC().Format(time.RFC1123Z)
-	
+
 	// Ensure body has minimal structure
 	bodyContent := req.Body
 	if !strings.HasSuffix(bodyContent, "\n") {
 		bodyContent += "\r\n"
 	}
-	
+
 	// Create headers
 	headers := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nDate: %s\r\nMessage-ID: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n",
 		email, req.To, req.Subject, date, messageID)
-	
+
 	rawMessage := []byte(headers + bodyContent)
 
 	// Sign message
-	// Sign standard set of headers
 	headersToSign := []string{"From", "To", "Subject", "Date", "Message-ID", "Content-Type", "MIME-Version"}
-	
+
 	signatureHeader, err := h.dkimSigner.Sign(rawMessage, headersToSign)
 	if err != nil {
 		h.logger.Error("failed to sign message", "error", err)
@@ -142,8 +132,9 @@ func (h *SendHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 	signedMessage := []byte(signatureHeader + "\r\n" + string(rawMessage))
 
 	// Store in blob
-	blobKey := fmt.Sprintf("outbound/%s.eml", uuid.New().String())
-	if err := h.blobStore.Write(context.Background(), blobKey, bytes.NewReader(signedMessage)); err != nil {
+	msgUUID := uuid.New().String()
+	blobPath, err := h.blobStore.Write(context.Background(), msgUUID, signedMessage)
+	if err != nil {
 		h.logger.Error("failed to write blob", "error", err)
 		http.Error(w, "Storage failure", http.StatusInternalServerError)
 		return
@@ -151,10 +142,10 @@ func (h *SendHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 
 	// Enqueue
 	outMsg := &domain.OutboundMessage{
-		ID:          uuid.New().String(),
+		ID:          msgUUID,
 		Sender:      email,
 		Recipient:   req.To,
-		BlobKey:     blobKey,
+		BlobKey:     blobPath,
 		Status:      domain.QueueStatusPending,
 		CreatedAt:   time.Now().UTC(),
 		UpdatedAt:   time.Now().UTC(),
@@ -167,16 +158,16 @@ func (h *SendHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Queue failure", http.StatusInternalServerError)
 		return
 	}
-	
-	h.metrics.IncrementCounter("messages_outbound_enqueued")
+
+	h.metrics.IncrementOutboundEnqueued()
 
 	h.logger.Info("message enqueued", "id", outMsg.ID, "sender", email, "recipient", req.To)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(map[string]string{
-		"id": outMsg.ID,
-		"status": "queued",
+		"id":         outMsg.ID,
+		"status":     "queued",
 		"message_id": messageID,
 	})
 }

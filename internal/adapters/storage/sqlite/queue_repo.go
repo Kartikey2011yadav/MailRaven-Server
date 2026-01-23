@@ -94,7 +94,7 @@ func (r *QueueRepository) LockNextReady(ctx context.Context) (*domain.OutboundMe
 
 	// Update returned struct
 	msg.Status = domain.QueueStatusProcessing
-	
+
 	return &msg, nil
 }
 

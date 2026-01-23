@@ -248,3 +248,11 @@ func (s *Server) Stop() error {
 	}
 	return nil
 }
+
+// Addr returns the listener address
+func (s *Server) Addr() net.Addr {
+	if s.listener != nil {
+		return s.listener.Addr()
+	}
+	return nil
+}

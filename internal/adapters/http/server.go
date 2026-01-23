@@ -32,6 +32,7 @@ func NewServer(
 	cfg *config.Config,
 	emailRepo ports.EmailRepository,
 	userRepo ports.UserRepository,
+	queueRepo ports.QueueRepository,
 	blobStore ports.BlobStore,
 	searchIdx ports.SearchIndex,
 	logger *observability.Logger,
@@ -43,6 +44,21 @@ func NewServer(
 	authHandler := handlers.NewAuthHandler(userRepo, cfg.API.JWTSecret, logger, metrics)
 	messageHandler := handlers.NewMessageHandler(emailRepo, blobStore, searchIdx, logger, metrics)
 	searchHandler := handlers.NewSearchHandler(emailRepo, searchIdx, logger, metrics)
+	sendHandler, err := handlers.NewSendHandler(
+		queueRepo,
+		blobStore,
+		logger,
+		metrics,
+		cfg.Domain,
+		cfg.DKIM.Selector,
+		cfg.DKIM.PrivateKeyPath,
+	)
+	if err != nil {
+		// Log error but don't fail server startup if DKIM keys missing?
+		// Or fail? Handler returns error if key invalid.
+		// If fails, we can't send.
+		logger.Error("failed to create send handler (DKIM init failed)", "error", err)
+	}
 
 	// Apply global middleware (order matters: first applied = outermost)
 	router.Use(middleware.Logging(logger))
@@ -51,6 +67,12 @@ func NewServer(
 
 	// Public routes (no auth required)
 	router.Post("/api/v1/auth/login", authHandler.Login)
+
+	// Metrics endpoint
+	router.Get("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
+		metrics.WritePrometheus(w)
+	})
 
 	// Protected routes (require JWT auth)
 	router.Group(func(r chi.Router) {
@@ -62,6 +84,10 @@ func NewServer(
 		r.Get("/api/v1/messages/search", searchHandler.SearchMessages)
 		r.Get("/api/v1/messages/{id}", messageHandler.GetMessage)
 		r.Patch("/api/v1/messages/{id}", messageHandler.UpdateMessage)
+		// Outbound
+		if sendHandler != nil {
+			r.Post("/api/v1/messages/send", sendHandler.Send)
+		}
 	})
 
 	// Health check endpoint (no auth)

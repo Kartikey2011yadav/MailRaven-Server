@@ -140,7 +140,7 @@ func splitMessage(data []byte) [][]byte {
 func parseHeaders(raw []byte) ([]Header, error) {
 	var headers []Header
 	reader := bufio.NewReader(bytes.NewReader(raw))
-	
+
 	var currentKey string
 	var currentValueBuilder strings.Builder
 
@@ -149,7 +149,7 @@ func parseHeaders(raw []byte) ([]Header, error) {
 		if err != nil && err != io.EOF {
 			return nil, err
 		}
-		
+
 		lineStr := string(line)
 		trimmed := strings.TrimRight(lineStr, "\r\n")
 
@@ -196,7 +196,7 @@ func parseHeaders(raw []byte) ([]Header, error) {
 			break
 		}
 	}
-	
+
 	if currentKey != "" {
 		headers = append(headers, Header{Key: currentKey, Value: currentValueBuilder.String()})
 	}
@@ -206,7 +206,7 @@ func parseHeaders(raw []byte) ([]Header, error) {
 
 func bodyHash(body []byte) (string, error) {
 	h := sha256.New()
-	
+
 	scanner := bufio.NewScanner(bytes.NewReader(body))
 	// Increase buffer size just in case
 	buf := make([]byte, 64*1024)
@@ -215,10 +215,10 @@ func bodyHash(body []byte) (string, error) {
 	var lines []string
 	for scanner.Scan() {
 		line := scanner.Text()
-		
+
 		// 1. Trim trailing whitespace
 		line = strings.TrimRight(line, " \t")
-		
+
 		// 2. Reduce WSP sequences to single SP
 		var b strings.Builder
 		lastSpace := false
@@ -245,7 +245,7 @@ func bodyHash(body []byte) (string, error) {
 	for _, line := range lines {
 		h.Write([]byte(line + "\r\n"))
 	}
-	
+
 	// If body is empty (was all empty lines or empty), empty body yields one CRLF
 	if len(lines) == 0 {
 		h.Write([]byte("\r\n"))
@@ -256,10 +256,10 @@ func bodyHash(body []byte) (string, error) {
 
 func relaxedHeader(key, value string) string {
 	lowerKey := strings.ToLower(strings.TrimSpace(key))
-	
+
 	// Unfold: remove \r\n (we added synthetic ones in parseHeaders or they are natural)
 	cleanValue := strings.ReplaceAll(value, "\r\n", "")
-	cleanValue = strings.ReplaceAll(cleanValue, "\n", "") 
+	cleanValue = strings.ReplaceAll(cleanValue, "\n", "")
 
 	// Compress WSP
 	var b strings.Builder
@@ -275,8 +275,8 @@ func relaxedHeader(key, value string) string {
 			lastSpace = false
 		}
 	}
-	
+
 	finalValue := strings.TrimSpace(b.String())
-	
+
 	return lowerKey + ":" + finalValue
 }

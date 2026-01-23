@@ -220,19 +220,19 @@
 
 ### Implementation for US5
 
-- [ ] T081 [P] [US5] Create outbound message queue in internal/core/domain/queue.go (OutboundMessage struct, queue operations)
-- [ ] T082 [P] [US5] Implement POST /v1/messages/send handler in internal/adapters/http/handlers/send.go (validate input, sign with DKIM, enqueue message)
-- [ ] T083 [P] [US5] Create DKIM signer in internal/adapters/smtp/dkim/signer.go (generate DKIM-Signature header per RFC 6376)
-- [ ] T084 [US5] Implement SMTP client in internal/adapters/smtp/client.go (MX lookup, connect to recipient's server, deliver message)
-- [ ] T085 [US5] Create delivery worker in internal/adapters/smtp/delivery.go (process queue, attempt delivery, retry with backoff on failure)
-- [ ] T086 [US5] Add delivery status tracking (update message record with delivery timestamp, status, recipient response)
-- [ ] T087 [US5] Add exponential backoff retry logic in delivery worker (retry after 1min, 5min, 15min, 1hour)
+- [X] T081 [P] [US5] Create outbound message queue in internal/core/domain/queue.go (OutboundMessage struct, queue operations)
+- [X] T082 [P] [US5] Implement POST /v1/messages/send handler in internal/adapters/http/handlers/send.go (validate input, sign with DKIM, enqueue message)
+- [X] T083 [P] [US5] Create DKIM signer in internal/adapters/smtp/dkim/signer.go (generate DKIM-Signature header per RFC 6376)
+- [X] T084 [US5] Implement SMTP client in internal/adapters/smtp/client.go (MX lookup, connect to recipient's server, deliver message)
+- [X] T085 [US5] Create delivery worker in internal/adapters/smtp/delivery.go (process queue, attempt delivery, retry with backoff on failure)
+- [X] T086 [US5] Add delivery status tracking (update message record with delivery timestamp, status, recipient response)
+- [X] T087 [US5] Add exponential backoff retry logic in delivery worker (retry after 1min, 5min, 15min, 1hour)
 
 ### Integration Tests for US5
 
-- [ ] T088 [US5] Create send integration test in tests/smtp_client_test.go (send email to test SMTP server, verify delivery)
-- [ ] T089 [US5] Add DKIM signature test (verify signature validates with public key)
-- [ ] T090 [US5] Add retry test (simulate delivery failure, verify retry attempts with backoff)
+- [X] T088 [US5] Create send integration test in tests/smtp_client_test.go (send email to test SMTP server, verify delivery)
+- [X] T089 [US5] Add DKIM signature test (verify signature validates with public key)
+- [X] T090 [US5] Add retry test (simulate delivery failure, verify retry attempts with backoff)
 
 **Checkpoint**: Users can send emails from mobile app
 
@@ -244,7 +244,7 @@
 
 ### Observability
 
-- [ ] T091 [P] Add Prometheus /metrics endpoint in cmd/mailraven/main.go
+- [X] T091 [P] Add Prometheus /metrics endpoint in cmd/mailraven/main.go
 - [X] T092 [P] Add structured logging to all SMTP sessions (session ID, remote IP, SPF/DMARC results)
 - [X] T093 [P] Add API request logging (endpoint, method, duration, status code)
 - [X] T094 [P] Add metrics collection (messages_received, messages_sent, api_requests, storage_operations)
@@ -265,8 +265,8 @@
 ### Testing Infrastructure
 
 - [X] T102 [P] Add test fixtures in tests/testdata/ (sample MIME messages, SPF records, DKIM keys)
-- [ ] T103 [P] Create test helper functions in tests/helpers.go (setup test database, generate test users, seed messages)
-- [ ] T104 [P] Add integration test suite runner in tests/integration_test.go (orchestrate SMTP + API + storage tests)
+- [X] T103 [P] Create test helper functions in tests/helpers.go (setup test database, generate test users, seed messages)
+- [X] T104 [P] Add integration test suite runner in tests/integration_test.go (orchestrate SMTP + API + storage tests)
 
 **Checkpoint**: Production-ready email server
 

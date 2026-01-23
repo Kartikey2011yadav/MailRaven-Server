@@ -1,6 +1,8 @@
 package observability
 
 import (
+	"fmt"
+	"io"
 	"sync"
 	"time"
 )
@@ -24,6 +26,12 @@ type Metrics struct {
 	StorageWrites int64
 	StorageReads  int64
 	StorageErrors int64
+
+	// Outbound metrics
+	OutboundEnqueued        int64
+	OutboundSent            int64
+	OutboundFailedTransient int64
+	OutboundFailedPermanent int64
 
 	// Request duration histogram (simplified for MVP)
 	APIRequestDurations []time.Duration
@@ -99,6 +107,34 @@ func (m *Metrics) IncrementStorageErrors() {
 	m.StorageErrors++
 }
 
+// IncrementOutboundEnqueued increments the outbound enqueued counter
+func (m *Metrics) IncrementOutboundEnqueued() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.OutboundEnqueued++
+}
+
+// IncrementOutboundSent increments the outbound sent counter
+func (m *Metrics) IncrementOutboundSent() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.OutboundSent++
+}
+
+// IncrementOutboundFailedTransient increments the outbound failed transient counter
+func (m *Metrics) IncrementOutboundFailedTransient() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.OutboundFailedTransient++
+}
+
+// IncrementOutboundFailedPermanent increments the outbound failed permanent counter
+func (m *Metrics) IncrementOutboundFailedPermanent() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.OutboundFailedPermanent++
+}
+
 // RecordAPIRequestDuration records an API request duration
 func (m *Metrics) RecordAPIRequestDuration(duration time.Duration) {
 	m.mu.Lock()
@@ -117,29 +153,65 @@ func (m *Metrics) GetSnapshot() MetricsSnapshot {
 	defer m.mu.RUnlock()
 
 	return MetricsSnapshot{
-		MessagesReceived:     m.MessagesReceived,
-		MessagesRejected:     m.MessagesRejected,
-		SMTPConnections:      m.SMTPConnections,
-		SMTPErrors:           m.SMTPErrors,
-		APIRequests:          m.APIRequests,
-		APIErrors:            m.APIErrors,
-		StorageWrites:        m.StorageWrites,
-		StorageReads:         m.StorageReads,
-		StorageErrors:        m.StorageErrors,
-		RequestDurationCount: len(m.APIRequestDurations),
+		MessagesReceived:        m.MessagesReceived,
+		MessagesRejected:        m.MessagesRejected,
+		SMTPConnections:         m.SMTPConnections,
+		SMTPErrors:              m.SMTPErrors,
+		APIRequests:             m.APIRequests,
+		APIErrors:               m.APIErrors,
+		StorageWrites:           m.StorageWrites,
+		StorageReads:            m.StorageReads,
+		StorageErrors:           m.StorageErrors,
+		OutboundEnqueued:        m.OutboundEnqueued,
+		OutboundSent:            m.OutboundSent,
+		OutboundFailedTransient: m.OutboundFailedTransient,
+		OutboundFailedPermanent: m.OutboundFailedPermanent,
+		RequestDurationCount:    len(m.APIRequestDurations),
 	}
+}
+
+// WritePrometheus writes metrics in Prometheus text format to w
+func (m *Metrics) WritePrometheus(w io.Writer) {
+	snap := m.GetSnapshot()
+
+	writeMetric := func(name, help, typeStr string, value int64) {
+		fmt.Fprintf(w, "# HELP %s %s\n", name, help)
+		fmt.Fprintf(w, "# TYPE %s %s\n", name, typeStr)
+		fmt.Fprintf(w, "%s %d\n", name, value)
+	}
+
+	writeMetric("mailraven_messages_received_total", "Total incoming messages received", "counter", snap.MessagesReceived)
+	writeMetric("mailraven_messages_rejected_total", "Total incoming messages rejected", "counter", snap.MessagesRejected)
+	writeMetric("mailraven_smtp_connections_total", "Total SMTP connections accepted", "counter", snap.SMTPConnections)
+	writeMetric("mailraven_smtp_errors_total", "Total SMTP errors encountered", "counter", snap.SMTPErrors)
+
+	writeMetric("mailraven_api_requests_total", "Total HTTP API requests", "counter", snap.APIRequests)
+	writeMetric("mailraven_api_errors_total", "Total HTTP API errors", "counter", snap.APIErrors)
+
+	writeMetric("mailraven_storage_writes_total", "Total storage write operations", "counter", snap.StorageWrites)
+	writeMetric("mailraven_storage_reads_total", "Total storage read operations", "counter", snap.StorageReads)
+	writeMetric("mailraven_storage_errors_total", "Total storage errors", "counter", snap.StorageErrors)
+
+	writeMetric("mailraven_outbound_enqueued_total", "Total messages enqueued for outbound delivery", "counter", snap.OutboundEnqueued)
+	writeMetric("mailraven_outbound_sent_total", "Total messages successfully delivered", "counter", snap.OutboundSent)
+	writeMetric("mailraven_outbound_transient_failures_total", "Total transient outbound delivery failures", "counter", snap.OutboundFailedTransient)
+	writeMetric("mailraven_outbound_permanent_failures_total", "Total permanent outbound delivery failures", "counter", snap.OutboundFailedPermanent)
 }
 
 // MetricsSnapshot is a read-only view of metrics at a point in time
 type MetricsSnapshot struct {
-	MessagesReceived     int64
-	MessagesRejected     int64
-	SMTPConnections      int64
-	SMTPErrors           int64
-	APIRequests          int64
-	APIErrors            int64
-	StorageWrites        int64
-	StorageReads         int64
-	StorageErrors        int64
-	RequestDurationCount int
+	MessagesReceived        int64
+	MessagesRejected        int64
+	SMTPConnections         int64
+	SMTPErrors              int64
+	APIRequests             int64
+	APIErrors               int64
+	StorageWrites           int64
+	StorageReads            int64
+	StorageErrors           int64
+	OutboundEnqueued        int64
+	OutboundSent            int64
+	OutboundFailedTransient int64
+	OutboundFailedPermanent int64
+	RequestDurationCount    int
 }
