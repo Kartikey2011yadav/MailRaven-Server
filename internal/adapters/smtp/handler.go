@@ -47,7 +47,7 @@ func NewHandler(
 // Handle processes an incoming SMTP message
 func (h *Handler) Handle(session *domain.SMTPSession, rawMessage []byte) error {
 	ctx := context.Background()
-	
+
 	sessionLogger := h.logger.WithSMTPSession(session.SessionID, session.RemoteIP)
 
 	// Step 1: Validate SPF

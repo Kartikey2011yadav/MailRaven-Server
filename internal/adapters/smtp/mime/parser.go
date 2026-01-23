@@ -163,7 +163,7 @@ func generateSnippet(text string) string {
 	text = strings.ReplaceAll(text, "\r\n", " ")
 	text = strings.ReplaceAll(text, "\n", " ")
 	text = strings.ReplaceAll(text, "\t", " ")
-	
+
 	// Collapse multiple spaces
 	for strings.Contains(text, "  ") {
 		text = strings.ReplaceAll(text, "  ", " ")
@@ -182,14 +182,14 @@ func ExtractPlainTextFromHTML(html string) string {
 	// For MVP: Simple tag stripping
 	// Production should use proper HTML parser
 	text := html
-	
+
 	// Remove script and style tags with their content
 	text = removeTagsWithContent(text, "script")
 	text = removeTagsWithContent(text, "style")
-	
+
 	// Remove all HTML tags
 	text = stripHTMLTags(text)
-	
+
 	return text
 }
 
@@ -213,7 +213,7 @@ func removeTagsWithContent(html, tag string) string {
 func stripHTMLTags(html string) string {
 	inTag := false
 	var result strings.Builder
-	
+
 	for _, char := range html {
 		if char == '<' {
 			inTag = true
@@ -223,6 +223,6 @@ func stripHTMLTags(html string) string {
 			result.WriteRune(char)
 		}
 	}
-	
+
 	return result.String()
 }

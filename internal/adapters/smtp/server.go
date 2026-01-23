@@ -16,10 +16,10 @@ import (
 
 // Server represents an SMTP server
 type Server struct {
-	config  *config.Config
-	logger  *observability.Logger
-	metrics *observability.Metrics
-	handler MessageHandler
+	config   *config.Config
+	logger   *observability.Logger
+	metrics  *observability.Metrics
+	handler  MessageHandler
 	listener net.Listener
 }
 
@@ -37,7 +37,7 @@ func NewServer(cfg *config.Config, logger *observability.Logger, metrics *observ
 // Implements RFC 5321 - Simple Mail Transfer Protocol
 func (s *Server) Start(ctx context.Context) error {
 	addr := fmt.Sprintf(":%d", s.config.SMTP.Port)
-	
+
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return fmt.Errorf("failed to listen on %s: %w", addr, err)
@@ -73,7 +73,7 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 
 	remoteAddr := conn.RemoteAddr().String()
 	remoteIP := strings.Split(remoteAddr, ":")[0]
-	
+
 	sessionID := fmt.Sprintf("smtp-%d", time.Now().UnixNano())
 	sessionLogger := s.logger.WithSMTPSession(sessionID, remoteIP)
 
@@ -118,7 +118,7 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 		switch command {
 		case "EHLO", "HELO":
 			s.handleEHLO(writer, args, sessionLogger)
-			
+
 		case "MAIL":
 			if !strings.HasPrefix(strings.ToUpper(args), "FROM:") {
 				s.send(writer, "501 Syntax error in parameters")
@@ -128,7 +128,7 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 			session.Sender = sender
 			sessionLogger.Info("mail from", "sender", sender)
 			s.send(writer, "250 OK")
-			
+
 		case "RCPT":
 			if !strings.HasPrefix(strings.ToUpper(args), "TO:") {
 				s.send(writer, "501 Syntax error in parameters")
@@ -138,23 +138,23 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 			session.Recipients = append(session.Recipients, recipient)
 			sessionLogger.Info("rcpt to", "recipient", recipient)
 			s.send(writer, "250 OK")
-			
+
 		case "DATA":
 			s.handleDATA(ctx, reader, writer, session, sessionLogger)
-			
+
 		case "QUIT":
 			s.send(writer, "221 Bye")
 			return
-			
+
 		case "RSET":
 			// Reset session
 			session.Sender = ""
 			session.Recipients = nil
 			s.send(writer, "250 OK")
-			
+
 		case "NOOP":
 			s.send(writer, "250 OK")
-			
+
 		default:
 			sessionLogger.Warn("unknown command", "command", command)
 			s.send(writer, "502 Command not implemented")

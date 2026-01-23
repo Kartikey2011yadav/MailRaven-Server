@@ -54,12 +54,12 @@ func ValidateSPF(ctx context.Context, remoteIP, sender, heloDomain string) (SPFR
 	// Parse SPF mechanisms
 	// RFC 7208 Section 4.6: Mechanism evaluation
 	mechanisms := strings.Fields(spfRecord)
-	
+
 	for _, mech := range mechanisms[1:] { // Skip "v=spf1"
 		// RFC 7208 Section 5: Mechanism syntax
 		qualifier := "+"
 		mechanism := mech
-		
+
 		// Check for qualifier prefix (+ - ~ ?)
 		if len(mech) > 0 && strings.ContainsRune("+-~?", rune(mech[0])) {
 			qualifier = string(mech[0])

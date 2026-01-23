@@ -115,7 +115,7 @@ func parseDKIMParams(signature string) map[string]string {
 	params := make(map[string]string)
 	signature = strings.ReplaceAll(signature, " ", "")
 	signature = strings.ReplaceAll(signature, "\t", "")
-	
+
 	pairs := strings.Split(signature, ";")
 	for _, pair := range pairs {
 		parts := strings.SplitN(pair, "=", 2)
@@ -123,14 +123,14 @@ func parseDKIMParams(signature string) map[string]string {
 			params[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
 		}
 	}
-	
+
 	return params
 }
 
 // parseDKIMPublicKey extracts RSA public key from DKIM DNS record
 func parseDKIMPublicKey(record string) (*rsa.PublicKey, error) {
 	params := parseDKIMParams(record)
-	
+
 	publicKeyB64, ok := params["p"]
 	if !ok {
 		return nil, fmt.Errorf("no public key (p=) in DNS record")

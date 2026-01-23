@@ -78,7 +78,7 @@ func parseDMARCPolicy(record string) DMARCPolicy {
 		if strings.HasPrefix(pair, "p=") {
 			policyValue := strings.TrimPrefix(pair, "p=")
 			policyValue = strings.TrimSpace(policyValue)
-			
+
 			switch policyValue {
 			case "reject":
 				return DMARCPolicyReject
