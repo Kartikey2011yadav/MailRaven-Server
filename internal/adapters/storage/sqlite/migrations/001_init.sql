@@ -48,6 +48,28 @@ CREATE TABLE messages (
 
 -- Performance indexes
 CREATE INDEX idx_messages_recipient ON messages(recipient, received_at DESC);
+
+-- =============================================================================
+-- Outbound Queue Table
+-- =============================================================================
+
+CREATE TABLE queue (
+    id TEXT PRIMARY KEY,
+    sender TEXT NOT NULL,
+    recipient TEXT NOT NULL,
+    blob_key TEXT NOT NULL,        -- Key in blob store containing signed message
+    status TEXT NOT NULL,          -- PENDING, PROCESSING, SENT, FAILED, RETRYING
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    next_retry_at INTEGER NOT NULL,
+    retry_count INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT
+);
+
+-- Indexes for efficient queue processing
+-- Find next message: status IN ('PENDING', 'RETRYING') AND next_retry_at <= NOW
+CREATE INDEX idx_queue_process ON queue(status, next_retry_at ASC);
+
 CREATE INDEX idx_messages_received_at ON messages(received_at DESC);
 CREATE INDEX idx_messages_sender ON messages(sender);
 CREATE INDEX idx_messages_read_state ON messages(recipient, read_state);

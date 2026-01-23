@@ -50,3 +50,17 @@ type UserRepository interface {
 	// UpdateLastLogin updates the LastLoginAt timestamp
 	UpdateLastLogin(ctx context.Context, email string) error
 }
+
+// QueueRepository defines storage operations for outbound email queue
+type QueueRepository interface {
+	// Enqueue adds a message to the outbound queue
+	Enqueue(ctx context.Context, msg *domain.OutboundMessage) error
+
+	// LockNextReady finds the next message ready for delivery and marks it as PROCESSING
+	// Should check for Status=PENDING/RETRYING and NextRetryAt <= now
+	// Returns (nil, nil) if no messages are ready
+	LockNextReady(ctx context.Context) (*domain.OutboundMessage, error)
+
+	// UpdateStatus updates the status, retry count and next retry time
+	UpdateStatus(ctx context.Context, id string, status domain.OutboundStatus, retryCount int, nextRetry time.Time, lastError string) error
+}
