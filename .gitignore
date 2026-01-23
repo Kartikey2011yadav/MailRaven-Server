@@ -53,7 +53,8 @@ bin/
 *.db-shm
 *.db-wal
 config.yaml
-storage/
+/storage/
+/data/
 logs/
 
 # Temporary files

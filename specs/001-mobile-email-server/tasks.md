@@ -180,15 +180,14 @@
 
 ### Integration Tests for US3
 
-- [ ] T069 [US3] Create API integration test in tests/api_test.go (list messages, get message, update read state)
-- [ ] T070 [US3] Add pagination test in tests/api_test.go (request messages with limit/offset, verify paging works)
-- [ ] T071 [US3] Add compression test in tests/api_test.go (verify gzip compression when requested)
-- [ ] T072 [US3] Add delta sync test in tests/api_test.go (call /messages/since, verify only new messages returned)
+- [X] T069 [US3] Create API integration test in tests/api_test.go (list messages, get message, update read state)
+- [X] T070 [US3] Add pagination test in tests/api_test.go (request messages with limit/offset, verify paging works)
+- [X] T071 [US3] Add compression test in tests/api_test.go (verify gzip compression when requested)
+- [X] T072 [US3] Add delta sync test in tests/api_test.go (call /messages/since, verify only new messages returned)
 
-**Checkpoint**: Mobile app can sync email list, read messages, mark as read
+**Checkpoint**: Mobile app can sync email list, read messages, mark as read ✅
 
 ---
-
 ## Phase 6: User Story 4 - Authentication (Priority: P2)
 
 **Goal**: API endpoints require valid JWT token, login endpoint issues tokens
