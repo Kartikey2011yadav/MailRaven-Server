@@ -22,6 +22,11 @@ type Server struct {
 	logger     *observability.Logger
 }
 
+// Router returns the chi router (for testing)
+func (s *Server) Router() *chi.Mux {
+	return s.router
+}
+
 // NewServer creates a new HTTP server
 func NewServer(
 	cfg *config.Config,
