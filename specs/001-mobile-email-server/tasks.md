@@ -159,24 +159,24 @@
 
 ### HTTP Server & Routing
 
-- [ ] T057 [US3] Create HTTP server in internal/adapters/http/server.go (go-chi router, port 443, TLS setup)
-- [ ] T058 [US3] Define routes in internal/adapters/http/routes.go (/v1/messages, /v1/messages/{id}, /v1/messages/since, /v1/messages/search)
-- [ ] T059 [P] [US3] Create DTO structs in internal/adapters/http/dto/message.go (MessageSummary, MessageFull matching OpenAPI spec)
+- [X] T057 [US3] Create HTTP server in internal/adapters/http/server.go (go-chi router, port 443, TLS setup)
+- [X] T058 [US3] Define routes in internal/adapters/http/routes.go (/v1/messages, /v1/messages/{id}, /v1/messages/since, /v1/messages/search)
+- [X] T059 [P] [US3] Create DTO structs in internal/adapters/http/dto/message.go (MessageSummary, MessageFull matching OpenAPI spec)
 
 ### Message Handlers
 
-- [ ] T060 [P] [US3] Implement GET /v1/messages handler in internal/adapters/http/handlers/messages.go (calls EmailRepository.FindByUser with pagination)
-- [ ] T061 [P] [US3] Implement GET /v1/messages/{id} handler in internal/adapters/http/handlers/messages.go (calls EmailRepository.FindByID and BlobStore.Read)
-- [ ] T062 [P] [US3] Implement PATCH /v1/messages/{id} handler in internal/adapters/http/handlers/messages.go (calls EmailRepository.UpdateReadState)
-- [ ] T063 [P] [US3] Implement GET /v1/messages/since handler in internal/adapters/http/handlers/messages.go (calls EmailRepository.FindSince for delta sync)
-- [ ] T064 [P] [US3] Implement GET /v1/messages/search handler in internal/adapters/http/handlers/search.go (calls SearchIndex.Search with FTS5 query)
+- [X] T060 [P] [US3] Implement GET /v1/messages handler in internal/adapters/http/handlers/messages.go (calls EmailRepository.FindByUser with pagination)
+- [X] T061 [P] [US3] Implement GET /v1/messages/{id} handler in internal/adapters/http/handlers/messages.go (calls EmailRepository.FindByID and BlobStore.Read)
+- [X] T062 [P] [US3] Implement PATCH /v1/messages/{id} handler in internal/adapters/http/handlers/messages.go (calls EmailRepository.UpdateReadState)
+- [X] T063 [P] [US3] Implement GET /v1/messages/since handler in internal/adapters/http/handlers/messages.go (calls EmailRepository.FindSince for delta sync)
+- [X] T064 [P] [US3] Implement GET /v1/messages/search handler in internal/adapters/http/handlers/search.go (calls SearchIndex.Search with FTS5 query)
 
 ### HTTP Middleware
 
-- [ ] T065 [P] [US3] Create logging middleware in internal/adapters/http/middleware/logging.go (log request method, path, duration, status)
-- [ ] T066 [P] [US3] Create compression middleware in internal/adapters/http/middleware/compression.go (gzip responses when Accept-Encoding: gzip)
-- [ ] T067 [P] [US3] Create rate limiting middleware in internal/adapters/http/middleware/ratelimit.go (100 req/min per IP)
-- [ ] T068 [US3] Apply middleware to routes in internal/adapters/http/routes.go (logging → compression → rate limit → auth)
+- [X] T065 [P] [US3] Create logging middleware in internal/adapters/http/middleware/logging.go (log request method, path, duration, status)
+- [X] T066 [P] [US3] Create compression middleware in internal/adapters/http/middleware/compression.go (gzip responses when Accept-Encoding: gzip)
+- [X] T067 [P] [US3] Create rate limiting middleware in internal/adapters/http/middleware/ratelimit.go (100 req/min per IP)
+- [X] T068 [US3] Apply middleware to routes in internal/adapters/http/routes.go (logging → compression → rate limit → auth)
 
 ### Integration Tests for US3
 

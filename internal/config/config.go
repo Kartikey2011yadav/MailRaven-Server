@@ -26,10 +26,12 @@ type SMTPConfig struct {
 
 // APIConfig contains REST API settings
 type APIConfig struct {
-	Port      int    `yaml:"port"`       // HTTP listen port (default: 8080)
-	JWTSecret string `yaml:"jwt_secret"` // JWT signing secret
-	TLSCert   string `yaml:"tls_cert"`   // Optional TLS certificate path
-	TLSKey    string `yaml:"tls_key"`    // Optional TLS key path
+	Host      string `yaml:"host"`       // HTTP listen host (default: "0.0.0.0")
+	Port      int    `yaml:"port"`       // HTTP listen port (default: 8443)
+	TLS       bool   `yaml:"tls"`        // Enable TLS (default: false for dev)
+	TLSCert   string `yaml:"tls_cert"`   // TLS certificate path (required if TLS=true)
+	TLSKey    string `yaml:"tls_key"`    // TLS key path (required if TLS=true)
+	JWTSecret string `yaml:"jwt_secret"` // JWT signing secret (required)
 }
 
 // StorageConfig contains database and blob storage settings
@@ -69,8 +71,11 @@ func LoadFromFile(path string) (*Config, error) {
 	if cfg.SMTP.MaxSize == 0 {
 		cfg.SMTP.MaxSize = 10 * 1024 * 1024 // 10MB
 	}
+	if cfg.API.Host == "" {
+		cfg.API.Host = "0.0.0.0"
+	}
 	if cfg.API.Port == 0 {
-		cfg.API.Port = 8080
+		cfg.API.Port = 8443
 	}
 	if cfg.DKIM.Selector == "" {
 		cfg.DKIM.Selector = "default"
