@@ -38,12 +38,12 @@
 
 **Purpose**: Create repository structure and initialize Go module
 
-- [ ] T001 Create project directory structure per plan.md (cmd/, internal/core/, internal/adapters/, tests/)
-- [ ] T002 Initialize Go module with `go mod init github.com/mailraven/mailraven-server`
-- [ ] T003 [P] Create go.mod with dependencies: modernc.org/sqlite, go-chi/chi/v5, golang.org/x/crypto
-- [ ] T004 [P] Create Makefile with build, test, lint targets
-- [ ] T005 [P] Setup .gitignore for Go project (bin/, *.db, *.log, vendor/)
-- [ ] T006 [P] Create README.md with project overview and build instructions
+- [X] T001 Create project directory structure per plan.md (cmd/, internal/core/, internal/adapters/, tests/)
+- [X] T002 Initialize Go module with `go mod init github.com/Kartikey2011yadav/mailraven-server`
+- [X] T003 [P] Create go.mod with dependencies: modernc.org/sqlite, go-chi/chi/v5, golang.org/x/crypto
+- [X] T004 [P] Create Makefile with build, test, lint targets
+- [X] T005 [P] Setup .gitignore for Go project (bin/, *.db, *.log, vendor/)
+- [X] T006 [P] Create README.md with project overview and build instructions
 
 ---
 
@@ -55,32 +55,32 @@
 
 ### Core Domain & Ports
 
-- [ ] T007 [P] Create domain entities in internal/core/domain/message.go (Message, MessageBody structs)
-- [ ] T008 [P] Create domain entities in internal/core/domain/user.go (User, AuthToken structs)
-- [ ] T009 [P] Create domain entities in internal/core/domain/smtp.go (SMTPSession struct)
-- [ ] T010 [P] Define EmailRepository interface in internal/core/ports/repositories.go
-- [ ] T011 [P] Define UserRepository interface in internal/core/ports/repositories.go
-- [ ] T012 [P] Define BlobStore interface in internal/core/ports/storage.go
-- [ ] T013 [P] Define SearchIndex interface in internal/core/ports/search.go
-- [ ] T014 [P] Define common errors in internal/core/ports/errors.go (ErrNotFound, ErrAlreadyExists, etc.)
+- [X] T007 [P] Create domain entities in internal/core/domain/message.go (Message, MessageBody structs)
+- [X] T008 [P] Create domain entities in internal/core/domain/user.go (User, AuthToken structs)
+- [X] T009 [P] Create domain entities in internal/core/domain/smtp.go (SMTPSession struct)
+- [X] T010 [P] Define EmailRepository interface in internal/core/ports/repositories.go
+- [X] T011 [P] Define UserRepository interface in internal/core/ports/repositories.go
+- [X] T012 [P] Define BlobStore interface in internal/core/ports/storage.go
+- [X] T013 [P] Define SearchIndex interface in internal/core/ports/search.go
+- [X] T014 [P] Define common errors in internal/core/ports/errors.go (ErrNotFound, ErrAlreadyExists, etc.)
 
 ### Storage Layer (SQLite + File System)
 
-- [ ] T015 Create SQLite schema in internal/adapters/storage/sqlite/migrations/001_init.sql (users, messages, indexes)
-- [ ] T016 Add FTS5 virtual table to migrations/001_init.sql (messages_fts for full-text search)
-- [ ] T017 [P] Implement EmailRepository in internal/adapters/storage/sqlite/email_repo.go (Save, FindByID, FindByUser, UpdateReadState, CountByUser, FindSince methods)
-- [ ] T018 [P] Implement UserRepository in internal/adapters/storage/sqlite/user_repo.go (Create, FindByEmail, Authenticate, UpdateLastLogin methods)
-- [ ] T019 [P] Implement SearchIndex in internal/adapters/storage/sqlite/search_repo.go (Index, Search, Delete methods using FTS5)
-- [ ] T020 [P] Implement BlobStore in internal/adapters/storage/disk/blob_store.go (Write with gzip compression, Read with decompression, Delete, Verify methods)
-- [ ] T021 Add connection pooling and WAL mode setup in internal/adapters/storage/sqlite/connection.go
-- [ ] T022 Add database integrity check on startup in internal/adapters/storage/sqlite/connection.go (PRAGMA integrity_check)
+- [X] T015 Create SQLite schema in internal/adapters/storage/sqlite/migrations/001_init.sql (users, messages, indexes)
+- [X] T016 Add FTS5 virtual table to migrations/001_init.sql (messages_fts for full-text search)
+- [X] T017 [P] Implement EmailRepository in internal/adapters/storage/sqlite/email_repo.go (Save, FindByID, FindByUser, UpdateReadState, CountByUser, FindSince methods)
+- [X] T018 [P] Implement UserRepository in internal/adapters/storage/sqlite/user_repo.go (Create, FindByEmail, Authenticate, UpdateLastLogin methods)
+- [X] T019 [P] Implement SearchIndex in internal/adapters/storage/sqlite/search_repo.go (Index, Search, Delete methods using FTS5)
+- [X] T020 [P] Implement BlobStore in internal/adapters/storage/disk/blob_store.go (Write with gzip compression, Read with decompression, Delete, Verify methods)
+- [X] T021 Add connection pooling and WAL mode setup in internal/adapters/storage/sqlite/connection.go
+- [X] T022 Add database integrity check on startup in internal/adapters/storage/sqlite/connection.go (PRAGMA integrity_check)
 
 ### Configuration & Observability
 
-- [ ] T023 [P] Create Config struct in internal/config/config.go (domain, ports, storage paths, DKIM settings)
-- [ ] T024 [P] Implement YAML config loader in internal/config/config.go using gopkg.in/yaml.v3
-- [ ] T025 [P] Create structured logger in internal/observability/logger.go using log/slog
-- [ ] T026 [P] Create Prometheus metrics in internal/observability/metrics.go (messages_received, messages_rejected, api_request_duration, etc.)
+- [X] T023 [P] Create Config struct in internal/config/config.go (domain, ports, storage paths, DKIM settings)
+- [X] T024 [P] Implement YAML config loader in internal/config/config.go using gopkg.in/yaml.v3
+- [X] T025 [P] Create structured logger in internal/observability/logger.go using log/slog
+- [X] T026 [P] Create Prometheus metrics in internal/observability/metrics.go (messages_received, messages_rejected, api_request_duration, etc.)
 
 **Checkpoint**: Foundation complete - user story implementation can begin
 
@@ -94,13 +94,13 @@
 
 ### Implementation for US1
 
-- [ ] T027 [P] [US1] Implement DKIM key generation in internal/config/dkim.go (RSA-2048 private/public key pair)
-- [ ] T028 [P] [US1] Create DNS record generator in internal/config/dns.go (MX, SPF, DKIM, DMARC record formatting)
-- [ ] T029 [US1] Implement quickstart command in cmd/mailraven/quickstart.go (calls DKIM gen, config gen, DNS gen)
-- [ ] T030 [US1] Add user creation logic to quickstart (prompt for admin password, call UserRepository.Create)
-- [ ] T031 [US1] Add config file writer to quickstart (generate /etc/mailraven/config.yaml with default values)
-- [ ] T032 [US1] Format and print DNS records to console in quickstart command
-- [ ] T033 [US1] Add server start validation in quickstart (check ports available, config valid)
+- [X] T027 [P] [US1] Implement DKIM key generation in internal/config/dkim.go (RSA-2048 private/public key pair)
+- [X] T028 [P] [US1] Create DNS record generator in internal/config/dns.go (MX, SPF, DKIM, DMARC record formatting)
+- [X] T029 [US1] Implement quickstart command in cmd/mailraven/quickstart.go (calls DKIM gen, config gen, DNS gen)
+- [X] T030 [US1] Add user creation logic to quickstart (prompt for admin password, call UserRepository.Create)
+- [X] T031 [US1] Add config file writer to quickstart (generate /etc/mailraven/config.yaml with default values)
+- [X] T032 [US1] Format and print DNS records to console in quickstart command
+- [X] T033 [US1] Add server start validation in quickstart (check ports available, config valid)
 
 **Checkpoint**: Administrator can run quickstart and get working config
 
@@ -114,32 +114,32 @@
 
 ### SPF/DKIM/DMARC Validation (Ported from mox)
 
-- [ ] T034 [P] [US2] Implement SPF validation in internal/adapters/smtp/validators/spf.go (DNS lookups, mechanism evaluation per RFC 7208)
+- [X] T034 [P] [US2] Implement SPF validation in internal/adapters/smtp/validators/spf.go (DNS lookups, mechanism evaluation per RFC 7208)
 - [ ] T035 [P] [US2] Add SPF test cases in internal/adapters/smtp/validators/spf_test.go (table-driven tests with RFC test vectors)
-- [ ] T036 [P] [US2] Implement DKIM verification in internal/adapters/smtp/validators/dkim.go (signature parsing, DNS key retrieval, validation per RFC 6376)
+- [X] T036 [P] [US2] Implement DKIM verification in internal/adapters/smtp/validators/dkim.go (signature parsing, DNS key retrieval, validation per RFC 6376)
 - [ ] T037 [P] [US2] Add DKIM test cases in internal/adapters/smtp/validators/dkim_test.go (valid/invalid signatures, missing keys)
-- [ ] T038 [P] [US2] Implement DMARC evaluation in internal/adapters/smtp/validators/dmarc.go (policy retrieval, alignment checks per RFC 7489)
+- [X] T038 [P] [US2] Implement DMARC evaluation in internal/adapters/smtp/validators/dmarc.go (policy retrieval, alignment checks per RFC 7489)
 - [ ] T039 [P] [US2] Add DMARC test cases in internal/adapters/smtp/validators/dmarc_test.go (policy enforcement scenarios)
-- [ ] T040 [P] [US2] Add RFC section comments to all validator code (e.g., `// RFC 7208 section 4.6.4`)
+- [X] T040 [P] [US2] Add RFC section comments to all validator code (e.g., `// RFC 7208 section 4.6.4`)
 
 ### MIME Parsing
 
-- [ ] T041 [P] [US2] Implement MIME parser in internal/adapters/smtp/mime/parser.go (multipart message parsing per RFC 2045)
-- [ ] T042 [P] [US2] Add body text extraction in MIME parser (plaintext and HTML parts, generate 200-char snippet)
+- [X] T041 [P] [US2] Implement MIME parser in internal/adapters/smtp/mime/parser.go (multipart message parsing per RFC 2045)
+- [X] T042 [P] [US2] Add body text extraction in MIME parser (plaintext and HTML parts, generate 200-char snippet)
 - [ ] T043 [P] [US2] Add MIME parser tests in internal/adapters/smtp/mime/parser_test.go (multipart messages, attachments, edge cases)
 
 ### SMTP Server & Middleware
 
-- [ ] T044 [US2] Define Middleware interface in internal/adapters/smtp/middleware.go (MessageHandler func type, Chain function)
-- [ ] T045 [US2] Implement SPF validator middleware in internal/adapters/smtp/validators/spf.go (wraps SPF validation as middleware)
-- [ ] T046 [US2] Implement DKIM validator middleware in internal/adapters/smtp/validators/dkim.go (wraps DKIM validation as middleware)
-- [ ] T047 [US2] Implement DMARC validator middleware in internal/adapters/smtp/validators/dmarc.go (wraps DMARC evaluation as middleware)
-- [ ] T048 [US2] Create SMTP server in internal/adapters/smtp/server.go (net/smtp based, port 25 listener)
-- [ ] T049 [US2] Implement SMTP command handler in internal/adapters/smtp/handler.go (EHLO, MAIL FROM, RCPT TO, DATA commands per RFC 5321)
-- [ ] T050 [US2] Wire middleware pipeline in SMTP handler (SPF → DKIM → DMARC → storage)
-- [ ] T051 [US2] Add SMTP session logging in handler (session ID, remote IP, sender, recipients, SPF/DMARC results)
-- [ ] T052 [US2] Implement atomic storage in handler (begin transaction, save to EmailRepository, write to BlobStore, commit, fsync, then "250 OK")
-- [ ] T053 [US2] Add error handling in handler (4xx for temporary failures, 5xx for permanent failures, rollback on error)
+- [X] T044 [US2] Define Middleware interface in internal/adapters/smtp/middleware.go (MessageHandler func type, Chain function)
+- [X] T045 [US2] Implement SPF validator middleware in internal/adapters/smtp/validators/spf.go (wraps SPF validation as middleware)
+- [X] T046 [US2] Implement DKIM validator middleware in internal/adapters/smtp/validators/dkim.go (wraps DKIM validation as middleware)
+- [X] T047 [US2] Implement DMARC validator middleware in internal/adapters/smtp/validators/dmarc.go (wraps DMARC evaluation as middleware)
+- [X] T048 [US2] Create SMTP server in internal/adapters/smtp/server.go (net/smtp based, port 25 listener)
+- [X] T049 [US2] Implement SMTP command handler in internal/adapters/smtp/handler.go (EHLO, MAIL FROM, RCPT TO, DATA commands per RFC 5321)
+- [X] T050 [US2] Wire middleware pipeline in SMTP handler (SPF → DKIM → DMARC → storage)
+- [X] T051 [US2] Add SMTP session logging in handler (session ID, remote IP, sender, recipients, SPF/DMARC results)
+- [X] T052 [US2] Implement atomic storage in handler (begin transaction, save to EmailRepository, write to BlobStore, commit, fsync, then "250 OK")
+- [X] T053 [US2] Add error handling in handler (4xx for temporary failures, 5xx for permanent failures, rollback on error)
 
 ### Integration Tests for US2
 
@@ -159,36 +159,35 @@
 
 ### HTTP Server & Routing
 
-- [ ] T057 [US3] Create HTTP server in internal/adapters/http/server.go (go-chi router, port 443, TLS setup)
-- [ ] T058 [US3] Define routes in internal/adapters/http/routes.go (/v1/messages, /v1/messages/{id}, /v1/messages/since, /v1/messages/search)
-- [ ] T059 [P] [US3] Create DTO structs in internal/adapters/http/dto/message.go (MessageSummary, MessageFull matching OpenAPI spec)
+- [X] T057 [US3] Create HTTP server in internal/adapters/http/server.go (go-chi router, port 443, TLS setup)
+- [X] T058 [US3] Define routes in internal/adapters/http/routes.go (/v1/messages, /v1/messages/{id}, /v1/messages/since, /v1/messages/search)
+- [X] T059 [P] [US3] Create DTO structs in internal/adapters/http/dto/message.go (MessageSummary, MessageFull matching OpenAPI spec)
 
 ### Message Handlers
 
-- [ ] T060 [P] [US3] Implement GET /v1/messages handler in internal/adapters/http/handlers/messages.go (calls EmailRepository.FindByUser with pagination)
-- [ ] T061 [P] [US3] Implement GET /v1/messages/{id} handler in internal/adapters/http/handlers/messages.go (calls EmailRepository.FindByID and BlobStore.Read)
-- [ ] T062 [P] [US3] Implement PATCH /v1/messages/{id} handler in internal/adapters/http/handlers/messages.go (calls EmailRepository.UpdateReadState)
-- [ ] T063 [P] [US3] Implement GET /v1/messages/since handler in internal/adapters/http/handlers/messages.go (calls EmailRepository.FindSince for delta sync)
-- [ ] T064 [P] [US3] Implement GET /v1/messages/search handler in internal/adapters/http/handlers/search.go (calls SearchIndex.Search with FTS5 query)
+- [X] T060 [P] [US3] Implement GET /v1/messages handler in internal/adapters/http/handlers/messages.go (calls EmailRepository.FindByUser with pagination)
+- [X] T061 [P] [US3] Implement GET /v1/messages/{id} handler in internal/adapters/http/handlers/messages.go (calls EmailRepository.FindByID and BlobStore.Read)
+- [X] T062 [P] [US3] Implement PATCH /v1/messages/{id} handler in internal/adapters/http/handlers/messages.go (calls EmailRepository.UpdateReadState)
+- [X] T063 [P] [US3] Implement GET /v1/messages/since handler in internal/adapters/http/handlers/messages.go (calls EmailRepository.FindSince for delta sync)
+- [X] T064 [P] [US3] Implement GET /v1/messages/search handler in internal/adapters/http/handlers/search.go (calls SearchIndex.Search with FTS5 query)
 
 ### HTTP Middleware
 
-- [ ] T065 [P] [US3] Create logging middleware in internal/adapters/http/middleware/logging.go (log request method, path, duration, status)
-- [ ] T066 [P] [US3] Create compression middleware in internal/adapters/http/middleware/compression.go (gzip responses when Accept-Encoding: gzip)
-- [ ] T067 [P] [US3] Create rate limiting middleware in internal/adapters/http/middleware/ratelimit.go (100 req/min per IP)
-- [ ] T068 [US3] Apply middleware to routes in internal/adapters/http/routes.go (logging → compression → rate limit → auth)
+- [X] T065 [P] [US3] Create logging middleware in internal/adapters/http/middleware/logging.go (log request method, path, duration, status)
+- [X] T066 [P] [US3] Create compression middleware in internal/adapters/http/middleware/compression.go (gzip responses when Accept-Encoding: gzip)
+- [X] T067 [P] [US3] Create rate limiting middleware in internal/adapters/http/middleware/ratelimit.go (100 req/min per IP)
+- [X] T068 [US3] Apply middleware to routes in internal/adapters/http/routes.go (logging → compression → rate limit → auth)
 
 ### Integration Tests for US3
 
-- [ ] T069 [US3] Create API integration test in tests/api_test.go (list messages, get message, update read state)
-- [ ] T070 [US3] Add pagination test in tests/api_test.go (request messages with limit/offset, verify paging works)
-- [ ] T071 [US3] Add compression test in tests/api_test.go (verify gzip compression when requested)
-- [ ] T072 [US3] Add delta sync test in tests/api_test.go (call /messages/since, verify only new messages returned)
+- [X] T069 [US3] Create API integration test in tests/api_test.go (list messages, get message, update read state)
+- [X] T070 [US3] Add pagination test in tests/api_test.go (request messages with limit/offset, verify paging works)
+- [X] T071 [US3] Add compression test in tests/api_test.go (verify gzip compression when requested)
+- [X] T072 [US3] Add delta sync test in tests/api_test.go (call /messages/since, verify only new messages returned)
 
-**Checkpoint**: Mobile app can sync email list, read messages, mark as read
+**Checkpoint**: Mobile app can sync email list, read messages, mark as read ✅
 
 ---
-
 ## Phase 6: User Story 4 - Authentication (Priority: P2)
 
 **Goal**: API endpoints require valid JWT token, login endpoint issues tokens
@@ -197,19 +196,19 @@
 
 ### Implementation for US4
 
-- [ ] T073 [P] [US4] Create JWT utilities in internal/adapters/http/auth/jwt.go (GenerateToken, ValidateToken functions)
-- [ ] T074 [P] [US4] Implement POST /v1/auth/login handler in internal/adapters/http/handlers/auth.go (calls UserRepository.Authenticate, returns JWT)
-- [ ] T075 [US4] Create auth middleware in internal/adapters/http/middleware/auth.go (extract JWT from Authorization header, validate, set user context)
-- [ ] T076 [US4] Apply auth middleware to protected routes in internal/adapters/http/routes.go (all /v1/* except /auth/login)
-- [ ] T077 [US4] Add error responses for auth failures in handlers (401 Unauthorized with JSON error message)
+- [X] T073 [P] [US4] Create JWT utilities in internal/adapters/http/auth/jwt.go (GenerateToken, ValidateToken functions)
+- [X] T074 [P] [US4] Implement POST /v1/auth/login handler in internal/adapters/http/handlers/auth.go (calls UserRepository.Authenticate, returns JWT)
+- [X] T075 [US4] Create auth middleware in internal/adapters/http/middleware/auth.go (extract JWT from Authorization header, validate, set user context)
+- [X] T076 [US4] Apply auth middleware to protected routes in internal/adapters/http/routes.go (all /v1/* except /auth/login)
+- [X] T077 [US4] Add error responses for auth failures in handlers (401 Unauthorized with JSON error message)
 
 ### Integration Tests for US4
 
-- [ ] T078 [US4] Create auth integration test in tests/api_test.go (login with valid credentials, receive token)
-- [ ] T079 [US4] Add unauthorized test in tests/api_test.go (call API without token, verify 401)
-- [ ] T080 [US4] Add expired token test in tests/api_test.go (use token past expiration, verify 401)
+- [X] T078 [US4] Create auth integration test in tests/api_test.go (login with valid credentials, receive token)
+- [X] T079 [US4] Add unauthorized test in tests/api_test.go (call API without token, verify 401)
+- [X] T080 [US4] Add expired token test in tests/api_test.go (use token past expiration, verify 401)
 
-**Checkpoint**: API is secured with JWT authentication
+**Checkpoint**: API is secured with JWT authentication ✅
 
 ---
 
@@ -221,19 +220,19 @@
 
 ### Implementation for US5
 
-- [ ] T081 [P] [US5] Create outbound message queue in internal/core/domain/queue.go (OutboundMessage struct, queue operations)
-- [ ] T082 [P] [US5] Implement POST /v1/messages/send handler in internal/adapters/http/handlers/send.go (validate input, sign with DKIM, enqueue message)
-- [ ] T083 [P] [US5] Create DKIM signer in internal/adapters/smtp/dkim/signer.go (generate DKIM-Signature header per RFC 6376)
-- [ ] T084 [US5] Implement SMTP client in internal/adapters/smtp/client.go (MX lookup, connect to recipient's server, deliver message)
-- [ ] T085 [US5] Create delivery worker in internal/adapters/smtp/delivery.go (process queue, attempt delivery, retry with backoff on failure)
-- [ ] T086 [US5] Add delivery status tracking (update message record with delivery timestamp, status, recipient response)
-- [ ] T087 [US5] Add exponential backoff retry logic in delivery worker (retry after 1min, 5min, 15min, 1hour)
+- [X] T081 [P] [US5] Create outbound message queue in internal/core/domain/queue.go (OutboundMessage struct, queue operations)
+- [X] T082 [P] [US5] Implement POST /v1/messages/send handler in internal/adapters/http/handlers/send.go (validate input, sign with DKIM, enqueue message)
+- [X] T083 [P] [US5] Create DKIM signer in internal/adapters/smtp/dkim/signer.go (generate DKIM-Signature header per RFC 6376)
+- [X] T084 [US5] Implement SMTP client in internal/adapters/smtp/client.go (MX lookup, connect to recipient's server, deliver message)
+- [X] T085 [US5] Create delivery worker in internal/adapters/smtp/delivery.go (process queue, attempt delivery, retry with backoff on failure)
+- [X] T086 [US5] Add delivery status tracking (update message record with delivery timestamp, status, recipient response)
+- [X] T087 [US5] Add exponential backoff retry logic in delivery worker (retry after 1min, 5min, 15min, 1hour)
 
 ### Integration Tests for US5
 
-- [ ] T088 [US5] Create send integration test in tests/smtp_client_test.go (send email to test SMTP server, verify delivery)
-- [ ] T089 [US5] Add DKIM signature test (verify signature validates with public key)
-- [ ] T090 [US5] Add retry test (simulate delivery failure, verify retry attempts with backoff)
+- [X] T088 [US5] Create send integration test in tests/smtp_client_test.go (send email to test SMTP server, verify delivery)
+- [X] T089 [US5] Add DKIM signature test (verify signature validates with public key)
+- [X] T090 [US5] Add retry test (simulate delivery failure, verify retry attempts with backoff)
 
 **Checkpoint**: Users can send emails from mobile app
 
@@ -245,29 +244,29 @@
 
 ### Observability
 
-- [ ] T091 [P] Add Prometheus /metrics endpoint in cmd/mailraven/main.go
-- [ ] T092 [P] Add structured logging to all SMTP sessions (session ID, remote IP, SPF/DMARC results)
-- [ ] T093 [P] Add API request logging (endpoint, method, duration, status code)
-- [ ] T094 [P] Add metrics collection (messages_received, messages_sent, api_requests, storage_operations)
+- [X] T091 [P] Add Prometheus /metrics endpoint in cmd/mailraven/main.go
+- [X] T092 [P] Add structured logging to all SMTP sessions (session ID, remote IP, SPF/DMARC results)
+- [X] T093 [P] Add API request logging (endpoint, method, duration, status code)
+- [X] T094 [P] Add metrics collection (messages_received, messages_sent, api_requests, storage_operations)
 
 ### Application Entrypoint
 
-- [ ] T095 Create main.go in cmd/mailraven/main.go (parse CLI args, load config, wire dependencies)
-- [ ] T096 Add serve command in cmd/mailraven/serve.go (start SMTP server and HTTP server concurrently)
-- [ ] T097 Add graceful shutdown in serve command (handle SIGTERM/SIGINT, close connections cleanly)
-- [ ] T098 Add startup checks in serve command (verify config valid, ports available, database accessible)
+- [X] T095 Create main.go in cmd/mailraven/main.go (parse CLI args, load config, wire dependencies)
+- [X] T096 Add serve command in cmd/mailraven/serve.go (start SMTP server and HTTP server concurrently)
+- [X] T097 Add graceful shutdown in serve command (handle SIGTERM/SIGINT, close connections cleanly)
+- [X] T098 Add startup checks in serve command (verify config valid, ports available, database accessible)
 
 ### Documentation
 
-- [ ] T099 [P] Create deployment/mailraven.service (systemd service file)
-- [ ] T100 [P] Create deployment/config.example.yaml (example configuration with comments)
-- [ ] T101 [P] Update README.md with build instructions, quickstart guide link, license info
+- [X] T099 [P] Create deployment/mailraven.service (systemd service file)
+- [X] T100 [P] Create deployment/config.example.yaml (example configuration with comments)
+- [X] T101 [P] Update README.md with build instructions, quickstart guide link, license info
 
 ### Testing Infrastructure
 
-- [ ] T102 [P] Add test fixtures in tests/testdata/ (sample MIME messages, SPF records, DKIM keys)
-- [ ] T103 [P] Create test helper functions in tests/helpers.go (setup test database, generate test users, seed messages)
-- [ ] T104 [P] Add integration test suite runner in tests/integration_test.go (orchestrate SMTP + API + storage tests)
+- [X] T102 [P] Add test fixtures in tests/testdata/ (sample MIME messages, SPF records, DKIM keys)
+- [X] T103 [P] Create test helper functions in tests/helpers.go (setup test database, generate test users, seed messages)
+- [X] T104 [P] Add integration test suite runner in tests/integration_test.go (orchestrate SMTP + API + storage tests)
 
 **Checkpoint**: Production-ready email server
 

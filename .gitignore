@@ -45,6 +45,18 @@ domains.conf
 data/
 *.log
 
+# MailRaven-specific
+mailraven
+mailraven.exe
+bin/
+*.db
+*.db-shm
+*.db-wal
+config.yaml
+/storage/
+/data/
+logs/
+
 # Temporary files
 tmp/
 temp/
@@ -83,3 +95,5 @@ dist/
 bin/
 
 mox/
+tests/testdata/
+!tests/testdata/fixtures/

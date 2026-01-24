@@ -1,0 +1,21 @@
+From: sender@example.com
+To: recipient@example.com
+Subject: =?UTF-8?B?4p2k77iPIFVURi04IEVtb2ppIFRlc3Qg8J+OiQ==?=
+Message-ID: <unicode-001@example.com>
+Date: Mon, 23 Jan 2026 13:00:00 +0000
+Content-Type: text/plain; charset=utf-8
+
+Hello! 👋
+
+This email tests Unicode and emoji handling:
+- English: Hello World
+- Spanish: Hola Mundo
+- Japanese: こんにちは世界
+- Emoji: 📧 💌 🎉 ✉️
+
+Special characters: © ® ™ € £ ¥ § ¶
+
+Mathematical symbols: ∑ ∏ ∫ √ ∞ ≈ ≠ ≤ ≥
+
+Best regards,
+Sender 😊
