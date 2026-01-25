@@ -3,6 +3,7 @@
 Auto-generated from all feature plans. Last updated: 2026-01-22
 
 ## Active Technologies
+- SQLite + Filesystem (persistence required via Docker Volumes) (002-production-hardening)
 
 - Go 1.22+ (requires generics support) (001-mobile-email-server)
 
@@ -22,6 +23,7 @@ tests/
 Go 1.22+ (requires generics support): Follow standard conventions
 
 ## Recent Changes
+- 002-production-hardening: Added Go 1.22
 
 - 001-mobile-email-server: Added Go 1.22+ (requires generics support)
 
