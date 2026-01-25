@@ -10,16 +10,18 @@ import (
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/http/middleware"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/config"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/ports"
+	"github.com/Kartikey2011yadav/mailraven-server/internal/core/services"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/observability"
 	"github.com/go-chi/chi/v5"
 )
 
 // Server represents the HTTP server
 type Server struct {
-	router     *chi.Mux
-	httpServer *http.Server
-	cfg        *config.Config
-	logger     *observability.Logger
+	router      *chi.Mux
+	httpServer  *http.Server
+	cfg         *config.Config
+	logger      *observability.Logger
+	acmeService *services.ACMEService
 }
 
 // Router returns the chi router (for testing)
@@ -35,6 +37,7 @@ func NewServer(
 	queueRepo ports.QueueRepository,
 	blobStore ports.BlobStore,
 	searchIdx ports.SearchIndex,
+	acmeService *services.ACMEService,
 	logger *observability.Logger,
 	metrics *observability.Metrics,
 ) *Server {
@@ -97,9 +100,10 @@ func NewServer(
 	})
 
 	return &Server{
-		router: router,
-		cfg:    cfg,
-		logger: logger,
+		router:      router,
+		cfg:         cfg,
+		logger:      logger,
+		acmeService: acmeService,
 	}
 }
 
@@ -117,7 +121,19 @@ func (s *Server) Start(ctx context.Context) error {
 
 	s.logger.Info("HTTP server starting", "addr", addr, "tls", s.cfg.API.TLS)
 
-	// Start server (TLS or plain HTTP)
+	// StacmeService != nil {
+		go func() {
+			s.logger.Info("Starting ACME HTTP-01 challenge listener on :80")
+			if err := http.ListenAndServe(":80", s.acmeService.HTTPHandler(nil)); err != nil {
+				s.logger.Error("ACME listener failed", "error", err)
+			}
+		}()
+		s.httpServer.TLSConfig = s.acmeService.TLSConfig()
+		// ListenAndServeTLS with empty strings uses certificates from TLSConfig
+		return s.httpServer.ListenAndServeTLS("", "")
+	}
+
+	if s.art server (TLS or plain HTTP)
 	if s.cfg.API.TLS {
 		if s.cfg.API.TLSCert == "" || s.cfg.API.TLSKey == "" {
 			return fmt.Errorf("TLS enabled but cert/key paths not configured")

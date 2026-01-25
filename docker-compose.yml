@@ -1,0 +1,19 @@
+services:
+  mailraven:
+    build:
+      context: .
+      dockerfile: build/Dockerfile
+    container_name: mailraven
+    restart: unless-stopped
+    ports:
+      - "25:25"      # SMTP
+      - "80:80"      # HTTP (ACME)
+      - "443:443"    # HTTPS (API)
+      - "8080:8080"  # Dedicated Metric/Alt Port (optional)
+    volumes:
+      - ./data:/data
+      - ./deployment/config.example.yaml:/app/config.yaml
+    environment:
+      - MAILRAVEN_DOMAIN=localhost
+      - MAILRAVEN_DB_PATH=/data/mailraven.db
+      - MAILRAVEN_BLOB_PATH=/data/blobs

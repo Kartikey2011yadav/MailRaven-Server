@@ -48,6 +48,16 @@ run: build
 	@echo "Starting $(BINARY_NAME)..."
 	@$(BUILD_DIR)/$(BINARY_NAME)
 
+## docker-build: Build docker image
+docker-build:
+	@echo "Building docker image..."
+	docker build -f build/Dockerfile -t mailraven:latest .
+
+## docker-run: Run docker container with defaults
+docker-run:
+	@echo "Running docker container..."
+	docker run -p 25:25 -p 80:80 -p 443:443 -v $$(PWD)/data:/data -v $$(PWD)/deployment/config.example.yaml:/app/config.yaml mailraven:latest
+
 ## coverage: Generate and open coverage report
 coverage: test
 	@echo "Generating coverage report..."

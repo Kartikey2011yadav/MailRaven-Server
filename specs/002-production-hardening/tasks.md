@@ -8,38 +8,38 @@
 ## Phase 1: Setup & Infrastructure
 **Goal**: Initialize the Docker environment and project structure for hardening tools.
 
-- [ ] T001 Create `build` directory and `Dockerfile` using `gcr.io/distroless/static-debian12`
-- [ ] T002 Create `docker-entrypoint.sh` for container initialization in `build/docker-entrypoint.sh`
-- [ ] T003 Create `docker-compose.yml` defining `mailraven` service with volume mappings
-- [ ] T004 Create `scripts` directory and scaffold `scripts/backup.sh` and `scripts/restore.sh`
-- [ ] T005 Update `deployment/config.example.yaml` with new TLS, Spam, and Backup sections
+- [x] T001 Create `build` directory and `Dockerfile` using `gcr.io/distroless/static-debian12`
+- [x] T002 Create `docker-entrypoint.sh` for container initialization in `build/docker-entrypoint.sh`
+- [x] T003 Create `docker-compose.yml` defining `mailraven` service with volume mappings
+- [x] T004 Create `scripts` directory and scaffold `scripts/backup.sh` and `scripts/restore.sh`
+- [x] T005 Update `deployment/config.example.yaml` with new TLS, Spam, and Backup sections
 
 ## Phase 2: Foundational (Blocking)
 **Goal**: Update core configuration structures and define interfaces to support new operational features.
 
-- [ ] T006 Update `internal/core/config/config.go` to include `TLSConfig`, `SpamConfig`, and `BackupConfig` structs
-- [ ] T007 Define `SpamFilter` interface in `internal/core/ports/spam.go`
-- [ ] T008 Define `BackupService` interface in `internal/core/ports/backup.go`
-- [ ] T009 [P] Define `CertificateManager` interface in `internal/core/ports/tls.go`
+- [x] T006 Update `internal/core/config/config.go` to include `TLSConfig`, `SpamConfig`, and `BackupConfig` structs
+- [x] T007 Define `SpamFilter` interface in `internal/core/ports/spam.go`
+- [x] T008 Define `BackupService` interface in `internal/core/ports/backup.go`
+- [x] T009 [P] Define `CertificateManager` interface in `internal/core/ports/tls.go`
 
 ## Phase 3: User Story 1 - Containerized Deployment
 **Goal**: Ensure the application runs correctly inside a container with persistent storage.
 **Story**: [US1] Containerized Deployment
 
-- [ ] T010 [US1] Update `Makefile` to include `docker-build` and `docker-run` targets
-- [ ] T011 [US1] Implement graceful shutdown handling in `cmd/mailraven/main.go` to support Docker stop signals
-- [ ] T012 [P] [US1] verify `docker-compose up` mounts `/data` and `/config` correctly via integration test
-- [ ] T013 [US1] Create `E2E_Docker_test.go` in `tests/` to verify container startup and port accessibility
+- [x] T010 [US1] Update `Makefile` to include `docker-build` and `docker-run` targets
+- [x] T011 [US1] Implement graceful shutdown handling in `cmd/mailraven/main.go` to support Docker stop signals
+- [x] T012 [P] [US1] verify `docker-compose up` mounts `/data` and `/config` correctly via integration test
+- [x] T013 [US1] Create `E2E_Docker_test.go` in `tests/` to verify container startup and port accessibility
 
 ## Phase 4: User Story 2 - Automatic TLS (ACME)
 **Goal**: Enable automatic certificate retrieval and renewal via Let's Encrypt.
 **Story**: [US2] Automatic TLS Certificate Management
 **Config**: `tls.acme.enabled = true`
 
-- [ ] T014 [US2] Create `ACMEService` in `internal/core/services/acme_service.go` using `golang.org/x/crypto/acme/autocert`
-- [ ] T015 [US2] Implement `DirCache` storage strategy in `ACMEService` targeting `/data/certs`
-- [ ] T016 [US2] Update `internal/adapters/http/server.go` to support dual-port listening (80 for ACME challenges, 443 for API)
-- [ ] T017 [US2] Wire `ACMEService` into `NewServer` in `cmd/mailraven/main.go` based on config
+- [x] T014 [US2] Create `ACMEService` in `internal/core/services/acme_service.go` using `golang.org/x/crypto/acme/autocert`
+- [x] T015 [US2] Implement `DirCache` storage strategy in `ACMEService` targeting `/data/certs`
+- [x] T016 [US2] Update `internal/adapters/http/server.go` to support dual-port listening (80 for ACME challenges, 443 for API)
+- [x] T017 [US2] Wire `ACMEService` into `NewServer` in `cmd/mailraven/main.go` based on config
 
 ## Phase 5: User Story 3 - Spam & Malicious Email Protection
 **Goal**: Block known bad actors using DNSBL and rate limits.

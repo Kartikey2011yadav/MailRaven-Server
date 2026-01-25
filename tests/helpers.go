@@ -172,7 +172,7 @@ func setupTestEnvironment(t *testing.T) *testEnvironment {
 	}
 
 	// Create HTTP server
-	httpServer := httpAdapter.NewServer(cfg, emailRepo, userRepo, queueRepo, blobStore, searchIdx, logger, metrics)
+	httpServer := httpAdapter.NewServer(cfg, emailRepo, userRepo, queueRepo, blobStore, searchIdx, nil, logger, metrics)
 	testServer := httptest.NewServer(httpServer.Router())
 
 	return &testEnvironment{
