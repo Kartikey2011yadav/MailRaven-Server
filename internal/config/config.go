@@ -84,6 +84,8 @@ type RateLimitConfig struct {
 
 // BackupConfig contains backup settings
 type BackupConfig struct {
+	Enabled       bool   `yaml:"enabled"`        // Enable automatic backups
+	Schedule      string `yaml:"schedule"`       // Cron schedule
 	Location      string `yaml:"location"`       // Backup directory
 	RetentionDays int    `yaml:"retention_days"` // Retention period
 }
@@ -121,14 +123,21 @@ func LoadFromFile(path string) (*Config, error) {
 	}
 	if cfg.Logging.Format == "" {
 		cfg.Logging.Format = "json"
-	}	if c.Spam.MaxRecipients == 0 {
-		c.Spam.MaxRecipients = 50
 	}
-	if c.Spam.RateLimit.Count == 0 {
-		c.Spam.RateLimit.Count = 100
+	if cfg.Spam.MaxRecipients == 0 {
+		cfg.Spam.MaxRecipients = 50
 	}
-	if c.Spam.RateLimit.Window == "" {
-		c.Spam.RateLimit.Window = "1h"
+	if cfg.Spam.RateLimit.Count == 0 {
+		cfg.Spam.RateLimit.Count = 100
+	}
+	if cfg.Spam.RateLimit.Window == "" {
+		cfg.Spam.RateLimit.Window = "1h"
+	}
+	if cfg.Backup.Schedule == "" {
+		cfg.Backup.Schedule = "0 2 * * *" // Daily at 2am
+	}
+	if cfg.Backup.RetentionDays == 0 {
+		cfg.Backup.RetentionDays = 7
 	}
 	return &cfg, nil
 }

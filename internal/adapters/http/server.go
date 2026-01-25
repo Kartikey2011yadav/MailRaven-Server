@@ -38,6 +38,7 @@ func NewServer(
 	blobStore ports.BlobStore,
 	searchIdx ports.SearchIndex,
 	acmeService *services.ACMEService,
+	backupService ports.BackupService,
 	logger *observability.Logger,
 	metrics *observability.Metrics,
 ) *Server {
@@ -47,6 +48,7 @@ func NewServer(
 	authHandler := handlers.NewAuthHandler(userRepo, cfg.API.JWTSecret, logger, metrics)
 	messageHandler := handlers.NewMessageHandler(emailRepo, blobStore, searchIdx, logger, metrics)
 	searchHandler := handlers.NewSearchHandler(emailRepo, searchIdx, logger, metrics)
+	adminHandler := handlers.NewAdminHandler(backupService, logger, metrics)
 	sendHandler, err := handlers.NewSendHandler(
 		queueRepo,
 		blobStore,
@@ -91,6 +93,11 @@ func NewServer(
 		if sendHandler != nil {
 			r.Post("/api/v1/messages/send", sendHandler.Send)
 		}
+
+		// Admin endpoints
+		if backupService != nil {
+			r.Post("/api/v1/admin/backup", adminHandler.TriggerBackup)
+		}
 	})
 
 	// Health check endpoint (no auth)
@@ -121,7 +128,8 @@ func (s *Server) Start(ctx context.Context) error {
 
 	s.logger.Info("HTTP server starting", "addr", addr, "tls", s.cfg.API.TLS)
 
-	// StacmeService != nil {
+	// Start server (TLS or plain HTTP)
+	if s.acmeService != nil {
 		go func() {
 			s.logger.Info("Starting ACME HTTP-01 challenge listener on :80")
 			if err := http.ListenAndServe(":80", s.acmeService.HTTPHandler(nil)); err != nil {
@@ -133,7 +141,6 @@ func (s *Server) Start(ctx context.Context) error {
 		return s.httpServer.ListenAndServeTLS("", "")
 	}
 
-	if s.art server (TLS or plain HTTP)
 	if s.cfg.API.TLS {
 		if s.cfg.API.TLSCert == "" || s.cfg.API.TLSKey == "" {
 			return fmt.Errorf("TLS enabled but cert/key paths not configured")

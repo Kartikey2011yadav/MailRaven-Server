@@ -46,31 +46,31 @@
 **Story**: [US3] Spam and Malicious Email Protection
 **Config**: `spam.dnsbls`, `spam.rate_limit`
 
-- [ ] T018 [P] [US3] Implement `DNSBLChecker` adapter in `internal/adapters/spam/dnsbl.go` using `godnsbl`
-- [ ] T019 [P] [US3] Implement `RateLimiter` adapter in `internal/adapters/spam/ratelimit.go` using `x/time/rate`
-- [ ] T020 [US3] Create `SpamProtectionService` in `internal/core/services/spam_protection.go` aggregating checkers
-- [ ] T021 [US3] Implement `SpamMiddleware` in `internal/adapters/smtp/middleware.go` to reject connections early
-- [ ] T022 [US3] Wire `SpamProtectionService` into the SMTP listener in `cmd/mailraven/main.go`
+- [x] T018 [P] [US3] Implement `DNSBLChecker` adapter in `internal/adapters/spam/dnsbl.go` using `godnsbl`
+- [x] T019 [P] [US3] Implement `RateLimiter` adapter in `internal/adapters/spam/ratelimit.go` using `x/time/rate`
+- [x] T020 [US3] Create `SpamProtectionService` in `internal/core/services/spam_protection.go` aggregating checkers
+- [x] T021 [US3] Implement `SpamMiddleware` in `internal/adapters/smtp/middleware.go` to reject connections early
+- [x] T022 [US3] Wire `SpamProtectionService` into the SMTP listener in `cmd/mailraven/main.go`
 
 ## Phase 6: User Story 4 - Production Backup & Recovery
 **Goal**: Enable hot backups of the SQLite database and blob storage.
 **Story**: [US4] Production Backup and Recovery
 **Config**: `backup.location`
 
-- [ ] T023 [P] [US4] Implement `SQLiteBackup` adapter in `internal/adapters/backup/sqlite.go` using `VACUUM INTO` query
-- [ ] T024 [P] [US4] Implement `BlobBackup` adapter in `internal/adapters/backup/blob.go` (file copy)
-- [ ] T025 [US4] Create `BackupService` orchestration in `internal/core/services/backup_service.go`
-- [ ] T026 [US4] Implement Admin API endpoint `POST /admin/backup` in `internal/adapters/http/handlers/admin.go`
-- [ ] T027 [US4] Register Admin routes in `internal/adapters/http/server.go` with auth check
-- [ ] T028 [US4] Finalize `scripts/backup.sh` to trigger API and `scripts/restore.sh` to apply backup files
+- [x] T023 [P] [US4] Implement `SQLiteBackup` adapter in `internal/adapters/backup/sqlite.go` using `VACUUM INTO` query
+- [x] T024 [P] [US4] Implement `BlobBackup` adapter in `internal/adapters/backup/blob.go` (file copy)
+- [x] T025 [US4] Create `BackupService` orchestration in `internal/core/services/backup_service.go`
+- [x] T026 [US4] Implement Admin API endpoint `POST /admin/backup` in `internal/adapters/http/handlers/admin.go`
+- [x] T027 [US4] Register Admin routes in `internal/adapters/http/server.go` with auth check
+- [x] T028 [US4] Finalize `scripts/backup.sh` to trigger API and `scripts/restore.sh` to apply backup files
 
 ## Phase 7: Polish & Documentation
 **Goal**: Finalize documentation and verify full system stability.
 
-- [ ] T029 Update `README.md` with Docker Quickstart instructions
-- [ ] T030 Document new config options in `docs/CONFIGURATION.md` (create if missing)
-- [ ] T031 Run full regression suite `go test ./...`
-- [ ] T032 Verify `tasks.md` completion and functionality check
+- [x] T029 Update `README.md` with Docker Quickstart instructions
+- [x] T030 Document new config options in `docs/CONFIGURATION.md` (create if missing)
+- [x] T031 Run full regression suite `go test ./...`
+- [x] T032 Verify `tasks.md` completion and functionality check
 
 ## Dependencies
 - Phase 1 & 2 must complete before Phase 3, 4, 5, 6

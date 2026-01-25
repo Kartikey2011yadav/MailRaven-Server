@@ -6,6 +6,8 @@ A modern, modular email server built with mobile-first architecture. MailRaven i
 
 - **Mobile-First API**: RESTful JSON API with pagination, compression, and delta sync
 - **Reliable Email Reception**: SMTP server with SPF/DKIM/DMARC validation
+- **Production Ready**: Docker support, Automatic HTTPS (Let's Encrypt), and Hot Backups
+- **Spam Protection**: DNSBL integration and connection Rate Limiting
 - **Full-Text Search**: SQLite FTS5 for fast message search on mobile devices
 - **Zero Data Loss**: Atomic writes with fsync before SMTP acknowledgment
 - **CGO-Free**: Pure Go implementation for simple deployment
@@ -63,14 +65,11 @@ go build -o mailraven ./cmd/mailraven
 sudo cp mailraven /usr/local/bin/
 ```
 
-#### Option 2: Using Make
+#### Option 3: Docker (Recommended)
 
 ```bash
-# Build
-make build
-
-# Build and install
-make install
+# Start with docker-compose
+docker-compose up -d
 ```
 
 ### Run Quickstart Setup
