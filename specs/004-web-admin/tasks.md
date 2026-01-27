@@ -75,9 +75,9 @@ description: "Task list template for feature implementation"
 
 ## Phase 6: Polish & Cross-Cutting
 
-- [ ] T031 Configure error boundaries or toast notifications (shadcn/sonner) for API errors in `client/src/App.tsx`
+- [x] T031 Configure error boundaries or toast notifications (shadcn/sonner) for API errors in `client/src/App.tsx`
 - [ ] T032 Verify mobile responsiveness of Sidebar and Tables
-- [ ] T033 Create `client/vercel.json` for Rewrite configuration (proxying API)
+- [x] T033 Create `client/vercel.json` for Rewrite configuration (proxying API)
 
 ## Dependencies
 
