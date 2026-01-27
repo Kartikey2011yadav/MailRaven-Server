@@ -68,6 +68,8 @@ func NewServer(
 
 	// Apply global middleware (order matters: first applied = outermost)
 	router.Use(middleware.Logging(logger))
+	// Allow localhost:5173 for now. In production this should be config driven.
+	router.Use(middleware.CORS("http://localhost:5173"))
 	router.Use(middleware.Compression())
 	router.Use(middleware.RateLimit(100)) // 100 req/min per IP
 
