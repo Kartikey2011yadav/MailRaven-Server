@@ -1,3 +1,5 @@
+//go:build ignore
+
 package main
 
 import (
@@ -27,6 +29,6 @@ func main() {
 	if err := os.WriteFile("data/dkim.key", privPEM, 0600); err != nil {
 		log.Fatal(err)
 	}
-	
+
 	log.Println("DKIM key generated at data/dkim.key")
 }
