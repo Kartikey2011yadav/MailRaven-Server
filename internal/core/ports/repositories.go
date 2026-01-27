@@ -79,3 +79,23 @@ type QueueRepository interface {
 	// Stats returns queue statistics (pending, processing, failed, completed)
 	Stats(ctx context.Context) (pending, processing, failed, completed int64, err error)
 }
+
+// DomainRepository defines storage operations for hosted domains
+type DomainRepository interface {
+	// Create adds a new domain
+	// Returns ErrAlreadyExists if domain exists
+	Create(ctx context.Context, domain *domain.Domain) error
+
+	// Get retrieves a domain by name
+	// Returns ErrNotFound if not found
+	Get(ctx context.Context, name string) (*domain.Domain, error)
+
+	// List returns paginated domains
+	List(ctx context.Context, limit, offset int) ([]*domain.Domain, error)
+
+	// Delete removes a domain
+	Delete(ctx context.Context, name string) error
+
+	// Exists checks if a domain exists
+	Exists(ctx context.Context, name string) (bool, error)
+}

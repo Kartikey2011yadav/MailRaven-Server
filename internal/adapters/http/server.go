@@ -35,6 +35,7 @@ func NewServer(
 	emailRepo ports.EmailRepository,
 	userRepo ports.UserRepository,
 	queueRepo ports.QueueRepository,
+	domainRepo ports.DomainRepository,
 	blobStore ports.BlobStore,
 	searchIdx ports.SearchIndex,
 	acmeService *services.ACMEService,
@@ -49,7 +50,8 @@ func NewServer(
 	messageHandler := handlers.NewMessageHandler(emailRepo, blobStore, searchIdx, logger, metrics)
 	searchHandler := handlers.NewSearchHandler(emailRepo, searchIdx, logger, metrics)
 	adminBackupHandler := handlers.NewAdminHandler(backupService, logger, metrics)
-	adminUserHandler := handlers.NewAdminUserHandler(userRepo, logger)
+	adminUserHandler := handlers.NewAdminUserHandler(userRepo, domainRepo, logger)
+	adminDomainHandler := handlers.NewAdminDomainHandler(domainRepo, logger)
 	adminStatsHandler := handlers.NewAdminStatsHandler(userRepo, emailRepo, queueRepo, logger)
 	sendHandler, err := handlers.NewSendHandler(
 		queueRepo,
@@ -115,6 +117,11 @@ func NewServer(
 			r.Post("/users", adminUserHandler.CreateUser)
 			r.Delete("/users/{email}", adminUserHandler.DeleteUser)
 			r.Put("/users/{email}/role", adminUserHandler.UpdateRole)
+
+			// Domain Management
+			r.Get("/domains", adminDomainHandler.ListDomains)
+			r.Post("/domains", adminDomainHandler.CreateDomain)
+			r.Delete("/domains/{domain}", adminDomainHandler.DeleteDomain)
 		})
 	})
 

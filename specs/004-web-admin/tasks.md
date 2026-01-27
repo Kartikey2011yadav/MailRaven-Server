@@ -50,9 +50,9 @@ description: "Task list template for feature implementation"
 
 **Purpose**: Manage users without CLI.
 
-- [ ] T017 [US2] Create User API client functions (List, Create, Delete, Update Role) in `client/src/lib/api.ts`
-- [ ] T018 [US2] Build Users List Table component in `client/src/pages/Users.tsx` (using shadcn Table)
-- [ ] T019 [US2] Create "Add User" Dialog component in `client/src/components/users/CreateUserDialog.tsx`
+- [x] T017 [US2] Create User API client functions (List, Create, Delete, Update Role) in `client/src/lib/api.ts`
+- [x] T018 [US2] Build Users List Table component in `client/src/pages/Users.tsx` (using shadcn Table)
+- [x] T019 [US2] Create "Add User" Dialog component in `client/src/components/users/CreateUserDialog.tsx`
 - [ ] T020 [P] [US2] Create "Delete User" Confirmation Dialog in `client/src/components/users/DeleteUserDialog.tsx`
 
 ## Phase 5: User Story 3 (Domain Management)
@@ -60,13 +60,13 @@ description: "Task list template for feature implementation"
 **Purpose**: Support multiple domains.
 
 ### Backend Implementation
-- [ ] T021 [US3] Create migration `internal/adapters/storage/sqlite/migrations/003_add_domains.sql`
-- [ ] T022 [US3] Define `Domain` entity in `internal/core/domain/domains.go`
-- [ ] T023 [US3] Define `DomainRepository` interface in `internal/core/ports/repositories.go`
-- [ ] T024 [US3] Implement SQLite Domain Repository in `internal/adapters/storage/sqlite/domain_repo.go`
-- [ ] T025 [US3] Implement Domain Admin Handlers in `internal/adapters/http/handlers/admin_domains.go`
-- [ ] T026 [US3] Update `CreateUser` logic in `internal/adapters/http/handlers/admin_users.go` to validate domain against DB or Config
-- [ ] T027 [US3] Register accessible domain routes in `internal/adapters/http/server.go`
+- [x] T021 [US3] Create migration `internal/adapters/storage/sqlite/migrations/003_add_domains.sql`
+- [x] T022 [US3] Define `Domain` entity in `internal/core/domain/domains.go`
+- [x] T023 [US3] Define `DomainRepository` interface in `internal/core/ports/repositories.go`
+- [x] T024 [US3] Implement SQLite Domain Repository in `internal/adapters/storage/sqlite/domain_repo.go`
+- [x] T025 [US3] Implement Domain Admin Handlers in `internal/adapters/http/handlers/admin_domains.go`
+- [x] T026 [US3] Update `CreateUser` logic in `internal/adapters/http/handlers/admin_users.go` to validate domain against DB or Config
+- [x] T027 [US3] Register accessible domain routes in `internal/adapters/http/server.go`
 
 ### Frontend Implementation
 - [ ] T028 [P] [US3] Create Domain API client functions in `client/src/lib/api.ts`

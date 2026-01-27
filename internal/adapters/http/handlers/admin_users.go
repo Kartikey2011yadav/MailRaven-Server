@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/domain"
@@ -14,12 +15,13 @@ import (
 )
 
 type AdminUserHandler struct {
-	userRepo ports.UserRepository
-	logger   *observability.Logger
+	userRepo   ports.UserRepository
+	domainRepo ports.DomainRepository
+	logger     *observability.Logger
 }
 
-func NewAdminUserHandler(userRepo ports.UserRepository, logger *observability.Logger) *AdminUserHandler {
-	return &AdminUserHandler{userRepo: userRepo, logger: logger}
+func NewAdminUserHandler(userRepo ports.UserRepository, domainRepo ports.DomainRepository, logger *observability.Logger) *AdminUserHandler {
+	return &AdminUserHandler{userRepo: userRepo, domainRepo: domainRepo, logger: logger}
 }
 
 type CreateUserRequest struct {
@@ -70,6 +72,29 @@ func (h *AdminUserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	if req.Email == "" || req.Password == "" {
 		http.Error(w, "Email and Password required", http.StatusBadRequest)
+		return
+	}
+
+	// Validate domain ownership
+	parts := strings.Split(req.Email, "@")
+	if len(parts) != 2 {
+		http.Error(w, "Invalid email format", http.StatusBadRequest)
+		return
+	}
+	domainName := parts[1]
+
+	// Only check domain exists if user is not admin?
+	// Actually, even admins should probably be on a managed domain, OR we allow admins to be created on any domain (e.g. localhost) but that might be risky for email routing.
+	// For "mail server", we usually only accept emails for domains we host.
+	// So validating domain is correct.
+	exists, err := h.domainRepo.Exists(r.Context(), domainName)
+	if err != nil {
+		h.logger.Error("Failed to check domain existence", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if !exists {
+		http.Error(w, "Domain not managed by this server. Add domain first.", http.StatusBadRequest)
 		return
 	}
 

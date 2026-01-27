@@ -92,11 +92,16 @@ func setupTestEnvironment(t *testing.T) *testEnvironment {
 	if err := conn.RunMigrations(migrationPath002); err != nil {
 		t.Logf("Migration warning (002): %v", err)
 	}
+	migrationPath003 := "../internal/adapters/storage/sqlite/migrations/003_add_domains.sql"
+	if err := conn.RunMigrations(migrationPath003); err != nil {
+		t.Logf("Migration warning (003): %v", err)
+	}
 
 	// Initialize repositories
 	emailRepo := sqlite.NewEmailRepository(conn.DB)
 	userRepo := sqlite.NewUserRepository(conn.DB)
 	queueRepo := sqlite.NewQueueRepository(conn.DB)
+	domainRepo := sqlite.NewDomainRepository(conn.DB)
 	searchIdx := sqlite.NewSearchRepository(conn.DB)
 	blobStore, err := disk.NewBlobStore(cfg.Storage.BlobPath)
 	if err != nil {
@@ -176,7 +181,7 @@ func setupTestEnvironment(t *testing.T) *testEnvironment {
 	}
 
 	// Create HTTP server
-	httpServer := httpAdapter.NewServer(cfg, emailRepo, userRepo, queueRepo, blobStore, searchIdx, nil, nil, logger, metrics)
+	httpServer := httpAdapter.NewServer(cfg, emailRepo, userRepo, queueRepo, domainRepo, blobStore, searchIdx, nil, nil, logger, metrics)
 	testServer := httptest.NewServer(httpServer.Router())
 
 	return &testEnvironment{

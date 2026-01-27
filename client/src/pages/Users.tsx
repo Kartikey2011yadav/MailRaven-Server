@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { CreateUserDialog } from "@/components/users/CreateUserDialog"; // Import new component
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2, Shield, User } from "lucide-react";
 
@@ -77,9 +78,11 @@ export default function Users() {
           <h1 className="text-3xl font-bold tracking-tight">Users</h1>
           <p className="text-muted-foreground">Manage system access and roles.</p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" /> Add User
-        </Button>
+        <CreateUserDialog onSuccess={fetchUsers}>
+          <Button>
+            <Plus className="mr-2 h-4 w-4" /> Add User
+          </Button>
+        </CreateUserDialog>
       </div>
 
       <div className="border rounded-md">
