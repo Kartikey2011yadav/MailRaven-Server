@@ -1,0 +1,102 @@
+openapi: 3.0.0
+info:
+  title: MailRaven Admin API
+  version: 1.0.0
+  description: API for Web Admin Dashboard
+
+paths:
+  /api/v1/admin/stats:
+    get:
+      summary: Get System Statistics
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: System stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  uptime_seconds:
+                    type: integer
+                  memory_usage_mb:
+                    type: number
+                  total_users:
+                    type: integer
+                  total_domains:
+                    type: integer
+                  database_connections:
+                    type: integer
+
+  /api/v1/admin/domains:
+    get:
+      summary: List all domains
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of domains
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Domain'
+    post:
+      summary: Add a new domain
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  example: "example.org"
+      responses:
+        '201':
+          description: Domain added
+        '400':
+          description: Invalid domain
+        '409':
+          description: Domain already exists
+
+  /api/v1/admin/domains/{name}:
+    delete:
+      summary: Remove a domain
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: name
+          schema:
+            type: string
+          required: true
+      responses:
+        '204':
+          description: Domain deleted
+        '400':
+          description: Cannot delete primary domain or domain with users
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Domain:
+      type: object
+      properties:
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        is_primary:
+          type: boolean
