@@ -49,59 +49,33 @@ const data = {
           title: "Overview",
           url: "/",
         },
+      ],
+    },
+    {
+      title: "Users",
+      url: "/users",
+      icon: BookOpen, // Or better icon
+      items: [
         {
-          title: "Real-time Stats",
-          url: "/stats",
+          title: "Manage Users",
+          url: "/users",
         },
       ],
     },
     {
       title: "Domains",
       url: "/domains",
-      icon: Bot,
+      icon: Frame,
       items: [
-        {
-          title: "List Domains",
+         {
+          title: "All Domains",
           url: "/domains",
-        },
-        {
-          title: "Add Domain",
-          url: "/domains/new",
-        },
-      ],
-    },
-    {
-      title: "Accounts",
-      url: "/accounts",
-      icon: BookOpen,
-      items: [
-        {
-          title: "Mailboxes",
-          url: "/accounts",
-        },
-        {
-          title: "Aliases",
-          url: "/aliases",
-        },
-      ],
-    },
-    {
-      title: "Settings",
-      url: "/settings",
-      icon: Settings2,
-      items: [
-        {
-          title: "General",
-          url: "/settings",
-        },
-        {
-          title: "Security",
-          url: "/settings/security",
-        },
-      ],
+         }
+      ]
     },
   ],
   navSystem: [
+
     {
       name: "System Logs",
       url: "/logs",

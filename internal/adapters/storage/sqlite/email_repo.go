@@ -193,3 +193,15 @@ func (r *EmailRepository) FindSince(ctx context.Context, email string, since tim
 
 	return messages, nil
 }
+
+// CountTotal returns total message count in the system
+func (r *EmailRepository) CountTotal(ctx context.Context) (int64, error) {
+	query := "SELECT COUNT(*) FROM messages"
+	var count int64
+	err := r.db.QueryRowContext(ctx, query).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+

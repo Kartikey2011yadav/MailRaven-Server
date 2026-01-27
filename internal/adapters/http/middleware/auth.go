@@ -89,6 +89,12 @@ func GetUserEmail(r *http.Request) (string, bool) {
 	return email, ok
 }
 
+// GetUserRole extracts authenticated user role from request context
+func GetUserRole(r *http.Request) (string, bool) {
+	role, ok := r.Context().Value(UserRoleKey).(string)
+	return role, ok
+}
+
 func sendUnauthorized(w http.ResponseWriter, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusUnauthorized)

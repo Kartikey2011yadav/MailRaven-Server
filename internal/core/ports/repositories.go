@@ -29,6 +29,9 @@ type EmailRepository interface {
 	// CountByUser returns total message count for a user
 	CountByUser(ctx context.Context, email string) (int, error)
 
+	// CountTotal returns total message count in the system (admin usage)
+	CountTotal(ctx context.Context) (int64, error)
+
 	// FindSince retrieves messages received after a timestamp (delta sync)
 	FindSince(ctx context.Context, email string, since time.Time, limit int) ([]*domain.Message, error)
 }
@@ -55,6 +58,9 @@ type UserRepository interface {
 	Delete(ctx context.Context, email string) error
 	UpdatePassword(ctx context.Context, email, passwordHash string) error
 	UpdateRole(ctx context.Context, email string, role domain.Role) error
+
+	// Count returns simplified user statistics (total, active, admin)
+	Count(ctx context.Context) (map[string]int64, error)
 }
 
 // QueueRepository defines storage operations for outbound email queue
@@ -69,4 +75,7 @@ type QueueRepository interface {
 
 	// UpdateStatus updates the status, retry count and next retry time
 	UpdateStatus(ctx context.Context, id string, status domain.OutboundStatus, retryCount int, nextRetry time.Time, lastError string) error
+
+	// Stats returns queue statistics (pending, processing, failed, completed)
+	Stats(ctx context.Context) (pending, processing, failed, completed int64, err error)
 }

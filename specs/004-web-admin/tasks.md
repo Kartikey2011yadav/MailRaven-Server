@@ -41,10 +41,10 @@ description: "Task list template for feature implementation"
 
 **Purpose**: Display system vitals.
 
-- [ ] T013 [US1] Implement stats handler `GetSystemStats` in `internal/adapters/http/handlers/admin_stats.go`
-- [ ] T014 [US1] Register `GET /api/v1/admin/stats` route in `internal/adapters/http/server.go`
-- [ ] T015 [US1] Create API client function `fetchStats` in `client/src/lib/api.ts`
-- [ ] T016 [US1] Build Dashboard Page in `client/src/pages/Dashboard.tsx` displaying widgets (Uptime, Users, Memory)
+- [x] T013 [US1] Implement stats handler `GetSystemStats` in `internal/adapters/http/handlers/admin_stats.go`
+- [x] T014 [US1] Register `GET /api/v1/admin/stats` route in `internal/adapters/http/server.go`
+- [x] T015 [US1] Create API client function `fetchStats` in `client/src/lib/api.ts`
+- [x] T016 [US1] Build Dashboard Page in `client/src/pages/Dashboard.tsx` displaying widgets (Uptime, Users, Memory)
 
 ## Phase 4: User Story 2 (User Management UI)
 

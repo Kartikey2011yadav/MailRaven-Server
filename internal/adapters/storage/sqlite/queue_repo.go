@@ -114,3 +114,34 @@ func (r *QueueRepository) UpdateStatus(ctx context.Context, id string, status do
 	)
 	return err
 }
+
+// Stats returns queue statistics
+func (r *QueueRepository) Stats(ctx context.Context) (int64, int64, int64, int64, error) {
+	query := `SELECT status, COUNT(*) FROM queue GROUP BY status`
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+	defer rows.Close()
+
+	var pending, processing, failed, completed int64
+	for rows.Next() {
+		var status string
+		var count int64
+		if err := rows.Scan(&status, &count); err != nil {
+			return 0, 0, 0, 0, err
+		}
+
+		switch status {
+		case "PENDING", "RETRYING":
+			pending += count
+		case "PROCESSING":
+			processing += count
+		case "FAILED":
+			failed += count
+		case "SENT":
+			completed += count
+		}
+	}
+	return pending, processing, failed, completed, rows.Err()
+}

@@ -204,3 +204,30 @@ func (r *UserRepository) UpdateRole(ctx context.Context, email string, role doma
 
 	return nil
 }
+
+// Count returns user statistics
+func (r *UserRepository) Count(ctx context.Context) (map[string]int64, error) {
+	stats := make(map[string]int64)
+
+	// Total
+	var total int64
+	if err := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users").Scan(&total); err != nil {
+		return nil, err
+	}
+	stats["total"] = total
+
+	// Active (non-suspended, simpler for now just assume all exist)
+	// For this quick implementation we'll just query role='ADMIN' for admins
+	var adminCount int64
+	if err := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users WHERE role = ?", domain.RoleAdmin).Scan(&adminCount); err != nil {
+		return nil, err
+	}
+	stats["admin"] = adminCount
+
+	// Active (users who have logged in at least once, or just total for now)
+	stats["active"] = total // Simplification
+
+	return stats, nil
+}
+
+

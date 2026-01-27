@@ -50,6 +50,7 @@ func NewServer(
 	searchHandler := handlers.NewSearchHandler(emailRepo, searchIdx, logger, metrics)
 	adminBackupHandler := handlers.NewAdminHandler(backupService, logger, metrics)
 	adminUserHandler := handlers.NewAdminUserHandler(userRepo, logger)
+	adminStatsHandler := handlers.NewAdminStatsHandler(userRepo, emailRepo, queueRepo, logger)
 	sendHandler, err := handlers.NewSendHandler(
 		queueRepo,
 		blobStore,
@@ -100,6 +101,9 @@ func NewServer(
 		// Admin endpoints
 		r.Route("/api/v1/admin", func(r chi.Router) {
 			r.Use(middleware.RequireAdmin)
+
+			// Stats
+			r.Get("/stats", adminStatsHandler.GetSystemStats)
 
 			// Backup
 			if backupService != nil {
