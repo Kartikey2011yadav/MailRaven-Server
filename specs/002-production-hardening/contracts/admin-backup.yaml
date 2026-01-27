@@ -1,0 +1,32 @@
+openapi: 3.0.0
+info:
+  title: MailRaven Admin API
+  version: 1.0.0
+paths:
+  /admin/backup:
+    post:
+      summary: Trigger an immediate backup
+      security:
+        - BearerAuth: []
+      description: Captures a snapshot of the SQLite database and synchronizes blob storage to the configured backup location.
+      responses:
+        '202':
+          description: Backup accepted and started in background.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id: 
+                    type: string
+                  status: 
+                    type: string
+        '403':
+          description: Unauthorized
+        '500':
+          description: Internal Server Error (e.g. Disk full)
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer

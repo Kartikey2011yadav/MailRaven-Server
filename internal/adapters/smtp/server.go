@@ -11,25 +11,28 @@ import (
 
 	"github.com/Kartikey2011yadav/mailraven-server/internal/config"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/domain"
+	"github.com/Kartikey2011yadav/mailraven-server/internal/core/ports"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/observability"
 )
 
 // Server represents an SMTP server
 type Server struct {
-	config   *config.Config
-	logger   *observability.Logger
-	metrics  *observability.Metrics
-	handler  MessageHandler
-	listener net.Listener
+	config     *config.Config
+	logger     *observability.Logger
+	metrics    *observability.Metrics
+	handler    MessageHandler
+	spamFilter ports.SpamFilter
+	listener   net.Listener
 }
 
 // NewServer creates a new SMTP server
-func NewServer(cfg *config.Config, logger *observability.Logger, metrics *observability.Metrics, handler MessageHandler) *Server {
+func NewServer(cfg *config.Config, logger *observability.Logger, metrics *observability.Metrics, handler MessageHandler, spamFilter ports.SpamFilter) *Server {
 	return &Server{
-		config:  cfg,
-		logger:  logger,
-		metrics: metrics,
-		handler: handler,
+		config:     cfg,
+		logger:     logger,
+		metrics:    metrics,
+		handler:    handler,
+		spamFilter: spamFilter,
 	}
 }
 
@@ -72,10 +75,24 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
 
 	remoteAddr := conn.RemoteAddr().String()
-	remoteIP := strings.Split(remoteAddr, ":")[0]
+	remoteIP, _, _ := net.SplitHostPort(remoteAddr)
+	if remoteIP == "" {
+		remoteIP = remoteAddr // fallback
+	}
 
 	sessionID := fmt.Sprintf("smtp-%d", time.Now().UnixNano())
 	sessionLogger := s.logger.WithSMTPSession(sessionID, remoteIP)
+
+	// Check Spam Filter (DNSBL / Rate Limit)
+	if s.spamFilter != nil {
+		if err := s.spamFilter.CheckConnection(ctx, remoteIP); err != nil {
+			sessionLogger.Warn("connection rejected by spam filter", "error", err)
+			// Return 554 No SMTP service here
+			conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+			fmt.Fprintf(conn, "554 Service unavailable: %v\r\n", err)
+			return
+		}
+	}
 
 	sessionLogger.Info("new SMTP connection")
 

@@ -18,11 +18,14 @@ type contextKey string
 const (
 	// UserEmailKey is the context key for authenticated user email
 	UserEmailKey contextKey = "user_email"
+	// UserRoleKey is the context key for authenticated user role
+	UserRoleKey contextKey = "user_role"
 )
 
 // Claims represents JWT token claims
 type Claims struct {
 	Email string `json:"email"`
+	Role  string `json:"role"`
 	jwt.RegisteredClaims
 }
 
@@ -72,8 +75,9 @@ func Auth(jwtSecret string) func(http.Handler) http.Handler {
 				return
 			}
 
-			// Add user email to request context
+			// Add user email and role to request context
 			ctx := context.WithValue(r.Context(), UserEmailKey, claims.Email)
+			ctx = context.WithValue(ctx, UserRoleKey, claims.Role)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

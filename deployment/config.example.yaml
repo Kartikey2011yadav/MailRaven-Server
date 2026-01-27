@@ -47,6 +47,32 @@ api:
   # IMPORTANT: Change this to a random secret in production!
   jwt_secret: "CHANGE-THIS-TO-RANDOM-SECRET-IN-PRODUCTION"
 
+# Production Hardening Settings (v2)
+
+# Global TLS Configuration (overrides SMTP/API specific certs if ACME enabled)
+tls:
+  enabled: true
+  acme:
+    enabled: false # Set to true to use Let's Encrypt
+    email: "admin@example.com"
+    domains: ["mail.example.com"]
+    cache_dir: "/data/certs"
+
+# Spam Protection
+spam:
+  dnsbls:
+    - "zen.spamhaus.org"
+    - "bl.spamcop.net"
+  max_recipients: 50
+  rate_limit:
+    window: "1h"
+    count: 100
+
+# Automated Backups
+backup:
+  location: "/data/backups"
+  retention_days: 7
+
 # Storage configuration
 storage:
   # Path to SQLite database file

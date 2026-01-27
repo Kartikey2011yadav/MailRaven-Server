@@ -15,6 +15,9 @@ type Config struct {
 	Storage StorageConfig `yaml:"storage"`
 	DKIM    DKIMConfig    `yaml:"dkim"`
 	Logging LogConfig     `yaml:"logging"`
+	TLS     TLSConfig     `yaml:"tls"`
+	Spam    SpamConfig    `yaml:"spam"`
+	Backup  BackupConfig  `yaml:"backup"`
 }
 
 // SMTPConfig contains SMTP server settings
@@ -52,6 +55,41 @@ type LogConfig struct {
 	Format string `yaml:"format"` // Log format: json, text (default: json)
 }
 
+// TLSConfig contains global TLS settings (including ACME)
+type TLSConfig struct {
+	Enabled bool       `yaml:"enabled"` // Enable TLS globally
+	ACME    ACMEConfig `yaml:"acme"`    // Let's Encrypt configuration
+}
+
+// ACMEConfig contains Let's Encrypt settings
+type ACMEConfig struct {
+	Enabled  bool     `yaml:"enabled"`   // Enable ACME
+	Email    string   `yaml:"email"`     // Email for registration
+	Domains  []string `yaml:"domains"`   // List of domains for certs
+	CacheDir string   `yaml:"cache_dir"` // Directory to cache certs
+}
+
+// SpamConfig contains spam protection settings
+type SpamConfig struct {
+	DNSBLs        []string        `yaml:"dnsbls"`         // List of DNSBL providers
+	MaxRecipients int             `yaml:"max_recipients"` // Max recipients per message
+	RateLimit     RateLimitConfig `yaml:"rate_limit"`     // Rate limiting settings
+}
+
+// RateLimitConfig contains rate limiting settings
+type RateLimitConfig struct {
+	Window string `yaml:"window"` // Time window (e.g. "1h")
+	Count  int    `yaml:"count"`  // Max requests per window
+}
+
+// BackupConfig contains backup settings
+type BackupConfig struct {
+	Enabled       bool   `yaml:"enabled"`        // Enable automatic backups
+	Schedule      string `yaml:"schedule"`       // Cron schedule
+	Location      string `yaml:"location"`       // Backup directory
+	RetentionDays int    `yaml:"retention_days"` // Retention period
+}
+
 // LoadFromFile loads configuration from a YAML file
 func LoadFromFile(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
@@ -86,7 +124,21 @@ func LoadFromFile(path string) (*Config, error) {
 	if cfg.Logging.Format == "" {
 		cfg.Logging.Format = "json"
 	}
-
+	if cfg.Spam.MaxRecipients == 0 {
+		cfg.Spam.MaxRecipients = 50
+	}
+	if cfg.Spam.RateLimit.Count == 0 {
+		cfg.Spam.RateLimit.Count = 100
+	}
+	if cfg.Spam.RateLimit.Window == "" {
+		cfg.Spam.RateLimit.Window = "1h"
+	}
+	if cfg.Backup.Schedule == "" {
+		cfg.Backup.Schedule = "0 2 * * *" // Daily at 2am
+	}
+	if cfg.Backup.RetentionDays == 0 {
+		cfg.Backup.RetentionDays = 7
+	}
 	return &cfg, nil
 }
 

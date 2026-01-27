@@ -1,0 +1,13 @@
+.git/
+.vscode/
+bin/
+specs/
+tests/
+mox/
+doc/
+*.exe
+*.log
+.env
+dist/
+coverage/
+.DS_Store

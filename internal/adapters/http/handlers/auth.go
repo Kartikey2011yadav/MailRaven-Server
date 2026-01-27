@@ -80,6 +80,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	expiresAt := time.Now().Add(7 * 24 * time.Hour)
 	claims := &middleware.Claims{
 		Email: user.Email,
+		Role:  string(user.Role),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
