@@ -4,7 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner"; // Changed from "sonner" direct import or specific toast import
+import { toast } from "sonner";
+import { AuthAPI } from "@/lib/api";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -50,16 +51,21 @@ export default function Login() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      // Mock API call
-      // const response = await axios.post('/api/auth/login', values);
-      console.log(values);
+      // Real API call
+      const response = await AuthAPI.login({ 
+        email: values.username, 
+        password: values.password 
+      });
       
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { token, user } = response.data;
+      
+      // Map API response to AuthContext User shape
+      const authUser = {
+        username: user?.email || values.username,
+        role: user?.Role || user?.role || "admin" // Handle case sensitivity
+      };
 
-      // Mock success
-      // In real app: login(response.data.token, response.data.user);
-      login("mock-token", { username: values.username, role: "admin" });
+      login(token, authUser);
 
       toast.success("Logged in successfully");
       navigate("/");

@@ -21,6 +21,12 @@ api.interceptors.request.use(
   }
 );
 
+// Auth API
+export const AuthAPI = {
+  login: (data: { email: string; password: string }) =>
+    api.post('/auth/login', data),
+};
+
 // User Management API
 export const UserAPI = {
   list: (params?: { page?: number; limit?: number }) => 
