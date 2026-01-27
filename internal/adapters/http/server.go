@@ -48,7 +48,8 @@ func NewServer(
 	authHandler := handlers.NewAuthHandler(userRepo, cfg.API.JWTSecret, logger, metrics)
 	messageHandler := handlers.NewMessageHandler(emailRepo, blobStore, searchIdx, logger, metrics)
 	searchHandler := handlers.NewSearchHandler(emailRepo, searchIdx, logger, metrics)
-	adminHandler := handlers.NewAdminHandler(backupService, logger, metrics)
+	adminBackupHandler := handlers.NewAdminHandler(backupService, logger, metrics)
+	adminUserHandler := handlers.NewAdminUserHandler(userRepo, logger)
 	sendHandler, err := handlers.NewSendHandler(
 		queueRepo,
 		blobStore,
@@ -95,9 +96,20 @@ func NewServer(
 		}
 
 		// Admin endpoints
-		if backupService != nil {
-			r.Post("/api/v1/admin/backup", adminHandler.TriggerBackup)
-		}
+		r.Route("/api/v1/admin", func(r chi.Router) {
+			r.Use(middleware.RequireAdmin)
+
+			// Backup
+			if backupService != nil {
+				r.Post("/backup", adminBackupHandler.TriggerBackup)
+			}
+
+			// User Management
+			r.Get("/users", adminUserHandler.ListUsers)
+			r.Post("/users", adminUserHandler.CreateUser)
+			r.Delete("/users/{email}", adminUserHandler.DeleteUser)
+			r.Put("/users/{email}/role", adminUserHandler.UpdateRole)
+		})
 	})
 
 	// Health check endpoint (no auth)

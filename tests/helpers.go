@@ -86,7 +86,11 @@ func setupTestEnvironment(t *testing.T) *testEnvironment {
 	// Run migrations
 	migrationPath := "../internal/adapters/storage/sqlite/migrations/001_init.sql"
 	if err := conn.RunMigrations(migrationPath); err != nil {
-		t.Logf("Migration warning: %v", err) // Non-fatal
+		t.Logf("Migration warning (001): %v", err)
+	}
+	migrationPath002 := "../internal/adapters/storage/sqlite/migrations/002_add_user_roles.sql"
+	if err := conn.RunMigrations(migrationPath002); err != nil {
+		t.Logf("Migration warning (002): %v", err)
 	}
 
 	// Initialize repositories

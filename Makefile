@@ -14,6 +14,7 @@ build:
 	@echo "Building $(BINARY_NAME)..."
 	@mkdir -p $(BUILD_DIR)
 	go build -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
+	go build -o $(BUILD_DIR)/mailraven-cli ./cmd/mailraven-cli
 
 ## test: Run all tests
 test:

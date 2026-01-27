@@ -49,6 +49,12 @@ type UserRepository interface {
 
 	// UpdateLastLogin updates the LastLoginAt timestamp
 	UpdateLastLogin(ctx context.Context, email string) error
+
+	// New Management Methods
+	List(ctx context.Context, limit, offset int) ([]*domain.User, error)
+	Delete(ctx context.Context, email string) error
+	UpdatePassword(ctx context.Context, email, passwordHash string) error
+	UpdateRole(ctx context.Context, email string, role domain.Role) error
 }
 
 // QueueRepository defines storage operations for outbound email queue

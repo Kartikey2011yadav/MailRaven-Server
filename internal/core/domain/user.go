@@ -2,10 +2,18 @@ package domain
 
 import "time"
 
+type Role string
+
+const (
+	RoleUser  Role = "user"
+	RoleAdmin Role = "admin"
+)
+
 // User represents a mailbox owner with authentication credentials
 type User struct {
 	Email        string    // Email address (primary key)
 	PasswordHash string    // Bcrypt hash of password
+	Role         Role      // Access role
 	CreatedAt    time.Time // Account creation timestamp
 	LastLoginAt  time.Time // Most recent successful login
 }

@@ -23,13 +23,16 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 
 // Create creates a new user with hashed password
 func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
+	if user.Role == "" {
+		user.Role = domain.RoleUser
+	}
 	query := `
-		INSERT INTO users (email, password_hash, created_at, last_login_at)
-		VALUES (?, ?, ?, ?)
+		INSERT INTO users (email, password_hash, role, created_at, last_login_at)
+		VALUES (?, ?, ?, ?, ?)
 	`
 
 	_, err := r.db.ExecContext(ctx, query,
-		user.Email, user.PasswordHash, user.CreatedAt.Unix(), user.LastLoginAt.Unix(),
+		user.Email, user.PasswordHash, user.Role, user.CreatedAt.Unix(), user.LastLoginAt.Unix(),
 	)
 	if err != nil {
 		// Check for unique constraint violation
@@ -45,16 +48,17 @@ func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 // FindByEmail retrieves user by email address
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
 	query := `
-		SELECT email, password_hash, created_at, last_login_at
+		SELECT email, password_hash, role, created_at, last_login_at
 		FROM users
 		WHERE email = ?
 	`
 
 	user := &domain.User{}
 	var createdAtUnix, lastLoginAtUnix int64
+	var role sql.NullString
 
 	err := r.db.QueryRowContext(ctx, query, email).Scan(
-		&user.Email, &user.PasswordHash, &createdAtUnix, &lastLoginAtUnix,
+		&user.Email, &user.PasswordHash, &role, &createdAtUnix, &lastLoginAtUnix,
 	)
 
 	if err == sql.ErrNoRows {
@@ -66,6 +70,11 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*domain
 
 	user.CreatedAt = time.Unix(createdAtUnix, 0)
 	user.LastLoginAt = time.Unix(lastLoginAtUnix, 0)
+	if role.Valid {
+		user.Role = domain.Role(role.String)
+	} else {
+		user.Role = domain.RoleUser
+	}
 
 	return user, nil
 }
@@ -103,6 +112,93 @@ func (r *UserRepository) UpdateLastLogin(ctx context.Context, email string) erro
 		return ports.ErrStorageFailure
 	}
 	if rowsAffected == 0 {
+		return ports.ErrNotFound
+	}
+
+	return nil
+}
+
+// List users with pagination
+func (r *UserRepository) List(ctx context.Context, limit, offset int) ([]*domain.User, error) {
+	query := `
+		SELECT email, role, created_at, last_login_at
+		FROM users
+		ORDER BY email ASC
+		LIMIT ? OFFSET ?
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, limit, offset)
+	if err != nil {
+		return nil, ports.ErrStorageFailure
+	}
+	defer rows.Close()
+
+	var users []*domain.User
+	for rows.Next() {
+		var user domain.User
+		var createdAt, lastLoginAt int64
+		var role sql.NullString
+
+		if err := rows.Scan(&user.Email, &role, &createdAt, &lastLoginAt); err != nil {
+			continue
+		}
+
+		user.CreatedAt = time.Unix(createdAt, 0)
+		user.LastLoginAt = time.Unix(lastLoginAt, 0)
+		if role.Valid {
+			user.Role = domain.Role(role.String)
+		} else {
+			user.Role = domain.RoleUser
+		}
+
+		users = append(users, &user)
+	}
+
+	return users, nil
+}
+
+// Delete removes a user
+func (r *UserRepository) Delete(ctx context.Context, email string) error {
+	query := "DELETE FROM users WHERE email = ?"
+	result, err := r.db.ExecContext(ctx, query, email)
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return ports.ErrNotFound
+	}
+
+	return nil
+}
+
+// UpdatePassword updates a user's password
+func (r *UserRepository) UpdatePassword(ctx context.Context, email, passwordHash string) error {
+	query := "UPDATE users SET password_hash = ? WHERE email = ?"
+	result, err := r.db.ExecContext(ctx, query, passwordHash, email)
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return ports.ErrNotFound
+	}
+
+	return nil
+}
+
+// UpdateRole changes a user's role
+func (r *UserRepository) UpdateRole(ctx context.Context, email string, role domain.Role) error {
+	query := "UPDATE users SET role = ? WHERE email = ?"
+	result, err := r.db.ExecContext(ctx, query, string(role), email)
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
 		return ports.ErrNotFound
 	}
 
