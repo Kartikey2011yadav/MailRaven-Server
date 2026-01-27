@@ -35,7 +35,7 @@ description: "Task list template for feature implementation"
 - [x] T009 [US1] Create Auth Context/Provider in `client/src/contexts/AuthContext.tsx` handling JWT storage
 - [x] T010 [US1] Create Protected Routes wrapper in `client/src/components/ProtectedRoute.tsx`
 - [x] T011 [US1] Setup React Router in `client/src/App.tsx` with Login and Dashboard routes
-- [ ] T012 [P] [US1] Create Main Layout component (Sidebar + Header) in `client/src/layout/MainLayout.tsx`
+- [x] T012 [P] [US1] Create Main Layout component (Sidebar + Header) in `client/src/layout/MainLayout.tsx`
 
 ## Phase 3: User Story 1 (Admin Dashboard & System Stats)
 
