@@ -36,4 +36,16 @@ export const UserAPI = {
     api.delete(`/admin/users/${email}`),
 };
 
+// Domain Management API
+export const DomainAPI = {
+  list: (params?: { page?: number; limit?: number }) => 
+    api.get<{ domains: any[]; total: number } | any[]>('/admin/domains', { params }),
+  
+  create: (name: string) => 
+    api.post('/admin/domains', { name }),
+  
+  delete: (domain: string) => 
+    api.delete(`/admin/domains/${domain}`),
+};
+
 export default api;

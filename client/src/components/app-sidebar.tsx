@@ -36,14 +36,21 @@ const data = {
   ],
   navMain: [
     {
-      title: "Dashboard",
-      url: "/",
+      title: "System",
+      url: "#",
       icon: SquareTerminal,
-      isActive: true,
       items: [
         {
-          title: "Overview",
+          title: "Dashboard",
           url: "/",
+        },
+        {
+          title: "Domains",
+          url: "/domains",
+        },
+        {
+          title: "Users",
+          url: "/users",
         },
       ],
     },

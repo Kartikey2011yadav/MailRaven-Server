@@ -9,9 +9,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CreateUserDialog } from "@/components/users/CreateUserDialog"; // Import new component
+import { CreateUserDialog } from "@/components/users/CreateUserDialog";
+import { DeleteUserDialog } from "@/components/users/DeleteUserDialog";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Shield, User } from "lucide-react";
+import { Loader2, Plus, Shield, User } from "lucide-react";
 
 interface User {
   email: string;
@@ -59,17 +60,6 @@ export default function Users() {
   useEffect(() => {
     fetchUsers();
   }, []);
-
-  const handleDelete = async (email: string) => {
-    if (!confirm(`Are you sure you want to delete ${email}?`)) return;
-    try {
-      await UserAPI.delete(email);
-      toast.success("User deleted");
-      fetchUsers();
-    } catch (error) {
-      toast.error("Failed to delete user");
-    }
-  };
 
   return (
     <div className="p-8 space-y-8">
@@ -122,14 +112,11 @@ export default function Users() {
                     {user.last_login_at ? new Date(user.last_login_at).toLocaleString() : "Never"}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(user.email)}
-                      disabled={user.role === "ADMIN"} // Prevent deleting self/last admin logic might be needed
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    <DeleteUserDialog 
+                      email={user.email} 
+                      onSuccess={fetchUsers} 
+                      disabled={user.role === "ADMIN"} // Prevent deleting admins for safety (optional logic)
+                    />
                   </TableCell>
                 </TableRow>
               ))

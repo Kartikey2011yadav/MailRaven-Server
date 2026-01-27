@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Users from "@/pages/Users";
+import Domains from "@/pages/Domains"; // Import Domains page
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import MainLayout from "@/layout/MainLayout";
 import "./App.css";
@@ -21,6 +22,7 @@ function App() {
               <Route element={<MainLayout />}>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/users" element={<Users />} />
+                <Route path="/domains" element={<Domains />} />
               </Route>
             </Route>
 

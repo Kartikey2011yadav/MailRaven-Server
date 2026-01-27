@@ -53,7 +53,7 @@ description: "Task list template for feature implementation"
 - [x] T017 [US2] Create User API client functions (List, Create, Delete, Update Role) in `client/src/lib/api.ts`
 - [x] T018 [US2] Build Users List Table component in `client/src/pages/Users.tsx` (using shadcn Table)
 - [x] T019 [US2] Create "Add User" Dialog component in `client/src/components/users/CreateUserDialog.tsx`
-- [ ] T020 [P] [US2] Create "Delete User" Confirmation Dialog in `client/src/components/users/DeleteUserDialog.tsx`
+- [x] T020 [P] [US2] Create "Delete User" Confirmation Dialog in `client/src/components/users/DeleteUserDialog.tsx`
 
 ## Phase 5: User Story 3 (Domain Management)
 
@@ -69,9 +69,9 @@ description: "Task list template for feature implementation"
 - [x] T027 [US3] Register accessible domain routes in `internal/adapters/http/server.go`
 
 ### Frontend Implementation
-- [ ] T028 [P] [US3] Create Domain API client functions in `client/src/lib/api.ts`
-- [ ] T029 [P] [US3] Build Domains Page in `client/src/pages/Domains.tsx`
-- [ ] T030 [P] [US3] Create "Add Domain" Dialog in `client/src/components/domains/CreateDomainDialog.tsx`
+- [x] T028 [P] [US3] Create Domain API client functions in `client/src/lib/api.ts`
+- [x] T029 [P] [US3] Build Domains Page in `client/src/pages/Domains.tsx`
+- [x] T030 [P] [US3] Create "Add Domain" Dialog in `client/src/components/domains/CreateDomainDialog.tsx`
 
 ## Phase 6: Polish & Cross-Cutting
 
