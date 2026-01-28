@@ -31,8 +31,15 @@ Authorization: Bearer <token>
 - `PATCH /messages/{id}`: Update specific fields (e.g., mark as read/archived).
 
 ### Search
-- `GET /search`: dedicated full-text search endpoint utilizing FTS5.
+- `GET /search`: dedicated full-text search endpoint utilizing FTS5 or Postgres TSVECTOR.
   - Query parameters: `q` (search term), `from`, `has_attachment`.
+
+### Management (Web Admin)
+- `GET /admin/users`: List users.
+- `POST /admin/users`: Create user.
+- `GET /admin/domains`: List domains.
+- `POST /admin/domains`: Add domain.
+- `GET /admin/stats/overview`: Get system statistics.
 
 ### Monitoring
 - `GET /metrics`: Prometheus formatted metrics (System health, Queue depth, Inbound/Outbound counts).

@@ -9,9 +9,18 @@ MailRaven is configured via a YAML file, typically located at `/etc/mailraven/co
 | `domain` | string | The primary domain for the mail server (e.g., `example.com`). |
 | `smtp` | object | SMTP server settings. |
 | `api` | object | API server settings. |
-| `storage` | object | Storage paths. |
-| `dkim` | object | DKIM signing configuration. |
-| `tls` | object | TSL/SSL configuration (ACME). |
+## Storage
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `driver` | string | `sqlite` | Database driver. Options: `sqlite`, `postgres`. |
+| `db_path` | string | - | Path to SQLite DB file (required if driver is `sqlite`). |
+| `dsn` | string | - | Postgres connection string (required if driver is `postgres`). |
+| `blob_path` | string | - | Directory to store email bodies (blobs). |
+
+## DKIM
+
+| Key | Type | Default | Description |
 | `spam` | object | Spam protection settings. |
 | `backup` | object | Backup settings. |
 | `logging` | object | Logging configuration. |

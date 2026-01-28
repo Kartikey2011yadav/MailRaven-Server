@@ -31,7 +31,7 @@ graph TD
 ### 1. Interface Layer (Primary Adapters)
 - **SMTP Listener**: Listens on port 25/587. Handles the SMTP protocol state machine (RFC 5321).
   - Implementation: `internal/adapters/smtp`
-- **HTTP API**: Exposes endpoints for email retrieval, sending, and management.
+- **HTTP API**: Exposes endpoints for email retrieval, sending, domain management, and system stats.
   - Implementation: `internal/adapters/http`
   - Authentication: JWT-based.
 
@@ -44,10 +44,11 @@ graph TD
 
 ### 3. Infrastructure Layer (Secondary Adapters)
 - **Storage**:
-  - **Metadata**: Stored in SQLite.
+  - **Metadata**: Stored in SQLite (embedded) OR PostgreSQL (production scale).
   - **Blobs (Email Bodies)**: Stored in the filesystem, gzip compressed, partitioned by date (`YYYY/MM/DD`).
 - **Search**:
-  - Implemented using SQLite's FTS5 extension.
+  - **SQLite**: FTS5 extension.
+  - **PostgreSQL**: TSVECTOR full-text search.
   - Indexes headers, body snippets, and recipients.
 
 ## Key Decisions

@@ -277,12 +277,14 @@ dkim:
 
 ## Documentation
 
-- [Feature Specification](specs/001-mobile-email-server/spec.md)
-- [Implementation Plan](specs/001-mobile-email-server/plan.md)
-- [Architecture Research](specs/001-mobile-email-server/research.md)
-- [Data Model](specs/001-mobile-email-server/data-model.md)
-- [REST API Contract](specs/001-mobile-email-server/contracts/rest-api.yaml)
-- [Quickstart Guide](specs/001-mobile-email-server/quickstart.md)
+- [Feature Specification](docs/ARCHITECTURE.md) - High level design.
+- [Production Guide](docs/PRODUCTION.md) - Postgres, Docker, and deployment.
+- [Web Admin Guide](docs/WebAdmin.md) - Using the dashboard.
+- [Mobile API Spec](docs/API.md) - Endpoints for client developers.
+- [Architecture](docs/ARCHITECTURE.md) - Deep dive into internal design.
+- [Configuration](docs/CONFIGURATION.md) - Full config reference.
+- [CLI Reference](docs/CLI.md) - Command line tools.
+- [Testing](docs/TESTING.md) - How to run tests.
 
 ## Constitution
 

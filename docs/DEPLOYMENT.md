@@ -1,12 +1,41 @@
 # Deployment Guide
 
-**Current Status**: MailRaven is currently deployed via a binary and a systemd service. **Docker support is not yet implemented.**
+**Current Status**: MailRaven supports deployment via **Docker**, **SystemdService**, or standalone binary.
 
 ## Prerequisites
 
-- **OS**: Linux (amd64/arm64) or Windows.
-- **Dependencies**: None (Static binary).
+- **OS**: Linux (amd64/arm64) or Windows (amd64).
 - **DNS**: properly configured MX records, SPF, and DKIM TXT records for your domain.
+
+## Automated Setup (Recommended)
+
+MailRaven provides cross-platform setup scripts that build the backend, frontend, and prepare for deployment.
+
+### Windows (PowerShell)
+```powershell
+.\scripts\setup.ps1
+```
+
+### Linux/macOS (Bash)
+```bash
+./scripts/setup.sh
+```
+
+## Docker Deployment
+
+MailRaven includes specific Docker support with `docker-compose.yml`.
+
+1. **Build and Run**:
+   ```bash
+   docker-compose up -d
+   ```
+   This will start:
+   - MailRaven Backend
+   - MailRaven Frontend (Nginx/Vite Preview)
+   - PostgreSQL (if configured)
+
+2. **Configuration**: 
+   Ensure `config.yaml` is mounted or configured correctly in `docker-compose.yml`.
 
 ## Manual Deployment Steps
 
