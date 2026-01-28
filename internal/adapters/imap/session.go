@@ -2,10 +2,13 @@ package imap
 
 import (
 	"bufio"
+	"crypto/tls"
+	"fmt"
 	"net"
 	"strings"
 
 	"github.com/Kartikey2011yadav/mailraven-server/internal/config"
+	"github.com/Kartikey2011yadav/mailraven-server/internal/core/ports"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/observability"
 )
 
@@ -19,22 +22,25 @@ const (
 )
 
 type Session struct {
-	conn   net.Conn
-	state  State
-	config config.IMAPConfig
-	logger *observability.Logger
-	reader *bufio.Reader
-	writer *bufio.Writer
+	conn     net.Conn
+	state    State
+	config   config.IMAPConfig
+	logger   *observability.Logger
+	userRepo ports.UserRepository
+	reader   *bufio.Reader
+	writer   *bufio.Writer
+	isTLS    bool
 }
 
-func NewSession(conn net.Conn, cfg config.IMAPConfig, logger *observability.Logger) *Session {
+func NewSession(conn net.Conn, cfg config.IMAPConfig, logger *observability.Logger, userRepo ports.UserRepository) *Session {
 	return &Session{
-		conn:   conn,
-		state:  StateNotAuthenticated,
-		config: cfg,
-		logger: logger,
-		reader: bufio.NewReader(conn),
-		writer: bufio.NewWriter(conn),
+		conn:     conn,
+		state:    StateNotAuthenticated,
+		config:   cfg,
+		logger:   logger,
+		userRepo: userRepo,
+		reader:   bufio.NewReader(conn),
+		writer:   bufio.NewWriter(conn),
 	}
 }
 
@@ -77,4 +83,24 @@ func (s *Session) Serve() {
 func (s *Session) send(msg string) {
 	s.writer.WriteString(msg + "\r\n")
 	s.writer.Flush()
+}
+
+func (s *Session) upgradeToTLS() error {
+	cert, err := tls.LoadX509KeyPair(s.config.TLSCert, s.config.TLSKey)
+	if err != nil {
+		return fmt.Errorf("failed to load keypair: %w", err)
+	}
+
+	config := &tls.Config{Certificates: []tls.Certificate{cert}}
+	tlsConn := tls.Server(s.conn, config)
+
+	if err := tlsConn.Handshake(); err != nil {
+		return fmt.Errorf("tls handshake failed: %w", err)
+	}
+
+	s.conn = tlsConn
+	s.reader = bufio.NewReader(tlsConn)
+	s.writer = bufio.NewWriter(tlsConn)
+	s.isTLS = true
+	return nil
 }

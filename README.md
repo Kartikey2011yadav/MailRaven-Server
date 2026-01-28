@@ -8,7 +8,8 @@ A modern, modular email server built with mobile-first architecture. MailRaven i
 - **Web Admin UI**: React-based dashboard for managing domains, users, and system stats
 - **Reliable Email Reception**: SMTP server with SPF/DKIM/DMARC validation
 - **Production Ready**: Docker support, Postgres or SQLite backend, Automatic HTTPS, and Hot Backups
-- **Spam Protection**: DNSBL integration and connection Rate Limiting
+- **Spam Protection**: Rspamd integration, DNSBL checking, and Connection Rate Limiting
+- **IMAP4rev1 Support**: Standard IMAP listener for desktop/mobile client compatibility
 - **Full-Text Search**: SQLite FTS5 or Postgres TSVECTOR for fast message search
 - **Zero Data Loss**: Atomic writes with fsync before SMTP acknowledgment
 - **CGO-Free**: Pure Go implementation for simple deployment
@@ -32,7 +33,7 @@ MailRaven follows the Ports and Adapters (Hexagonal) pattern with 5 distinct lay
 ```
 
 **Current Implementation**:
-- **Listener**: SMTP (RFC 5321)
+- **Listener**: SMTP (RFC 5321), IMAP4rev1 (RFC 3501)
 - **Storage**: SQLite (default) or PostgreSQL
 - **Search**: SQLite FTS5 or Postgres TSVECTOR with BM25 ranking
 - **API**: REST/JSON with JWT authentication

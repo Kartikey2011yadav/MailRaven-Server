@@ -56,17 +56,17 @@ Goal: Users can authenticate via LOGIN command and establish a session.
 Priority: P2
 Independent Test: `A01 LOGIN user pass` returns OK; `A02 LOGIN bad pass` returns NO.
 
-- [ ] T014 [US4] Implement `STARTTLS` command handling in `internal/adapters/imap/commands.go`.
-- [ ] T015 [US4] Implement `LOGIN` command handler using `UserRepository` in `internal/adapters/imap/commands.go`.
-- [ ] T016 [US4] Update Session logic to transition state upon successful login in `internal/adapters/imap/session.go`.
+- [x] T014 [US4] Implement `STARTTLS` command handling in `internal/adapters/imap/commands.go`.
+- [x] T015 [US4] Implement `LOGIN` command handler using `UserRepository` in `internal/adapters/imap/commands.go`.
+- [x] T016 [US4] Update Session logic to transition state upon successful login in `internal/adapters/imap/session.go`.
 
 ## Phase 7: Polish & Cleanup
 
 Goal: Ensure code quality and robust testing.
 
-- [ ] T017 [P] Create unit tests for Rspamd response parsing in `internal/adapters/spam/rspamd_test.go`.
-- [ ] T018 [P] Create unit tests for IMAP command parsing in `internal/adapters/imap/parser_test.go`.
-- [ ] T019 Update `README.md` with new Rspamd and IMAP configuration details.
+- [x] T017 [P] Create unit tests for Rspamd response parsing in `internal/adapters/spam/rspamd_test.go`.
+- [x] T018 [P] Create unit tests for IMAP command parsing in `internal/adapters/imap/parser_test.go`.
+- [x] T019 Update `README.md` with new Rspamd and IMAP configuration details.
 
 ## Dependencies
 

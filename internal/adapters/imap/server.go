@@ -6,19 +6,22 @@ import (
 	"net"
 
 	"github.com/Kartikey2011yadav/mailraven-server/internal/config"
+	"github.com/Kartikey2011yadav/mailraven-server/internal/core/ports"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/observability"
 )
 
 type Server struct {
 	config   config.IMAPConfig
 	logger   *observability.Logger
+	userRepo ports.UserRepository
 	listener net.Listener
 }
 
-func NewServer(cfg config.IMAPConfig, logger *observability.Logger) *Server {
+func NewServer(cfg config.IMAPConfig, logger *observability.Logger, userRepo ports.UserRepository) *Server {
 	return &Server{
-		config: cfg,
-		logger: logger,
+		config:   cfg,
+		logger:   logger,
+		userRepo: userRepo,
 	}
 }
 
@@ -51,6 +54,6 @@ func (s *Server) Start(ctx context.Context) error {
 }
 
 func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
-	session := NewSession(conn, s.config, s.logger)
+	session := NewSession(conn, s.config, s.logger, s.userRepo)
 	session.Serve()
 }

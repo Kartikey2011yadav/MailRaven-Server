@@ -1,6 +1,7 @@
 package imap
 
 import (
+	"context"
 	"fmt"
 )
 
@@ -49,6 +50,12 @@ func (s *Session) handleLogin(cmd *Command) {
 		return
 	}
 
+	// Security check: Don't allow LOGIN on insecure connection unless explicitly allowed
+	if !s.isTLS && !s.config.AllowInsecureAuth {
+		s.send(fmt.Sprintf("%s NO [ALERT] LOGIN failed: privacy required (TLS needed)", cmd.Tag))
+		return
+	}
+
 	if len(cmd.Args) != 2 {
 		s.send(fmt.Sprintf("%s BAD Invalid arguments", cmd.Tag))
 		return
@@ -57,18 +64,32 @@ func (s *Session) handleLogin(cmd *Command) {
 	username := cmd.Args[0]
 	password := cmd.Args[1]
 
-	// TODO: Validate against UserRepository
-	// For groundwork, we'll accept "admin/password"
-	if username == "admin" && password == "password" {
-		s.state = StateAuthenticated
-		s.send(fmt.Sprintf("%s OK LOGIN completed", cmd.Tag))
-	} else {
-		s.send(fmt.Sprintf("%s NO Authentication failed", cmd.Tag))
+	user, err := s.userRepo.Authenticate(context.Background(), username, password)
+	if err != nil {
+		s.logger.Warn("IMAP login failed", "user", username, "error", err)
+		s.send(fmt.Sprintf("%s NO [AUTHENTICATIONFAILED] Authentication failed", cmd.Tag))
+		return
 	}
+
+	s.state = StateAuthenticated
+	s.logger.Info("IMAP login success", "user", user.Email)
+	s.send(fmt.Sprintf("%s OK [CAPABILITY IMAP4rev1] Logged in", cmd.Tag))
 }
 
 func (s *Session) handleStartTLS(cmd *Command) {
 	// RFC 3501 6.2.1
-	// Requires refactoring Session to handle TLS upgrade on conn
-	s.send(fmt.Sprintf("%s NO STARTTLS not implemented yet", cmd.Tag))
+	if s.isTLS {
+		s.send(fmt.Sprintf("%s NO TLS already active", cmd.Tag))
+		return
+	}
+
+	s.send(fmt.Sprintf("%s OK Begin TLS negotiation now", cmd.Tag))
+
+	if err := s.upgradeToTLS(); err != nil {
+		s.logger.Error("TLS upgrade failed", "error", err)
+		// Connection usually dropped here by client, or we should close it
+		s.conn.Close()
+		return
+	}
+	s.logger.Info("IMAP session upgraded to TLS")
 }
