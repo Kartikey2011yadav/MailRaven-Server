@@ -34,7 +34,8 @@ func NewLogger(level, format string) *Logger {
 	if format == "json" {
 		handler = slog.NewJSONHandler(os.Stdout, opts)
 	} else {
-		handler = slog.NewTextHandler(os.Stdout, opts)
+		// specific "console" format or default "text" now uses colored output
+		handler = NewConsoleHandler(os.Stdout, opts)
 	}
 
 	return &Logger{

@@ -39,7 +39,9 @@ type APIConfig struct {
 
 // StorageConfig contains database and blob storage settings
 type StorageConfig struct {
-	DBPath   string `yaml:"db_path"`   // SQLite database file path
+	Driver   string `yaml:"driver"`    // "sqlite" or "postgres" (default: "sqlite")
+	DBPath   string `yaml:"db_path"`   // SQLite: database file path
+	DSN      string `yaml:"dsn"`       // Postgres: connection string (e.g. "postgres://user:pass@localhost:5432/mailraven")
 	BlobPath string `yaml:"blob_path"` // Blob storage directory path
 }
 

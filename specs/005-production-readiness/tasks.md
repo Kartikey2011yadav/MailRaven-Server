@@ -9,21 +9,21 @@
 - [ ] Verify logs using `go run`.
 
 ### 2. PostgreSQL Implementation
-- [ ] Add `github.com/jackc/pgx/v5` dependency.
-- [ ] Create `internal/adapters/storage/postgres/connection.go`.
-- [ ] Implement `UserRepository`, `DomainRepository` in `postgres` package.
-- [ ] Create SQL migrations in `internal/adapters/storage/postgres/migrations/`.
-- [ ] Update `internal/config/config.go` to support `Storage.Driver` ("sqlite" | "postgres").
-- [ ] Update `cmd/mailraven/serve.go` to switch factory based on config.
+- [x] Add `github.com/jackc/pgx/v5` dependency.
+- [x] Create `internal/adapters/storage/postgres/connection.go`.
+- [x] Implement `UserRepository`, `DomainRepository` in `postgres` package.
+- [x] Create SQL migrations in `internal/adapters/storage/postgres/migrations/`.
+- [x] Update `internal/config/config.go` to support `Storage.Driver` ("sqlite" | "postgres").
+- [x] Update `cmd/mailraven/serve.go` to switch factory based on config.
 
 ### 3. Setup Scripts (Cross-Platform)
-- [ ] Create `scripts/setup.sh` (Bash) with:
+- [x] Create `scripts/setup.sh` (Bash) with:
     - OS detection (Linux/Mac).
     - Go/Node checks.
     - Build commands.
-- [ ] Create `scripts/setup.ps1` (PowerShell) for Windows.
-- [ ] Create `scripts/check.sh` and `scripts/check.ps1` for environment validation.
-- [ ] Verify scripts on local environment.
+- [x] Create `scripts/setup.ps1` (PowerShell) for Windows.
+- [x] Create `scripts/check.sh` and `scripts/check.ps1` for environment validation.
+- [x] Verify scripts on local environment.
 
 ### 4. Docker Improvements
 - [ ] Refactor `docker-compose.yml`:
