@@ -17,14 +17,15 @@ This document outlines the functional and architectural differences between Mail
 |---------|------------------|------------|-------|
 | **SMTP (Inbound)** | ✅ Implemented | ✅ Implemented | Functionally equivalent. |
 | **SMTP (Outbound)** | ✅ Implemented (Queued) | ✅ Implemented | MailRaven uses `SKIP LOCKED` for Postgres queue. |
-| **IMAP4** | ❌ Not Planned | ✅ Full Support | Intentional omission (Mobile-first). |
+| **IMAP4** | ❌ Planned (P3) | ✅ Full Support | Intentional omission for MVP, but required for adoption. |
 | **JMAP** | ❌ Custom API | ✅ Full Support | MailRaven uses a simplified REST API. |
 | **DKIM/SPF/DMARC** | ✅ Implemented | ✅ Implemented | Parity achieved. |
-| **MTA-STS** | ❌ Missing | ✅ Implemented | Future roadmap item. |
-| **DANE** | ❌ Missing | ✅ Implemented | Future roadmap item. |
-| **Webmail** | ✅ React Client | ✅ Built-in | MailRaven offers a dedicated SPA. |
+| **MTA-STS** | ❌ Planned (P3) | ✅ Implemented | Future roadmap item. |
+| **DANE** | ❌ Planned (P3) | ✅ Implemented | Future roadmap item. |
+| **Spam Filtering** | 🟡 Basic (DNSBL) | ✅ Advanced | Missing Bayesian/Content filtering. |
+| **Webmail** | ✅ React Client (Admin) | ✅ Built-in | MailRaven Admin UI is active. |
 | **Multi-Domain** | ✅ Supported | ✅ Supported | Parity achieved. |
-| **Account Mgmt** | ✅ Admin API | ✅ Web Admin | Parity achieved. |
+| **Account Mgmt** | ✅ Web Admin | ✅ Web Admin | Parity achieved. |
 
 ## Conclusion
 

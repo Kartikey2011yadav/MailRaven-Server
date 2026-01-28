@@ -28,19 +28,17 @@ This document analyzes the differences between our project (**MailRaven**) and t
 
 Based on the analysis of `mox`, here is the prioritized list of features we lack:
 
-### 1. User Interface & Administration (High Priority)
-- **Web Admin**: Managing users via SQL or Config files is error-prone. A simple `/admin` React/Vue app talking to our API would be beneficial.
-- **Webmail**: A simple reference implementation of a webmail client using our JSON API.
+### 1. Protocol Compatibility & Security (High Priority)
+- **IMAP Support**: Required for compatibility with 99% of existing email clients.
+- **Advanced Security**: DANE, MTA-STS, and Reporting (TLS-RPT).
+- **Spam Filtering**: Bayesian filtering (Rspamd integration).
 
-### 2. Protocol Compatibility
-- **IMAP Support**: While not our focus, lacking IMAP makes us incompatible with 99% of existing email clients (Outlook, Apple Mail). Standard adoption requires this.
-
-### 3. Advanced Security
-- **Content Filtering**: Bayesian spam filtering (Rspamd integration or internal).
-- **MTA-STS / DANE**: Advanced transport security policies.
-- **Observability**: Structured logging (`mlog`) deep integration.
+### 2. Client Ecosystem
+- **KMP Mobile Client**: A reference mobile application (Kotlin Multiplatform) consuming our custom API.
 
 ### COMPLETED (Moved from Missing)
+- ~~**Storage**~~: PostgreSQL support implemented.
+- ~~**Administration**~~: Web Admin UI implemented.
 - ~~**Docker Support**~~: `Dockerfile` and `docker-compose.yml` implemented.
 - ~~**Maintenance Scripts**~~: Backup service and scripts implemented.
 - ~~**Automatic TLS**~~: ACME support implemented.
