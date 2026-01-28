@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"golang.org/x/crypto/bcrypt"
@@ -95,4 +96,119 @@ func (r *UserRepository) Authenticate(ctx context.Context, email, password strin
 	}
 
 	return user, nil
+}
+
+func (r *UserRepository) UpdateLastLogin(ctx context.Context, email string) error {
+	query := `UPDATE users SET last_login_at = $1 WHERE email = $2`
+	_, err := r.db.ExecContext(ctx, query, time.Now(), email)
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+	return nil
+}
+
+func (r *UserRepository) List(ctx context.Context, limit, offset int) ([]*domain.User, error) {
+	query := `
+		SELECT email, role, created_at, last_login_at 
+		FROM users 
+		ORDER BY created_at DESC 
+		LIMIT $1 OFFSET $2
+	`
+	rows, err := r.db.QueryContext(ctx, query, limit, offset)
+	if err != nil {
+		return nil, ports.ErrStorageFailure
+	}
+	defer rows.Close()
+
+	var users []*domain.User
+	for rows.Next() {
+		u := &domain.User{}
+		var role sql.NullString
+		if err := rows.Scan(&u.Email, &role, &u.CreatedAt, &u.LastLoginAt); err != nil {
+			return nil, ports.ErrStorageFailure
+		}
+		if role.Valid {
+			u.Role = domain.Role(role.String)
+		} else {
+			u.Role = domain.RoleUser
+		}
+		users = append(users, u)
+	}
+	return users, nil
+}
+
+func (r *UserRepository) Delete(ctx context.Context, email string) error {
+	query := `DELETE FROM users WHERE email = $1`
+	res, err := r.db.ExecContext(ctx, query, email)
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+	if rows == 0 {
+		return ports.ErrNotFound
+	}
+	return nil
+}
+
+func (r *UserRepository) UpdatePassword(ctx context.Context, email, passwordHash string) error {
+	query := `UPDATE users SET password_hash = $1 WHERE email = $2`
+	res, err := r.db.ExecContext(ctx, query, passwordHash, email)
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+	if rows == 0 {
+		return ports.ErrNotFound
+	}
+	return nil
+}
+
+func (r *UserRepository) UpdateRole(ctx context.Context, email string, role domain.Role) error {
+	query := `UPDATE users SET role = $1 WHERE email = $2`
+	res, err := r.db.ExecContext(ctx, query, role, email)
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+	if rows == 0 {
+		return ports.ErrNotFound
+	}
+	return nil
+}
+
+func (r *UserRepository) Count(ctx context.Context) (map[string]int64, error) {
+	stats := make(map[string]int64)
+
+	// Total count
+	var total int64
+	if err := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users").Scan(&total); err != nil {
+		return nil, ports.ErrStorageFailure
+	}
+	stats["total"] = total
+
+	// Count by role? Interface just asks for map. Usually implemented as such.
+	rows, err := r.db.QueryContext(ctx, "SELECT role, COUNT(*) FROM users GROUP BY role")
+	if err != nil {
+		return nil, ports.ErrStorageFailure
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var role string
+		var count int64
+		if err := rows.Scan(&role, &count); err == nil {
+			stats[role] = count
+		}
+	}
+
+	return stats, nil
 }

@@ -1,19 +1,54 @@
 services:
-  mailraven:
+  # Backend Service (Go)
+  backend:
     build:
       context: .
       dockerfile: build/Dockerfile
-    container_name: mailraven
+      target: production
+    container_name: mailraven-backend
     restart: unless-stopped
     ports:
       - "25:25"      # SMTP
-      - "80:80"      # HTTP (ACME)
-      - "443:443"    # HTTPS (API)
-      - "8080:8080"  # Dedicated Metric/Alt Port (optional)
+      - "8080:8080"  # API
     volumes:
       - ./data:/data
-      - ./deployment/config.example.yaml:/app/config.yaml
+      - ./config.yaml:/etc/mailraven/config.yaml
     environment:
-      - MAILRAVEN_DOMAIN=localhost
-      - MAILRAVEN_DB_PATH=/data/mailraven.db
-      - MAILRAVEN_BLOB_PATH=/data/blobs
+      - MAILRAVEN_STORAGE_DRIVER=postgres
+      - MAILRAVEN_STORAGE_DSN=postgres://mailraven:secretpassword@db:5432/mailraven?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Database Service (PostgreSQL)
+  db:
+    image: postgres:15-alpine
+    container_name: mailraven-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mailraven
+      POSTGRES_PASSWORD: secretpassword
+      POSTGRES_DB: mailraven
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mailraven"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Frontend Service (Nginx serving React)
+  frontend:
+    build:
+      context: .
+      dockerfile: build/Dockerfile.frontend
+    container_name: mailraven-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

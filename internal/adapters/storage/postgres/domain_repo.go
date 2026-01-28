@@ -141,3 +141,13 @@ func (r *DomainRepository) Delete(ctx context.Context, name string) error {
 	}
 	return nil
 }
+
+func (r *DomainRepository) Exists(ctx context.Context, name string) (bool, error) {
+	query := `SELECT EXISTS(SELECT 1 FROM domains WHERE name = $1)`
+	var exists bool
+	err := r.db.QueryRowContext(ctx, query, name).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}

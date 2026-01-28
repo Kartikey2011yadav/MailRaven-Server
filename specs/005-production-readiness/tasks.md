@@ -3,10 +3,10 @@
 ## Phase 2: Implementation
 
 ### 1. Backend Logging Upgrade
-- [ ] Create `internal/observability/console_handler.go`.
-- [ ] Implement `Handle` method with ANSI color logic.
-- [ ] Update `cmd/mailraven/serve.go` to use the new handler in "Dev" mode.
-- [ ] Verify logs using `go run`.
+- [x] Create `internal/observability/console_handler.go`.
+- [x] Implement `Handle` method with ANSI color logic.
+- [x] Update `cmd/mailraven/serve.go` to use the new handler in "Dev" mode.
+- [x] Verify logs using `go run`.
 
 ### 2. PostgreSQL Implementation
 - [x] Add `github.com/jackc/pgx/v5` dependency.
@@ -26,16 +26,16 @@
 - [x] Verify scripts on local environment.
 
 ### 4. Docker Improvements
-- [ ] Refactor `docker-compose.yml`:
+- [x] Refactor `docker-compose.yml`:
     - Service: `backend` (Go)
     - Service: `frontend` (Nginx/Vite preview)
     - Service: `db` (Postgres - optional profile)
-- [ ] Update `Dockerfile` to be multi-stage (Build Go + Build React -> Distroless image).
+- [x] Update `Dockerfile` to be multi-stage (Build Go + Build React -> Distroless image).
 
 ### 5. Documentation & Analysis
-- [ ] Create `docs/PRODUCTION.md` (Cleanup `quickstart.md` content).
-- [ ] Perform Gap Analysis vs Mox and write `docs/MOX_GAP_ANALYSIS.md`.
-- [ ] Write `docs/BACKUP_ANALYSIS_PROMPT.md` for the user.
+- [x] Create `docs/PRODUCTION.md` (Cleanup `quickstart.md` content).
+- [x] Perform Gap Analysis vs Mox and write `docs/MOX_GAP_ANALYSIS.md`.
+- [x] Write `docs/BACKUP_ANALYSIS_PROMPT.md` for the user.
 
 ### 6. Verification
 - [ ] Run `check.sh`.
