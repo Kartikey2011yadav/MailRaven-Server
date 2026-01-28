@@ -5,10 +5,11 @@ A modern, modular email server built with mobile-first architecture. MailRaven i
 ## Features
 
 - **Mobile-First API**: RESTful JSON API with pagination, compression, and delta sync
+- **Web Admin UI**: React-based dashboard for managing domains, users, and system stats
 - **Reliable Email Reception**: SMTP server with SPF/DKIM/DMARC validation
-- **Production Ready**: Docker support, Automatic HTTPS (Let's Encrypt), and Hot Backups
+- **Production Ready**: Docker support, Postgres or SQLite backend, Automatic HTTPS, and Hot Backups
 - **Spam Protection**: DNSBL integration and connection Rate Limiting
-- **Full-Text Search**: SQLite FTS5 for fast message search on mobile devices
+- **Full-Text Search**: SQLite FTS5 or Postgres TSVECTOR for fast message search
 - **Zero Data Loss**: Atomic writes with fsync before SMTP acknowledgment
 - **CGO-Free**: Pure Go implementation for simple deployment
 
@@ -24,7 +25,7 @@ MailRaven follows the Ports and Adapters (Hexagonal) pattern with 5 distinct lay
 ├─────────────────────────────────────────────────┤
 │  Storage Layer (Repository Interfaces)          │
 ├─────────────────────────────────────────────────┤
-│  Search Layer (FTS5)                            │
+│  Search Layer (FTS5 / TSVECTOR)                 │
 ├─────────────────────────────────────────────────┤
 │  API Layer (REST/JSON for Mobile Clients)      │
 └─────────────────────────────────────────────────┘
@@ -32,14 +33,15 @@ MailRaven follows the Ports and Adapters (Hexagonal) pattern with 5 distinct lay
 
 **Current Implementation**:
 - **Listener**: SMTP (RFC 5321)
-- **Storage**: SQLite + File system with gzip compression
-- **Search**: SQLite FTS5 with BM25 ranking
+- **Storage**: SQLite (default) or PostgreSQL
+- **Search**: SQLite FTS5 or Postgres TSVECTOR with BM25 ranking
 - **API**: REST/JSON with JWT authentication
+- **Frontend**: React + Vite (Web Admin)
 
 **Designed for Future Migration**:
 - Listener: IMAP/POP3 support
-- Storage: PostgreSQL + S3
-- Search: Elasticsearch
+- Storage: S3 (Object Storage)
+- Search: Elasticsearch (Optional for massive scale)
 
 ## Quick Start
 
@@ -51,7 +53,21 @@ MailRaven follows the Ports and Adapters (Hexagonal) pattern with 5 distinct lay
 
 ### Installation
 
-#### Option 1: Build from Source
+#### Option 1: Development Setup (Recommended)
+
+MailRaven includes cross-platform setup scripts that build the Backend (Go) and Frontend (React).
+
+**Windows (PowerShell):**
+```powershell
+.\scripts\setup.ps1
+```
+
+**Linux/macOS (Bash):**
+```bash
+./scripts/setup.sh
+```
+
+#### Option 2: Build from Source
 
 ```bash
 # Clone the repository
@@ -65,11 +81,23 @@ go build -o mailraven ./cmd/mailraven
 sudo cp mailraven /usr/local/bin/
 ```
 
-#### Option 3: Docker (Recommended)
+#### Option 3: Docker Information
+
+We provide a multi-stage `Dockerfile` and `docker-compose.yml` for easy deployment.
 
 ```bash
-# Start with docker-compose
+# Start Backend, Frontend, and PostgreSQL
 docker-compose up -d
+```
+
+### Configuration
+
+MailRaven uses a `config.yaml` file. By default, it uses SQLite. To switch to PostgreSQL:
+
+```yaml
+storage:
+  driver: "postgres"
+  dsn: "postgres://user:pass@localhost:5432/mailraven?sslmode=disable"
 ```
 
 ### Run Quickstart Setup
@@ -87,9 +115,9 @@ This interactive command will:
 2. Create configuration file with crypto-secure JWT secret
 3. Display DNS records to configure (MX, SPF, DKIM, DMARC)
 4. Create initial admin user account
-5. Initialize database and storage directories
+```
 
-For detailed setup instructions, see [Quickstart Guide](specs/001-mobile-email-server/quickstart.md).
+For detailed setup instructions, see [Production Guide](docs/PRODUCTION.md).
 
 ### Start Server
 
@@ -305,6 +333,22 @@ Contributions are welcome! Please:
 - Document public APIs with godoc comments
 - Keep dependencies minimal (CGO-free preferred)
 - Use semantic commit messages
+
+## Documentation
+
+- [Production Guide](docs/PRODUCTION.md) - Postgres, Docker, and deployment.
+- [Web Admin Guide](docs/WebAdmin.md) - Using the dashboard.
+- [Mobile API Spec](docs/API.md) - Endpoints for client developers.
+- [Architecture](docs/ARCHITECTURE.md) - Deep dive into internal design.
+
+## Verification
+
+Run the environment check script to ensure prerequisites are met:
+
+```powershell
+.\scripts\check.ps1  # Windows
+./scripts/check.sh   # Linux/macOS
+```
 
 ## Acknowledgments
 
