@@ -50,5 +50,16 @@ services:
     depends_on:
       - backend
 
+  # Spam Filter (Rspamd)
+  rspamd:
+    image: rspamd/rspamd:3.8
+    container_name: mailraven-rspamd
+    restart: unless-stopped
+    ports:
+      - "11333:11333" # WebUI & Controller
+    volumes:
+      - rspamd_data:/var/lib/rspamd
+
 volumes:
   postgres_data:
+  rspamd_data:

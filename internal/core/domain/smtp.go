@@ -7,6 +7,7 @@ import "time"
 type SMTPSession struct {
 	SessionID   string    // Unique session identifier (for logging)
 	RemoteIP    string    // Client IP address
+	HeloName    string    // Client HELO/EHLO name
 	Sender      string    // MAIL FROM value
 	Recipients  []string  // RCPT TO addresses
 	ConnectedAt time.Time // Connection start time

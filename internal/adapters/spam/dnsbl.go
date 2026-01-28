@@ -2,8 +2,7 @@ package spam
 
 import (
 	"fmt"
-
-	"github.com/mrichman/godnsbl"
+	"net"
 )
 
 // DNSBLChecker checks IPs against DNS Blocklists
@@ -18,23 +17,29 @@ func NewDNSBLChecker(providers []string) *DNSBLChecker {
 	}
 }
 
-// Check checks if the IP is listed in any of the configured blocklists
+// Check checks if an IP is listed
 func (c *DNSBLChecker) Check(ip string) error {
-	if len(c.providers) == 0 {
+	parsedIP := net.ParseIP(ip)
+	if parsedIP == nil {
+		return fmt.Errorf("invalid IP: %s", ip)
+	}
+
+	if parsedIP.IsPrivate() || parsedIP.IsLoopback() {
 		return nil
 	}
 
-	for _, provider := range c.providers {
-		result := godnsbl.Lookup(provider, ip)
+	v4 := parsedIP.To4()
+	if v4 == nil {
+		return nil // Only IPv4
+	}
 
-		for _, res := range result.Results {
-			if res.Error {
-				// Log error (res.ErrorType) but don't fail just because of DNS lookup error
-				continue
-			}
-			if res.Listed {
-				return fmt.Errorf("IP listed in %s: %s", provider, res.Text)
-			}
+	reverseIP := fmt.Sprintf("%d.%d.%d.%d", v4[3], v4[2], v4[1], v4[0])
+
+	for _, list := range c.providers {
+		query := fmt.Sprintf("%s.%s", reverseIP, list)
+		ips, err := net.LookupHost(query)
+		if err == nil && len(ips) > 0 {
+			return fmt.Errorf("blocked by %s", list)
 		}
 	}
 	return nil

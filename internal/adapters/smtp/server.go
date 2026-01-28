@@ -2,6 +2,7 @@ package smtp
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -134,7 +135,7 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 		// RFC 5321 Section 4.1: SMTP commands
 		switch command {
 		case "EHLO", "HELO":
-			s.handleEHLO(writer, args, sessionLogger)
+			s.handleEHLO(writer, args, session, sessionLogger)
 
 		case "MAIL":
 			if !strings.HasPrefix(strings.ToUpper(args), "FROM:") {
@@ -180,7 +181,8 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 }
 
 // handleEHLO responds to EHLO/HELO command
-func (s *Server) handleEHLO(writer *bufio.Writer, args string, logger *observability.Logger) {
+func (s *Server) handleEHLO(writer *bufio.Writer, args string, session *domain.SMTPSession, logger *observability.Logger) {
+	session.HeloName = args
 	// RFC 5321 Section 4.1.1.1: EHLO response
 	s.send(writer, "250-%s", s.config.SMTP.Hostname)
 	s.send(writer, "250-SIZE %d", s.config.SMTP.MaxSize)
@@ -228,6 +230,40 @@ func (s *Server) handleDATA(ctx context.Context, reader *bufio.Reader, writer *b
 	}
 
 	logger.Info("received message", "size", session.BytesRecv)
+
+	// Check Spam Content
+	if s.spamFilter != nil {
+		headers := map[string]string{
+			"IP":       session.RemoteIP,
+			"Helo":     session.HeloName,
+			"Queue-ID": session.SessionID,
+			"From":     session.Sender,
+		}
+		res, err := s.spamFilter.CheckContent(ctx, bytes.NewReader(messageData), headers)
+		if err != nil {
+			logger.Error("spam check failed", "error", err)
+			// Fail open
+		} else {
+			if res.Action == domain.SpamActionReject {
+				s.metrics.IncrementMessagesRejected()
+				logger.Warn("message rejected as spam", "score", res.Score)
+				s.send(writer, "554 Message rejected due to spam content")
+				return
+			} else if res.Action == domain.SpamActionSoftReject {
+				s.send(writer, "451 Temporary failure, please try again")
+				return
+			}
+
+			// Add headers if needed
+			if res.Headers != nil && len(res.Headers) > 0 {
+				var sb bytes.Buffer
+				for k, v := range res.Headers {
+					sb.WriteString(fmt.Sprintf("%s: %s\r\n", k, v))
+				}
+				messageData = append(sb.Bytes(), messageData...)
+			}
+		}
+	}
 
 	// Process message through middleware pipeline
 	if err := s.handler(session, messageData); err != nil {

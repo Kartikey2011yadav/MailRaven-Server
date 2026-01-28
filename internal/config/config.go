@@ -17,6 +17,7 @@ type Config struct {
 	Logging LogConfig     `yaml:"logging"`
 	TLS     TLSConfig     `yaml:"tls"`
 	Spam    SpamConfig    `yaml:"spam"`
+	IMAP    IMAPConfig    `yaml:"imap"`
 	Backup  BackupConfig  `yaml:"backup"`
 }
 
@@ -73,9 +74,23 @@ type ACMEConfig struct {
 
 // SpamConfig contains spam protection settings
 type SpamConfig struct {
+	Enabled       bool            `yaml:"enabled"`        // Enable spam protection
+	RspamdURL     string          `yaml:"rspamd_url"`     // URL to Rspamd (e.g. http://localhost:11333)
 	DNSBLs        []string        `yaml:"dnsbls"`         // List of DNSBL providers
 	MaxRecipients int             `yaml:"max_recipients"` // Max recipients per message
 	RateLimit     RateLimitConfig `yaml:"rate_limit"`     // Rate limiting settings
+	RejectScore   float64         `yaml:"reject_score"`   // Score threshold to reject
+	HeaderScore   float64         `yaml:"header_score"`   // Score threshold to add header
+}
+
+// IMAPConfig contains IMAP server settings
+type IMAPConfig struct {
+	Enabled           bool   `yaml:"enabled"`             // Enable IMAP server
+	Port              int    `yaml:"port"`                // IMAP listen port (default: 143)
+	PortTLS           int    `yaml:"port_tls"`            // IMAP TLS listen port (default: 993)
+	AllowInsecureAuth bool   `yaml:"allow_insecure_auth"` // Allow LOGIN on insecure connection
+	TLSCert           string `yaml:"tls_cert"`            // TLS certificate path
+	TLSKey            string `yaml:"tls_key"`             // TLS key path
 }
 
 // RateLimitConfig contains rate limiting settings
