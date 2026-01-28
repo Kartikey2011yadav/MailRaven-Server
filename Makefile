@@ -49,6 +49,27 @@ run: build
 	@echo "Starting $(BINARY_NAME)..."
 	@$(BUILD_DIR)/$(BINARY_NAME)
 
+## docker-build: Build production docker images
+docker-build:
+	docker-compose build
+
+## docker-up: Start production services
+docker-up:
+	docker-compose up -d
+
+## docker-dev: Start development environment
+docker-dev:
+	docker-compose -f docker-compose.dev.yml up --build
+
+## docker-down: Stop all services
+docker-down:
+	docker-compose down --remove-orphans
+	docker-compose -f docker-compose.dev.yml down --remove-orphans
+
+## test-docker: Run integration tests inside Docker
+test-docker:
+	./scripts/test_integration_docker.sh
+
 ## docker-build: Build docker image
 docker-build:
 	@echo "Building docker image..."

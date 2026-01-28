@@ -14,6 +14,32 @@ A modern, modular email server built with mobile-first architecture. MailRaven i
 - **Zero Data Loss**: Atomic writes with fsync before SMTP acknowledgment
 - **CGO-Free**: Pure Go implementation for simple deployment
 
+## Development
+
+### Prerequisites
+- Go 1.22+
+- Node.js 20+
+- Docker & Docker Compose
+- Make (optional)
+
+### Quick Start (Docker)
+```bash
+# Start development environment (hot-reload backend & frontend)
+make docker-dev
+
+# Run integration tests in container
+make test-docker
+
+# Build production images
+make docker-build
+
+# Start production stack
+make docker-up
+```
+
+### Manual Setup
+See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for detailed configuration options.
+
 ## Architecture
 
 MailRaven follows the Ports and Adapters (Hexagonal) pattern with 5 distinct layers:

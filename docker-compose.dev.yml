@@ -1,0 +1,53 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: build/Dockerfile
+      target: builder # Use builder stage which has Go installed
+    container_name: mailraven-backend-dev
+    volumes:
+      - .:/app
+      - ./data-dev:/data
+      - ./config.yaml:/etc/mailraven/config.yaml
+    environment:
+      - MAILRAVEN_STORAGE_DRIVER=postgres
+      - MAILRAVEN_STORAGE_DSN=postgres://mailraven:secretpassword@db:5432/mailraven?sslmode=disable
+    command: ["go", "run", "./cmd/mailraven/", "serve", "--config", "/etc/mailraven/config.yaml"]
+    ports:
+      - "2525:25"     # map to 2525 to avoid permission issues on host if running non-sudo
+      - "8081:8080"   # map to 8081 for dev
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: build/Dockerfile.frontend
+      target: builder # Use builder stage which has Node installed
+    container_name: mailraven-frontend-dev
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    working_dir: /app
+    command: ["npm", "run", "dev", "--", "--host"]
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8080
+
+  db:
+    # Inherit from main compose, just ensuring it's here if we run this standalone overrides
+    image: postgres:15-alpine
+    container_name: mailraven-db-dev
+    environment:
+      POSTGRES_USER: mailraven
+      POSTGRES_PASSWORD: secretpassword
+      POSTGRES_DB: mailraven
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mailraven"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
