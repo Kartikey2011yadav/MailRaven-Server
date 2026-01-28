@@ -10,8 +10,8 @@ import (
 )
 
 type Server struct {
-	config  config.IMAPConfig
-	logger  *observability.Logger
+	config   config.IMAPConfig
+	logger   *observability.Logger
 	listener net.Listener
 }
 
@@ -45,7 +45,7 @@ func (s *Server) Start(ctx context.Context) error {
 			s.logger.Error("IMAP accept failed", "error", err)
 			continue
 		}
-		
+
 		go s.handleConnection(ctx, conn)
 	}
 }

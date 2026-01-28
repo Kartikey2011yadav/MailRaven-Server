@@ -46,9 +46,9 @@ Independent Test: `telnet localhost 143` shows greeting; `A01 CAPABILITY` lists 
 
 - [x] T009 [P] [US3] Create IMAP Server struct and main listener loop in `internal/adapters/imap/server.go`.
 - [x] T010 [US3] Define `Session` struct and `State` constants (NotAuth, Auth) in `internal/adapters/imap/session.go`.
-- [ ] T011 [US3] Implement basic command parser (Tag/Command/Args) in `internal/adapters/imap/parser.go`.
-- [ ] T012 [P] [US3] Implement `CAPABILITY`, `NOOP`, and `LOGOUT` command handlers in `internal/adapters/imap/commands.go`.
-- [ ] T013 [US3] Integrate IMAP server startup into `cmd/main.go`.
+- [x] T011 [US3] Implement basic command parser (Tag/Command/Args) in `internal/adapters/imap/parser.go`.
+- [x] T012 [P] [US3] Implement `CAPABILITY`, `NOOP`, and `LOGOUT` command handlers in `internal/adapters/imap/commands.go`.
+- [x] T013 [US3] Integrate IMAP server startup into `cmd/main.go`.
 
 ## Phase 6: User Story 4 (IMAP Authentication)
 
