@@ -64,3 +64,13 @@ func (r *SearchRepository) Search(ctx context.Context, userEmail, queryText stri
 	}
 	return results, nil
 }
+
+// Delete removes a message from the search index
+func (r *SearchRepository) Delete(ctx context.Context, messageID string) error {
+	query := `DELETE FROM messages_search WHERE message_id = $1`
+	_, err := r.db.ExecContext(ctx, query, messageID)
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+	return nil
+}

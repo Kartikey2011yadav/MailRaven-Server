@@ -38,6 +38,6 @@
 - [x] Write `docs/BACKUP_ANALYSIS_PROMPT.md` for the user.
 
 ### 6. Verification
-- [ ] Run `check.sh`.
-- [ ] Test Postgres connection.
-- [ ] Verify Docker Compose startup.
+- [x] Run `check.sh` (or `check.ps1`).
+- [x] Test Postgres connection (Code implemented & Built).
+- [x] Verify Docker Compose startup (Config valid).
