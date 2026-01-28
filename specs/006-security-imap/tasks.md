@@ -2,7 +2,7 @@
 
 **Feature Branch**: `006-security-imap`
 **Spec**: [specs/006-security-imap/spec.md](specs/006-security-imap/spec.md)
-**Status**: In Progress
+**Status**: Completed
 
 ## Phase 1: Setup
 

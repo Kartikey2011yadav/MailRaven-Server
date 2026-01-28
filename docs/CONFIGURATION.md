@@ -58,10 +58,25 @@ MailRaven is configured via a YAML file, typically located at `/etc/mailraven/co
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| `enabled` | bool | `true` | Enable or disable spam protection. |
+| `rspamd_url` | string | `http://localhost:11333` | URL of the Rspamd instance. |
 | `dnsbls` | list | `[]` | List of DNSBL providers (e.g., `zen.spamhaus.org`). |
+| `reject_score` | float | `15.0` | Score threshold to reject message (5xx). |
+| `header_score` | float | `6.0` | Score threshold to add X-Spam headers. |
 | `max_recipients` | int | `50` | Maximum number of recipients per message. |
 | `rate_limit.count` | int | `100` | Max SMTP connections/commands per window. |
 | `rate_limit.window` | string | `1h` | Duration of the rate limit window. |
+
+## IMAP
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `enabled` | bool | `true` | Enable or disable IMAP server. |
+| `port` | int | `143` | Listener port for IMAP (STARTTLS supported). |
+| `port_tls` | int | `993` | Listener port for IMAP over TLS (Implicit). |
+| `allow_insecure_auth` | bool | `false` | Allow LOGIN command on unencrypted connection. |
+| `tls_cert` | string | - | Path to TLS certificate. |
+| `tls_key` | string | - | Path to TLS private key. |
 
 ## Backup
 

@@ -60,6 +60,10 @@ tls:
 
 # Spam Protection
 spam:
+  enabled: true
+  rspamd_url: "http://localhost:11333" # URL to Rspamd interface
+  reject_score: 15.0      # Score > 15 = 5xx Reject
+  header_score: 6.0       # Score > 6 = Add X-Spam Headers
   dnsbls:
     - "zen.spamhaus.org"
     - "bl.spamcop.net"
@@ -67,6 +71,15 @@ spam:
   rate_limit:
     window: "1h"
     count: 100
+
+# IMAP Server Configuration
+imap:
+  enabled: true
+  port: 143              # Standard IMAP port (STARTTLS)
+  port_tls: 993          # Implicit TLS port
+  allow_insecure_auth: false # Require TLS for LOGIN
+  tls_cert: /etc/mailraven/certs/tls.crt
+  tls_key: /etc/mailraven/certs/tls.key
 
 # Automated Backups
 backup:

@@ -2,7 +2,7 @@
 
 **Feature Branch**: `006-security-imap`
 **Created**: 2026-01-28
-**Status**: Draft
+**Status**: Implemented
 **Input**: User description: "Implementing Spam Filtering (Rspamd integration or internal Bayesian) and considering IMAP4 groundwork."
 
 ## User Scenarios & Testing

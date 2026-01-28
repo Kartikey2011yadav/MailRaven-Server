@@ -1,6 +1,7 @@
 # Implementation Plan: Security & IMAP Groundwork
 
 **Branch**: `006-security-imap` | **Date**: 2026-01-28 | **Spec**: [specs/006-security-imap/spec.md](specs/006-security-imap/spec.md)
+**Status**: Implemented
 **Input**: Feature specification from `/specs/006-security-imap/spec.md`
 
 ## Summary
