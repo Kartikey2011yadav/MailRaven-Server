@@ -1,0 +1,34 @@
+#!/bin/sh
+# Pre-commit hook to run linters
+
+echo "Running Pre-commit checks..."
+
+# 1. Backend Linting
+echo "Running Go Linters..."
+if command -v golangci-lint >/dev/null 2>&1; then
+    golangci-lint run ./...
+    GO_EXIT_CODE=$?
+else
+    echo "golangci-lint not installed. Running 'go vet'..."
+    go vet ./...
+    GO_EXIT_CODE=$?
+fi
+
+if [ $GO_EXIT_CODE -ne 0 ]; then
+    echo "❌ Go Linting Failed!"
+    exit 1
+fi
+
+# 2. Frontend Linting
+echo "Running Frontend Linters..."
+cd client
+if npm run lint; then
+    echo "✅ Frontend Linting Passed"
+else
+    echo "❌ Frontend Linting Failed!"
+    exit 1
+fi
+cd ..
+
+echo "✅ All checks passed!"
+exit 0

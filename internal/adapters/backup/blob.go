@@ -20,7 +20,7 @@ func NewBlobBackup(sourceDir string) *BlobBackup {
 
 // PerformBackup copies all blobs to the target directory
 func (b *BlobBackup) PerformBackup(ctx context.Context, targetDir string) error {
-	if err := os.MkdirAll(targetDir, 0755); err != nil {
+	if err := os.MkdirAll(targetDir, 0750); err != nil {
 		return fmt.Errorf("failed to create target dir: %w", err)
 	}
 
@@ -42,7 +42,7 @@ func (b *BlobBackup) PerformBackup(ctx context.Context, targetDir string) error 
 			if err != nil {
 				return err
 			}
-			return os.MkdirAll(filepath.Join(targetDir, relPath), 0755)
+			return os.MkdirAll(filepath.Join(targetDir, relPath), 0750)
 		}
 
 		// Copy file
@@ -57,13 +57,16 @@ func (b *BlobBackup) PerformBackup(ctx context.Context, targetDir string) error 
 }
 
 func copyFile(src, dst string) error {
-	sourceFile, err := os.Open(src)
+	// Sanitize source path
+	cleanSrc := filepath.Clean(src)
+	sourceFile, err := os.Open(cleanSrc)
 	if err != nil {
 		return err
 	}
 	defer sourceFile.Close()
 
-	destFile, err := os.Create(dst)
+	// Use restricted permissions (0600)
+	destFile, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}

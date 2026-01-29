@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 )
@@ -109,7 +110,9 @@ type BackupConfig struct {
 
 // LoadFromFile loads configuration from a YAML file
 func LoadFromFile(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
+	// Sanitize path
+	cleanPath := filepath.Clean(path)
+	data, err := os.ReadFile(cleanPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}

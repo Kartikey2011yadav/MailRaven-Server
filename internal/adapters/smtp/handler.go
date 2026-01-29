@@ -165,7 +165,9 @@ func (h *Handler) storeMessageAtomic(
 	h.logger.Info("committing transaction", "message_id", messageID)
 	if err := tx.Commit(); err != nil {
 		// Cleanup blob on transaction failure
-		h.blobStore.Delete(ctx, bodyPath)
+		if delErr := h.blobStore.Delete(ctx, bodyPath); delErr != nil {
+			h.logger.Warn("failed to cleanup blob", "error", delErr)
+		}
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 

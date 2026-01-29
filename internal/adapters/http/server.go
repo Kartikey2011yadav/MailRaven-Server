@@ -157,7 +157,15 @@ func (s *Server) Start(ctx context.Context) error {
 	if s.acmeService != nil {
 		go func() {
 			s.logger.Info("Starting ACME HTTP-01 challenge listener on :80")
-			if err := http.ListenAndServe(":80", s.acmeService.HTTPHandler(nil)); err != nil {
+			// Use http.Server with timeouts for security
+			srv := &http.Server{
+				Addr:         ":80",
+				Handler:      s.acmeService.HTTPHandler(nil),
+				ReadTimeout:  30 * time.Second,
+				WriteTimeout: 30 * time.Second,
+				IdleTimeout:  120 * time.Second,
+			}
+			if err := srv.ListenAndServe(); err != nil {
 				s.logger.Error("ACME listener failed", "error", err)
 			}
 		}()

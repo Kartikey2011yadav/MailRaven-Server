@@ -1,0 +1,28 @@
+run:
+  timeout: 5m
+  tests: false
+
+linters:
+  enable:
+    - gosec      # Security checks
+    - govet      # Vet
+    - staticcheck # Static analysis
+    - errcheck   # Unchecked errors
+    - gosimple   # Simplification
+    - ineffassign # Ineffective assignments
+    - typecheck
+    - unused
+
+linters-settings:
+  gosec:
+    excludes:
+      - G101 # Password in hardcoded credentials (often false positive in tests, but enabled for main)
+      - G115 # Integer overflow conversion (Go 1.25 is safer, but good to check)
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+
+issues:
+  exclude-dirs:
+    - tests
+    - vendor

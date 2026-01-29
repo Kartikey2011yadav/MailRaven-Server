@@ -161,7 +161,7 @@ func (c *Client) deliverToHost(ctx context.Context, host string, from string, to
 
 	// Write Body
 	if _, err := w.Write(data); err != nil {
-		w.Close() // Close writer to free resources
+		_ = w.Close() // Close writer to free resources, ignore error as we return original error
 		return fmt.Errorf("write data failed: %w", err)
 	}
 

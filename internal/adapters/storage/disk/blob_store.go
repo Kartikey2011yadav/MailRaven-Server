@@ -59,26 +59,26 @@ func (bs *BlobStore) Write(ctx context.Context, messageID string, content []byte
 
 	// Write atomically: write to temp file, then rename
 	tempPath := fullPath + ".tmp"
-	if err := os.WriteFile(tempPath, compressedBuf.Bytes(), 0640); err != nil {
+	if err := os.WriteFile(tempPath, compressedBuf.Bytes(), 0600); err != nil {
 		return "", fmt.Errorf("failed to write temp file: %w", err)
 	}
 
 	// Fsync to ensure durability before rename
 	file, err := os.OpenFile(tempPath, os.O_WRONLY, 0)
 	if err != nil {
-		os.Remove(tempPath)
+		_ = os.Remove(tempPath)
 		return "", fmt.Errorf("failed to open temp file for fsync: %w", err)
 	}
 	if err := file.Sync(); err != nil {
-		file.Close()
-		os.Remove(tempPath)
+		_ = file.Close()
+		_ = os.Remove(tempPath)
 		return "", fmt.Errorf("fsync failed: %w", err)
 	}
-	file.Close()
+	_ = file.Close()
 
 	// Atomic rename
 	if err := os.Rename(tempPath, fullPath); err != nil {
-		os.Remove(tempPath)
+		_ = os.Remove(tempPath)
 		return "", fmt.Errorf("failed to rename temp file: %w", err)
 	}
 
