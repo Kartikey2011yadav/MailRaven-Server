@@ -48,7 +48,7 @@ func (h *AdminHandler) TriggerBackup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(BackupResponse{
+	_ = json.NewEncoder(w).Encode(BackupResponse{
 		JobID:  "done", // Service should return ID, but sticking to simple return for now
 		Status: "completed",
 		Path:   path,

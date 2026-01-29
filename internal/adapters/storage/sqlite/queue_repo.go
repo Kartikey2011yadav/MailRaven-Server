@@ -43,7 +43,7 @@ func (r *QueueRepository) LockNextReady(ctx context.Context) (*domain.OutboundMe
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Find next ready message
 	// Status must be PENDING or RETRYING, and NextRetryAt must be in the past

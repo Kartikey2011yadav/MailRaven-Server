@@ -165,7 +165,10 @@ func (r *UserRepository) Delete(ctx context.Context, email string) error {
 		return ports.ErrStorageFailure
 	}
 
-	rows, _ := result.RowsAffected()
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
 	if rows == 0 {
 		return ports.ErrNotFound
 	}
@@ -181,7 +184,10 @@ func (r *UserRepository) UpdatePassword(ctx context.Context, email, passwordHash
 		return ports.ErrStorageFailure
 	}
 
-	rows, _ := result.RowsAffected()
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
 	if rows == 0 {
 		return ports.ErrNotFound
 	}
@@ -197,7 +203,10 @@ func (r *UserRepository) UpdateRole(ctx context.Context, email string, role doma
 		return ports.ErrStorageFailure
 	}
 
-	rows, _ := result.RowsAffected()
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
 	if rows == 0 {
 		return ports.ErrNotFound
 	}

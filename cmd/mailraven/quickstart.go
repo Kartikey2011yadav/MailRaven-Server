@@ -31,7 +31,10 @@ func RunQuickstart() error {
 
 	// Step 1: Collect domain information
 	fmt.Print("Enter your mail domain (e.g., mail.example.com): ")
-	mailDomain, _ := reader.ReadString('\n')
+	mailDomain, err := reader.ReadString('\n')
+	if err != nil {
+		return fmt.Errorf("failed to read domain: %w", err)
+	}
 	mailDomain = strings.TrimSpace(mailDomain)
 	if mailDomain == "" {
 		return fmt.Errorf("domain is required")
@@ -39,7 +42,10 @@ func RunQuickstart() error {
 
 	// Step 2: Collect admin email
 	fmt.Print("Enter admin email address (e.g., admin@example.com): ")
-	adminEmail, _ := reader.ReadString('\n')
+	adminEmail, err := reader.ReadString('\n')
+	if err != nil {
+		return fmt.Errorf("failed to read email: %w", err)
+	}
 	adminEmail = strings.TrimSpace(adminEmail)
 	if adminEmail == "" {
 		return fmt.Errorf("admin email is required")

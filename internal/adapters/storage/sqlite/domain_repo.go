@@ -137,7 +137,10 @@ func (r *DomainRepository) Delete(ctx context.Context, name string) error {
 	if err != nil {
 		return err
 	}
-	rows, _ := res.RowsAffected()
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if rows == 0 {
 		return ports.ErrNotFound
 	}

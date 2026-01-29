@@ -118,7 +118,7 @@ func (h *Handler) storeMessageAtomic(
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback() // Rollback if not committed
+	defer func() { _ = tx.Rollback() }() // Rollback if not committed
 
 	// Generate message ID
 	messageID := uuid.New().String()

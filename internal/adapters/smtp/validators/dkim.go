@@ -76,7 +76,10 @@ func VerifyDKIM(ctx context.Context, rawMessage []byte) (DKIMResult, error) {
 
 	// RFC 6376 Section 3.7: Compute body hash
 	bodyHashComputed := computeBodyHash(rawMessage)
-	bodyHashDecoded, _ := base64.StdEncoding.DecodeString(bodyHash)
+	bodyHashDecoded, err := base64.StdEncoding.DecodeString(bodyHash)
+	if err != nil {
+		return DKIMFail, fmt.Errorf("invalid body hash encoding")
+	}
 	if string(bodyHashComputed) != string(bodyHashDecoded) {
 		return DKIMFail, fmt.Errorf("body hash mismatch")
 	}

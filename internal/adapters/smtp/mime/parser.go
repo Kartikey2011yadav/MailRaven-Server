@@ -139,7 +139,11 @@ func parseMultipart(body io.Reader, boundary string, parsed *ParsedMessage) erro
 		// Handle attachments
 		contentDisposition := part.Header.Get("Content-Disposition")
 		if strings.HasPrefix(contentDisposition, "attachment") {
-			_, dispParams, _ := mime.ParseMediaType(contentDisposition)
+			_, dispParams, err := mime.ParseMediaType(contentDisposition)
+			if err != nil {
+				// Fallback if parsing fails
+				dispParams = make(map[string]string)
+			}
 			filename := dispParams["filename"]
 			if filename == "" {
 				filename = "attachment"

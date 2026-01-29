@@ -24,6 +24,7 @@ func (b *PostgresBackup) PerformBackup(ctx context.Context, targetPath string) e
 	// BackupService logic probably creates a filename like "backup_timestamp/db.sqlite".
 	// So targetPath is likely full path.
 
+	//nolint:gosec // Target path is controlled by configuration
 	cmd := exec.CommandContext(ctx, "pg_dump", b.dsn, "-f", targetPath, "-F", "c") // Custom format (compressed)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("pg_dump failed: %s: %w", string(out), err)

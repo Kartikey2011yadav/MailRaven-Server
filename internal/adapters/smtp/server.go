@@ -76,7 +76,11 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
 
 	remoteAddr := conn.RemoteAddr().String()
-	remoteIP, _, _ := net.SplitHostPort(remoteAddr)
+	remoteIP, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		s.logger.Warn("failed to split host port", "addr", remoteAddr, "error", err)
+		return
+	}
 	if remoteIP == "" {
 		remoteIP = remoteAddr // fallback
 	}
@@ -89,7 +93,7 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 		if err := s.spamFilter.CheckConnection(ctx, remoteIP); err != nil {
 			sessionLogger.Warn("connection rejected by spam filter", "error", err)
 			// Return 554 No SMTP service here
-			conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+			_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
 			fmt.Fprintf(conn, "554 Service unavailable: %v\r\n", err)
 			return
 		}
@@ -111,7 +115,7 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 
 	for {
 		// Set read deadline
-		conn.SetReadDeadline(time.Now().Add(5 * time.Minute))
+		_ = conn.SetReadDeadline(time.Now().Add(5 * time.Minute))
 
 		line, err := reader.ReadString('\n')
 		if err != nil {
@@ -214,9 +218,7 @@ func (s *Server) handleDATA(ctx context.Context, reader *bufio.Reader, writer *b
 		}
 
 		// RFC 5321 Section 4.5.2: Transparency (remove leading dot)
-		if strings.HasPrefix(line, ".") {
-			line = line[1:]
-		}
+		line = strings.TrimPrefix(line, ".")
 
 		messageData = append(messageData, []byte(line)...)
 		session.BytesRecv += int64(len(line))
@@ -255,7 +257,7 @@ func (s *Server) handleDATA(ctx context.Context, reader *bufio.Reader, writer *b
 			}
 
 			// Add headers if needed
-			if res.Headers != nil && len(res.Headers) > 0 {
+			if len(res.Headers) > 0 {
 				var sb bytes.Buffer
 				for k, v := range res.Headers {
 					sb.WriteString(fmt.Sprintf("%s: %s\r\n", k, v))

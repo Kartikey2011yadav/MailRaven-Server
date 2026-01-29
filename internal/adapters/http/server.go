@@ -128,7 +128,7 @@ func NewServer(
 	// Health check endpoint (no auth)
 	router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		_, _ = w.Write([]byte("OK"))
 	})
 
 	return &Server{

@@ -58,7 +58,12 @@ jobs:
 
     - name: Run Tests
       working-directory: ./client
-      run: npx playwright install --with-deps && npm test
+      run: |
+        npm run dev &
+        npx wait-on http://localhost:5173
+        npx playwright install --with-deps && npm test
+      env:
+        CI: true
 
   docker-integration:
     runs-on: ubuntu-latest

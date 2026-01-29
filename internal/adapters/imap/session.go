@@ -81,8 +81,8 @@ func (s *Session) Serve() {
 }
 
 func (s *Session) send(msg string) {
-	s.writer.WriteString(msg + "\r\n")
-	s.writer.Flush()
+	_, _ = s.writer.WriteString(msg + "\r\n")
+	_ = s.writer.Flush()
 }
 
 func (s *Session) upgradeToTLS() error {
@@ -91,7 +91,10 @@ func (s *Session) upgradeToTLS() error {
 		return fmt.Errorf("failed to load keypair: %w", err)
 	}
 
-	config := &tls.Config{Certificates: []tls.Certificate{cert}}
+	config := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		MinVersion:   tls.VersionTLS12,
+	}
 	tlsConn := tls.Server(s.conn, config)
 
 	if err := tlsConn.Handshake(); err != nil {

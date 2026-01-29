@@ -37,7 +37,7 @@ func (h *AdminDomainHandler) ListDomains(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(domains)
+	_ = json.NewEncoder(w).Encode(domains)
 }
 
 // CreateDomain POST /api/v1/admin/domains
@@ -83,7 +83,7 @@ func (h *AdminDomainHandler) CreateDomain(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(d)
+	_ = json.NewEncoder(w).Encode(d)
 }
 
 // DeleteDomain DELETE /api/v1/admin/domains/{name}
