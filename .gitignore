@@ -46,7 +46,7 @@ data/
 *.log
 
 # MailRaven-specific
-mailraven
+/mailraven
 mailraven.exe
 bin/
 *.db
