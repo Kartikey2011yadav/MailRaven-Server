@@ -37,6 +37,7 @@ func (h *AdminDomainHandler) ListDomains(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	//nolint:errcheck // Response write error is non-critical
 	_ = json.NewEncoder(w).Encode(domains)
 }
 
@@ -83,6 +84,7 @@ func (h *AdminDomainHandler) CreateDomain(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+	//nolint:errcheck // Response write error is non-critical
 	_ = json.NewEncoder(w).Encode(d)
 }
 

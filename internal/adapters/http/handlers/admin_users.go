@@ -59,7 +59,8 @@ func (h *AdminUserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(users)
+	//nolint:errcheck // Response write error is non-critical
+	_ = json.NewEncoder(w).Encode(users)
 }
 
 // CreateUser POST /api/v1/admin/users

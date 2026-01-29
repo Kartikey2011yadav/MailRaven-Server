@@ -165,7 +165,8 @@ func (h *SendHandler) Send(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(map[string]string{
+	//nolint:errcheck // Response write error is non-critical
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"id":         outMsg.ID,
 		"status":     "queued",
 		"message_id": messageID,
