@@ -40,10 +40,10 @@ export default function Domains() {
     try {
       setLoading(true);
       const res = await DomainAPI.list();
-      const data: any = res.data;
+      const data = res.data;
       if (Array.isArray(data)) {
         setDomains(data);
-      } else if (data.domains) {
+      } else if ('domains' in data) {
         setDomains(data.domains);
       } else {
         setDomains([]);
@@ -65,7 +65,7 @@ export default function Domains() {
       await DomainAPI.delete(domain);
       toast.success("Domain deleted");
       fetchDomains();
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete domain");
     }
   };

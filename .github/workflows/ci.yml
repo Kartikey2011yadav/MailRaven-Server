@@ -20,8 +20,18 @@ jobs:
     - name: Verify dependencies
       run: go mod verify
 
+    - name: Run go vet
+      run: go vet -v ./...
+
+    - name: Install gosec
+      run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+
+    - name: Run Security Scan
+      # Exclude test files or accept some risk? Standard scan:
+      run: gosec -exclude-dir=tests ./...
+
     - name: Run Unit Tests
-      run: go test -v ./...
+      run: go test -race -v ./...
 
     - name: Build
       run: go build -v ./...
@@ -41,6 +51,10 @@ jobs:
     - name: Install dependencies
       working-directory: ./client
       run: npm ci
+
+    - name: Run Lint
+      working-directory: ./client
+      run: npm run lint
 
     - name: Build
       working-directory: ./client

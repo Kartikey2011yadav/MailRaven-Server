@@ -27,10 +27,22 @@ export const AuthAPI = {
     api.post('/auth/login', data),
 };
 
+// Types
+export interface User {
+  username: string;
+  role?: string;
+}
+
+export interface Domain {
+  id: number;
+  name: string;
+  status: string;
+}
+
 // User Management API
 export const UserAPI = {
   list: (params?: { page?: number; limit?: number }) => 
-    api.get<{ users: any[]; total: number }>('/admin/users', { params }),
+    api.get<{ users: User[]; total: number }>('/admin/users', { params }),
   
   create: (data: { email: string; password?: string; role: string }) => 
     api.post('/admin/users', data),
@@ -45,7 +57,7 @@ export const UserAPI = {
 // Domain Management API
 export const DomainAPI = {
   list: (params?: { page?: number; limit?: number }) => 
-    api.get<{ domains: any[]; total: number } | any[]>('/admin/domains', { params }),
+    api.get<{ domains: Domain[]; total: number } | Domain[]>('/admin/domains', { params }),
   
   create: (name: string) => 
     api.post('/admin/domains', { name }),

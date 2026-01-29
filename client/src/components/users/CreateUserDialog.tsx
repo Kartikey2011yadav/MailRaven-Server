@@ -66,9 +66,10 @@ export function CreateUserDialog({ onSuccess, children }: CreateUserDialogProps)
       setOpen(false);
       form.reset();
       onSuccess();
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      if (err.response?.status === 409) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((err as any).response?.status === 409) {
         form.setError("email", { message: "User already exists" });
       } else {
         toast.error("Failed to create user");

@@ -34,9 +34,10 @@ export default function Dashboard() {
         const response = await api.get('/admin/stats');
         setStats(response.data);
         setError(null);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Failed to fetch stats:", err);
-        if (err.response && err.response.status === 403) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if ((err as any).response && (err as any).response.status === 403) {
            setError("You do not have permission to view stats.");
         } else {
            setError("Failed to load system statistics. Ensure the backend is running.");

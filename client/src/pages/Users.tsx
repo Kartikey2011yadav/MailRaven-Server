@@ -37,18 +37,8 @@ export default function Users() {
       // Let's assume response.data is the payload.
       // If the backend returns `json.NewEncoder(w).Encode(users)` it's an array.
       // If it returns a wrapped object, I need to adjust.
-      // I'll check admin_users.go in a moment.
-      
-      // Temporary: assume it is an array or { users: [] }
-      // I'll handle both.
-      const data: any = res.data;
-      if (Array.isArray(data)) {
-        setUsers(data);
-      } else if (data.users) {
-        setUsers(data.users);
-      } else {
-        setUsers([]);
-      }
+      const data = res.data;
+      setUsers(data.users);
     } catch (error) {
       console.error(error);
       toast.error("Failed to load users");
