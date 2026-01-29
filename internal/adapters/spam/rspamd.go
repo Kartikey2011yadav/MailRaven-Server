@@ -67,7 +67,10 @@ func (c *Client) Check(r io.Reader, headers map[string]string) (*CheckResult, er
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("rspamd error %d: failed to read body", resp.StatusCode)
+		}
 		return nil, fmt.Errorf("rspamd error %d: %s", resp.StatusCode, string(body))
 	}
 

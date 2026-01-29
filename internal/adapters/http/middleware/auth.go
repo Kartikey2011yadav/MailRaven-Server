@@ -102,5 +102,6 @@ func sendUnauthorized(w http.ResponseWriter, message string) {
 		Error:   "Unauthorized",
 		Message: message,
 	}
+	//nolint:errcheck // Error not critical in error handler
 	json.NewEncoder(w).Encode(resp)
 }

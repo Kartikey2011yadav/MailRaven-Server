@@ -93,6 +93,7 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 		if err := s.spamFilter.CheckConnection(ctx, remoteIP); err != nil {
 			sessionLogger.Warn("connection rejected by spam filter", "error", err)
 			// Return 554 No SMTP service here
+			//nolint:errcheck // Deadline setting is best effort
 			_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
 			fmt.Fprintf(conn, "554 Service unavailable: %v\r\n", err)
 			return
@@ -115,6 +116,7 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 
 	for {
 		// Set read deadline
+		//nolint:errcheck // Deadline setting is best effort
 		_ = conn.SetReadDeadline(time.Now().Add(5 * time.Minute))
 
 		line, err := reader.ReadString('\n')

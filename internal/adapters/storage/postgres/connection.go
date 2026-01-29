@@ -40,7 +40,10 @@ func (c *Connection) RunMigrations() error {
 	if err != nil {
 		return err
 	}
-	defer func() { _ = tx.Rollback() }()
+	defer func() {
+		//nolint:errcheck // Rollback safe to ignore
+		_ = tx.Rollback()
+	}()
 
 	if _, err := tx.Exec(query); err != nil {
 		return fmt.Errorf("failed to execute migration: %w", err)

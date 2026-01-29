@@ -118,7 +118,10 @@ func (h *Handler) storeMessageAtomic(
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer func() { _ = tx.Rollback() }() // Rollback if not committed
+	defer func() {
+		//nolint:errcheck // Rollback if not committed, error safe to ignore
+		_ = tx.Rollback()
+	}()
 
 	// Generate message ID
 	messageID := uuid.New().String()

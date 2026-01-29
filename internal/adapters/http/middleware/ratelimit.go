@@ -119,6 +119,7 @@ func RateLimit(requestsPerMinute int) func(http.Handler) http.Handler {
 					Message:    "Maximum 100 requests per minute exceeded",
 					RetryAfter: retryAfter,
 				}
+				//nolint:errcheck // Error not critical
 				json.NewEncoder(w).Encode(resp)
 				return
 			}

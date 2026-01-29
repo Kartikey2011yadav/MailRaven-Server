@@ -81,7 +81,9 @@ func (s *Session) Serve() {
 }
 
 func (s *Session) send(msg string) {
+	//nolint:errcheck // Best effort write
 	_, _ = s.writer.WriteString(msg + "\r\n")
+	//nolint:errcheck // Best effort flush
 	_ = s.writer.Flush()
 }
 

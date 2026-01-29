@@ -130,7 +130,10 @@ func (c *Client) deliverToHost(ctx context.Context, host string, from string, to
 	if err != nil {
 		return fmt.Errorf("smtp handshake failed: %w", err)
 	}
-	defer func() { _ = client.Quit() }() // Try to quit nicely
+	defer func() {
+		//nolint:errcheck // Try to quit nicely
+		_ = client.Quit()
+	}()
 
 	// STARTTLS if supported
 	if ok, _ := client.Extension("STARTTLS"); ok {
