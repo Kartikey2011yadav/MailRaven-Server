@@ -10,7 +10,9 @@ if command -v golangci-lint >/dev/null 2>&1; then
     GO_EXIT_CODE=$?
 else
     echo "golangci-lint not installed. Running via 'go run' (v1.64.8)..."
-    go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8 run --timeout=5m ./...
+    CMD="go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8 run --timeout=5m ./..."
+    echo "> $CMD"
+    $CMD
     GO_EXIT_CODE=$?
 fi
 
