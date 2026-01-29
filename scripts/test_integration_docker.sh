@@ -1,22 +1,14 @@
 #!/bin/bash
 set -e
 
-echo "Starting Docker environment for testing..."
-docker compose -f docker-compose.dev.yml up -d db backend
+echo "Running integration tests in Docker container..."
 
-echo "Waiting for database to be ready..."
-# Simple wait loop for postgres
-for i in {1..30}; do
-  if docker exec mailraven-db-dev pg_isready -U mailraven > /dev/null 2>&1; then
-    echo "Database is ready!"
-    break
-  fi
-  echo "Waiting for DB..."
-  sleep 2
-done
+# We use 'docker compose run' instead of 'up' to avoid starting the main application server.
+# This saves memory (no backend service daemon) and ensures clean test isolation.
+# We also use --rm to clean up the container after.
+# We explicitly do NOT start 'db' because the tests use internal SQLite.
+# If tests ever require Postgres, add the dependency back or use 'run --service-ports'.
 
-echo "Running integration tests inside container..."
-docker exec mailraven-backend-dev go test ./tests/... -v
+docker compose -f docker-compose.dev.yml run --rm --no-deps backend go test ./tests/... -v -p 1
 
-echo "Cleaning up..."
-docker compose -f docker-compose.dev.yml down
+echo "Tests completed."
