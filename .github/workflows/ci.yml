@@ -38,6 +38,8 @@ jobs:
     steps:
     - name: Enable Swap
       run: |
+        sudo swapoff /swapfile || true
+        sudo rm -f /swapfile
         sudo fallocate -l 2G /swapfile
         sudo chmod 600 /swapfile
         sudo mkswap /swapfile
@@ -94,6 +96,8 @@ jobs:
     steps:
     - name: Enable Swap
       run: |
+        sudo swapoff /swapfile || true
+        sudo rm -f /swapfile
         sudo fallocate -l 2G /swapfile
         sudo chmod 600 /swapfile
         sudo mkswap /swapfile
