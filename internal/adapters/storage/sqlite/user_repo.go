@@ -238,5 +238,3 @@ func (r *UserRepository) Count(ctx context.Context) (map[string]int64, error) {
 
 	return stats, nil
 }
-
-
