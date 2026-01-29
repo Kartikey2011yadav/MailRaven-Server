@@ -29,14 +29,20 @@ export const AuthAPI = {
 
 // Types
 export interface User {
-  username: string;
+  username?: string;
+  email: string;
   role?: string;
+  created_at?: string;
+  last_login_at?: string;
 }
 
 export interface Domain {
   id: number;
   name: string;
   status: string;
+  created_at?: string;
+  dkim_public_key?: string;
+  dkim_selector?: string;
 }
 
 // User Management API

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { UserAPI } from "@/lib/api";
+import { UserAPI, User } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -12,14 +12,7 @@ import {
 import { CreateUserDialog } from "@/components/users/CreateUserDialog";
 import { DeleteUserDialog } from "@/components/users/DeleteUserDialog";
 import { toast } from "sonner";
-import { Loader2, Plus, Shield, User } from "lucide-react";
-
-interface User {
-  email: string;
-  role: string;
-  created_at?: string;
-  last_login_at?: string;
-}
+import { Loader2, Plus, Shield, User as UserIcon } from "lucide-react";
 
 export default function Users() {
   const [users, setUsers] = useState<User[]>([]);
@@ -94,7 +87,7 @@ export default function Users() {
                   <TableCell className="font-medium">{user.email}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                       {user.role === 'ADMIN' ? <Shield className="h-3 w-3" /> : <User className="h-3 w-3" />}
+                       {user.role === 'ADMIN' ? <Shield className="h-3 w-3" /> : <UserIcon className="h-3 w-3" />}
                        {user.role}
                     </div>
                   </TableCell>

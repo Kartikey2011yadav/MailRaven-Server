@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { DomainAPI } from "@/lib/api";
+import { DomainAPI, Domain } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -23,14 +23,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-
-interface Domain {
-  id: number;
-  name: string;
-  created_at: string;
-  dkim_public_key?: string;
-  dkim_selector?: string;
-}
 
 export default function Domains() {
   const [domains, setDomains] = useState<Domain[]>([]);
