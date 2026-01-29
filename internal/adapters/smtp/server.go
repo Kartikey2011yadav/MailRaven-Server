@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Kartikey2011yadav/mailraven-server/internal/config"
@@ -24,6 +25,7 @@ type Server struct {
 	handler    MessageHandler
 	spamFilter ports.SpamFilter
 	listener   net.Listener
+	mu         sync.RWMutex
 }
 
 // NewServer creates a new SMTP server
@@ -46,13 +48,17 @@ func (s *Server) Start(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to listen on %s: %w", addr, err)
 	}
+
+	s.mu.Lock()
 	s.listener = listener
+	s.mu.Unlock()
 
 	s.logger.Info("SMTP server started", "address", addr)
 
 	go func() {
 		<-ctx.Done()
-		s.listener.Close()
+		//nolint:errcheck // Best effort shutdown during context cancel
+		_ = s.Stop()
 	}()
 
 	for {
@@ -60,6 +66,10 @@ func (s *Server) Start(ctx context.Context) error {
 		if err != nil {
 			if ctx.Err() != nil {
 				// Context cancelled, shutting down
+				return nil
+			}
+			// Check if error is due to closed listener (normal shutdown)
+			if strings.Contains(err.Error(), "use of closed network connection") {
 				return nil
 			}
 			s.logger.Error("failed to accept connection", "error", err)
@@ -300,6 +310,8 @@ func extractEmailAddress(input string) string {
 
 // Stop gracefully shuts down the SMTP server
 func (s *Server) Stop() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.listener != nil {
 		return s.listener.Close()
 	}
@@ -308,6 +320,8 @@ func (s *Server) Stop() error {
 
 // Addr returns the listener address
 func (s *Server) Addr() net.Addr {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	if s.listener != nil {
 		return s.listener.Addr()
 	}
