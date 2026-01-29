@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { DomainAPI, Domain } from "@/lib/api";
+import { DomainAPI, type Domain } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -117,7 +117,7 @@ export default function Domains() {
                     {domain.dkim_selector || "default"}
                   </TableCell>
                   <TableCell>
-                    {new Date(domain.created_at).toLocaleDateString()}
+                    {domain.created_at ? new Date(domain.created_at).toLocaleDateString() : "N/A"}
                   </TableCell>
                   <TableCell className="text-right">
                     <AlertDialog>

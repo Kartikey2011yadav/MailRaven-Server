@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { UserAPI, User } from "@/lib/api";
+import { UserAPI, type User } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
   Table,

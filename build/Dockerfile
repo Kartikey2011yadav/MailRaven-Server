@@ -9,9 +9,9 @@ RUN go mod download && go mod verify
 COPY . .
 
 # Build the binary
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o mailraven cmd/mailraven/*.go
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o mailraven ./cmd/mailraven
 # Also build CLI
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o mailraven-cli cmd/mailraven-cli/*.go
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o mailraven-cli ./cmd/mailraven-cli
 
 # Stage 2: Create the final image
 FROM gcr.io/distroless/static-debian12 AS production
