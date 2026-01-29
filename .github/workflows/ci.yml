@@ -10,6 +10,14 @@ jobs:
   test-backend:
     runs-on: ubuntu-latest
     steps:
+    - name: Enable Swap
+      run: |
+        sudo fallocate -l 2G /swapfile
+        sudo chmod 600 /swapfile
+        sudo mkswap /swapfile
+        sudo swapon /swapfile
+        free -h
+
     - uses: actions/checkout@v4
 
     - name: Set up Go
@@ -69,6 +77,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test-backend]
     steps:
+    - name: Enable Swap
+      run: |
+        sudo fallocate -l 2G /swapfile
+        sudo chmod 600 /swapfile
+        sudo mkswap /swapfile
+        sudo swapon /swapfile
+        free -h
+
     - uses: actions/checkout@v4
 
     - name: Run Integration Tests in Docker
