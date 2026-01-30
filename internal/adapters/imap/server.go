@@ -11,17 +11,19 @@ import (
 )
 
 type Server struct {
-	config   config.IMAPConfig
-	logger   *observability.Logger
-	userRepo ports.UserRepository
-	listener net.Listener
+	config    config.IMAPConfig
+	logger    *observability.Logger
+	userRepo  ports.UserRepository
+	emailRepo ports.EmailRepository
+	listener  net.Listener
 }
 
-func NewServer(cfg config.IMAPConfig, logger *observability.Logger, userRepo ports.UserRepository) *Server {
+func NewServer(cfg config.IMAPConfig, logger *observability.Logger, userRepo ports.UserRepository, emailRepo ports.EmailRepository) *Server {
 	return &Server{
-		config:   cfg,
-		logger:   logger,
-		userRepo: userRepo,
+		config:    cfg,
+		logger:    logger,
+		userRepo:  userRepo,
+		emailRepo: emailRepo,
 	}
 }
 
@@ -51,6 +53,14 @@ func (s *Server) Start(ctx context.Context) error {
 
 		go s.handleConnection(ctx, conn)
 	}
+}
+
+// Addr returns the listener address
+func (s *Server) Addr() net.Addr {
+	if s.listener != nil {
+		return s.listener.Addr()
+	}
+	return nil
 }
 
 func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
