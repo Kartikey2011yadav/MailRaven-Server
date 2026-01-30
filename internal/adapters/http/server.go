@@ -76,8 +76,15 @@ func NewServer(
 	router.Use(middleware.Compression())
 	router.Use(middleware.RateLimit(100)) // 100 req/min per IP
 
+	// Create Autodiscover handler
+	autodiscoverHandler := handlers.NewAutodiscoverHandler(cfg, logger)
+
 	// Public routes (no auth required)
 	router.Post("/api/v1/auth/login", authHandler.Login)
+
+	// Autodiscover endpoints
+	router.Get("/.well-known/autoconfig/mail/config-v1.1.xml", autodiscoverHandler.HandleMozillaAutoconfig)
+	router.Post("/autodiscover/autodiscover.xml", autodiscoverHandler.HandleMicrosoftAutodiscover)
 
 	// Metrics endpoint
 	router.Get("/metrics", func(w http.ResponseWriter, r *http.Request) {

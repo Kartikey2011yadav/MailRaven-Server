@@ -35,7 +35,8 @@ func TestIMAP_Compliance(t *testing.T) {
 
 	// 2. Start IMAP Server
 	imapCfg := config.IMAPConfig{
-		Port: 0, // Random port
+		Port:              0, // Random port
+		AllowInsecureAuth: true,
 	}
 	logger := observability.NewLogger("error", "text")
 	server := imap.NewServer(imapCfg, logger, env.userRepo, env.emailRepo)
@@ -111,12 +112,24 @@ func TestIMAP_Compliance(t *testing.T) {
 	}
 
 	// Test 5: IDLE (Push Email)
-	resp = sendCommand("A005", "IDLE")
-	if strings.Contains(resp, "+") { // IDLE continuation
+	// Manual interaction because sendCommand expects immediate tagged response
+	fmt.Fprintf(writer, "A005 IDLE\r\n")
+	writer.Flush()
+	line, _ := reader.ReadString('\n')
+	if strings.HasPrefix(line, "+") {
 		t.Log("✅ IDLE (Push) implementation found")
+		// Send DONE to finish IDLE
 		writer.WriteString("DONE\r\n")
 		writer.Flush()
-	} else {
-		t.Log("❌ IDLE (Push) not implemented (Important for battery life)")
+		// Now we expect the tagged OK
+		for {
+			line, _ = reader.ReadString('\n')
+			if strings.HasPrefix(line, "A005 ") {
+				assert.Contains(t, line, "OK", "IDLE termination")
+				break
+			}
+		}
+	} else if strings.HasPrefix(line, "A005 NO") || strings.HasPrefix(line, "A005 BAD") {
+		t.Log("❌ IDLE (Push) not implemented or failed: " + line)
 	}
 }

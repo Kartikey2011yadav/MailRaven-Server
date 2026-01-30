@@ -14,6 +14,12 @@ type Message struct {
 	ReadState  bool      // Has user read this message?
 	ReceivedAt time.Time // When server accepted the message
 
+	// IMAP Support
+	UID     uint32 // IMAP UID (Unique, Monotonic per Mailbox)
+	Mailbox string // Mailbox name (default "INBOX")
+	Flags   string // Space-separated list of flags (e.g., "\Seen \Flagged")
+	ModSeq  uint64 // Modification Sequence (for CONDSTORE)
+
 	// Email authentication results (from SPF/DKIM/DMARC validation)
 	SPFResult   string // "pass", "fail", "softfail", "neutral", "none"
 	DKIMResult  string // "pass", "fail", "none"

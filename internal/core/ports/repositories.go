@@ -34,6 +34,23 @@ type EmailRepository interface {
 
 	// FindSince retrieves messages received after a timestamp (delta sync)
 	FindSince(ctx context.Context, email string, since time.Time, limit int) ([]*domain.Message, error)
+
+	// IMAP Support
+	GetMailbox(ctx context.Context, userID, name string) (*domain.Mailbox, error)
+	CreateMailbox(ctx context.Context, userID, name string) error
+	ListMailboxes(ctx context.Context, userID string) ([]*domain.Mailbox, error)
+
+	// FindByUIDRange retrieves messages by UID range [min, max]
+	FindByUIDRange(ctx context.Context, userID, mailbox string, min, max uint32) ([]*domain.Message, error)
+
+	// Flags
+	AddFlags(ctx context.Context, messageID string, flags ...string) error
+	RemoveFlags(ctx context.Context, messageID string, flags ...string) error
+	SetFlags(ctx context.Context, messageID string, flags ...string) error
+
+	// UID Management
+	// AssignUID assigns a UID to a message if it doesn't have one (atomic with increments)
+	AssignUID(ctx context.Context, messageID string, mailbox string) (uint32, error)
 }
 
 // UserRepository defines storage operations for user accounts

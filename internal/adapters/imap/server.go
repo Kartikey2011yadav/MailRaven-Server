@@ -64,6 +64,6 @@ func (s *Server) Addr() net.Addr {
 }
 
 func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
-	session := NewSession(conn, s.config, s.logger, s.userRepo)
+	session := NewSession(conn, s.config, s.logger, s.userRepo, s.emailRepo)
 	session.Serve()
 }

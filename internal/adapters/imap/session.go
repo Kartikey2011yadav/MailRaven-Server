@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Kartikey2011yadav/mailraven-server/internal/config"
+	"github.com/Kartikey2011yadav/mailraven-server/internal/core/domain"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/ports"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/observability"
 )
@@ -22,25 +23,29 @@ const (
 )
 
 type Session struct {
-	conn     net.Conn
-	state    State
-	config   config.IMAPConfig
-	logger   *observability.Logger
-	userRepo ports.UserRepository
-	reader   *bufio.Reader
-	writer   *bufio.Writer
-	isTLS    bool
+	conn            net.Conn
+	state           State
+	config          config.IMAPConfig
+	logger          *observability.Logger
+	userRepo        ports.UserRepository
+	emailRepo       ports.EmailRepository
+	reader          *bufio.Reader
+	writer          *bufio.Writer
+	isTLS           bool
+	user            *domain.User    // Logged in user
+	selectedMailbox *domain.Mailbox // Currently selected mailbox
 }
 
-func NewSession(conn net.Conn, cfg config.IMAPConfig, logger *observability.Logger, userRepo ports.UserRepository) *Session {
+func NewSession(conn net.Conn, cfg config.IMAPConfig, logger *observability.Logger, userRepo ports.UserRepository, emailRepo ports.EmailRepository) *Session {
 	return &Session{
-		conn:     conn,
-		state:    StateNotAuthenticated,
-		config:   cfg,
-		logger:   logger,
-		userRepo: userRepo,
-		reader:   bufio.NewReader(conn),
-		writer:   bufio.NewWriter(conn),
+		conn:      conn,
+		state:     StateNotAuthenticated,
+		config:    cfg,
+		logger:    logger,
+		userRepo:  userRepo,
+		emailRepo: emailRepo,
+		reader:    bufio.NewReader(conn),
+		writer:    bufio.NewWriter(conn),
 	}
 }
 

@@ -23,6 +23,11 @@ Authorization: Bearer <token>
 - `POST /auth/login`: Exchange credentials for a JWT.
 - `POST /auth/refresh`: Refresh an expiring token.
 
+### Autodiscover (Configuration)
+- `POST /autodiscover/autodiscover.xml`: Microsoft Outlook autoconfig protocol.
+- `GET /mail/config-v1.1.xml`: Mozilla Thunderbird autoconfig protocol.
+- Note: These endpoints return XML and do not require JWT authentication (public).
+
 ### Messages
 - `GET /messages`: List messages. Supports pagination (cursor-based) and filtering (folder, read status).
 - `GET /messages/{id}`: Get full message details.

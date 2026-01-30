@@ -16,9 +16,9 @@ This document analyzes the differences between our project (**MailRaven**) and t
 | Feature Category | Mox Implementation | MailRaven Status | Notes |
 |------------------|--------------------|------------------|-------|
 | **SMTP Delivery**|  Full (Inbound/Outbound) |  Full (Inbound/Outbound) | Both support SPF/DKIM/DMARC checks. |
-| **IMAP4**        |  Full (RFC 3501 + Extensions) | / Auth Only (Skeletal) | **CRITICAL GAP**: MailRaven supports LOGIN/STARTTLS but lacks SELECT/FETCH/IDLE. Standard clients (Outlook, Mobile) **will not work**. |
-| **Mobile Push**  |  IMAP IDLE / Notifications |  None | Required for instant mobile notifications. |
-| **Autodiscover** |  SRV, XML, Apple Profiles |  None | Users must manually enter Host/Port/SSL settings in apps. |
+| **IMAP4**        |  Full (RFC 3501 + Extensions) |  Core RFC 3501 Compliance | Supports LOGIN, LIST, SELECT, FETCH, UID, STORE. Compatible with Standard Clients. |
+| **Mobile Push**  |  IMAP IDLE / Notifications |  IMAP IDLE Supported | Real-time notifications for standard clients. |
+| **Autodiscover** |  SRV, XML, Apple Profiles |  XML (MS/Mozilla) | Supports Outlook and Thunderbird auto-config. |
 | **Security**     |  SPF, DKIM, DMARC, DANE, MTA-STS |  SPF, DKIM, DMARC | We miss advanced DANE/MTA-STS and Reporting features. |
 | **TLS/ACME**     |  Built-in Automatic ACME |  Built-in Automatic ACME | Implemented via `autocert`. |
 | **Spam Filter**  |  Bayesian, Grey-listing |  DNSBL + Rate Limiting | Connection-level filtering present. Content analysis (Bayesian) missing. |
@@ -29,13 +29,13 @@ This document analyzes the differences between our project (**MailRaven**) and t
 
 ### IMAP (Mobile & Desktop Clients)
 *   **Mox**: Fully compliant. Works with iOS Mail, Gmail App, Thunderbird out-of-the-box.
-*   **MailRaven**: Currently supports connection and authentication (LOGIN). **Failed** to support mailbox selection (SELECT INBOX) and message retrieval (FETCH). 
-    *   *Impact*: You cannot currently use standard email apps with MailRaven. You must use our custom Frontend or build a custom Mobile App using our HTTP API.
+*   **MailRaven**: **Now Compatible**. We have implemented the core IMAP4rev1 features required by Outlook, Thunderbird, and iOS Mail.
+    *   *Status*: Functional. Supports Authentication (TLS), Folder listing, Message retrieval, and IDLE (Push).
 
 ### Autoconfiguration
 *   **Mox**: Serves XML/JSON config files on `.well-known/autoconfig` and DNS SRV records.
-*   **MailRaven**: No implementation.
-    *   *Impact*: Friction during user onboarding. Users need technical knowledge to sign in.
+*   **MailRaven**: Implemented XML-based Autodiscover.
+    *   *Status*: Supports `autodiscover.xml` (Microsoft) and `config-v1.1.xml` (Mozilla).
 
 ## Missing Capabilities (Roadmap)
 

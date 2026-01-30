@@ -96,6 +96,10 @@ func setupTestEnvironment(t *testing.T) *testEnvironment {
 	if err := conn.RunMigrations(migrationPath003); err != nil {
 		t.Logf("Migration warning (003): %v", err)
 	}
+	migrationPath004 := "../internal/adapters/storage/sqlite/migrations/004_add_imap_fields.sql"
+	if err := conn.RunMigrations(migrationPath004); err != nil {
+		t.Logf("Migration warning (004): %v", err)
+	}
 
 	// Initialize repositories
 	emailRepo := sqlite.NewEmailRepository(conn.DB)
