@@ -39,29 +39,36 @@ This document analyzes the differences between our project (**MailRaven**) and t
 
 ## Missing Capabilities (Roadmap)
 
-To reach parity with Mox for a "drop-in replacement" server, we need:
+To reach parity with Mox for a "drop-in replacement" server, we need to address these gaps.
 
-### 1. IMAP core (High Priority for Client Compat)
-Implementation of RFC 3501 verbs:
-- `SELECT` / `EXAMINE` (Open mailbox)
-- `FETCH` (Read headers/body)
-- `UID` (Persistent implementation)
-- `IDLE` (Push notifications)
+### 1. Advanced Security & Deliverability (Next Priority)
+Enhance domain reputation and prevent downgrade attacks.
+- **MTA-STS**: Implement policy serving (`.well-known/mta-sts.txt`) and strict TLS enforcement.
+- **TLS Reporting (TLS-RPT)**: Endpoint to receive JSON reports on TLS failures from other providers.
+- **DANE**: DNSSEC-based authentication for outbound mail delivery.
+- **DMARC Reporting**: Capability to generate and send aggregate XML reports to senders.
 
-### 2. Autodiscover Service
-- Implement endpoints: `/.well-known/autoconfig/mail/config-v1.1.xml` (Thunderbird)
-- Implement endpoints: `/autodiscover/autodiscover.xml` (Microsoft)
-- Configuration for DNS SRV records.
+### 2. Anti-Abuse & Filtering (Strategic Gap)
+MailRaven currently relies on external systems or basic checks, whereas `mox` favors a "batteries-included" monolithic approach.
+- **Bayesian Filter**: Native implementation or tighter integration with Rspamd (currently we rely on external containers).
+- **IP Reputation**: Deeper integration of DNSBL with internal scoring (Mox style) rather than just rejection.
+- **Grey-listing**: Temporary rejection of unknown senders to filter spam bots.
 
-### 3. Advanced Security
-- Implement MTA-STS policy serving.
-- Implement DANE verification for outbound mail.
+### 3. User Interface & Administration (Philosophical Gap)
+This difference is intentional but noteworthy. Mox includes full Webmail and Admin UIs in the single binary.
+- **Webmail**: While we have a specialized React Client, `mox` enables a self-contained deployment. We might consider bundling our client assets into the Go binary for "single file" deployment parity.
+- **Admin UI**: We currently offer a comprehensive REST API. Parity would require building a GUI consuming this API, potentially embedded in the binary.
+
+### Completed Items
+- [x] **IMAP Core**: SELECT, FETCH, UID, STORE implemented.
+- [x] **IMAP IDLE**: Real-time push notification support.
+- [x] **Autodiscover**: XML configuration for Outlook and Thunderbird.
 
 ## Conclusion
 
 **Mox** is a general-purpose, standards-compliant email server for *standard clients*.
 
-**MailRaven** is currently an **API-First** Email Platform. It excels at programmatic access and custom interfaces (our React Frontend) but currently fails at interoperating with legacy/standard ecosystem tools (Outlook, Apple Mail) due to the incomplete IMAP implementation.
+**MailRaven** is an **API-First** Email Platform. It now supports standard clients (Outlook, iOS) via our new IMAP implementation, but philosophically prioritizes programmatic access and flexibility.
 
 **Recommendation**:
-If the goal is to build a *custom* mobile app, we should use the **HTTP API** (which is fully functional) rather than investing heavily in IMAP, unless generic client support is a business requirement.
+With the Basic Client Compliance gap closed, the next major hurdle for "Drop-In" replacement status is **Advanced Security/Deliverability** (MTA-STS/DANE) to ensure emails actually land in Inboxes, followed by deciding if we want to abandon the "Headless/API" philosophy to build bundled UIs.
