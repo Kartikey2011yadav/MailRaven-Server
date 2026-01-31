@@ -58,6 +58,7 @@ func NewServer(
 	// Add new repo
 	tlsRptRepo ports.TLSRptRepository,
 	sieveRepo ports.ScriptRepository,
+	updateManager ports.UpdateManager,
 	logger *observability.Logger,
 	metrics *observability.Metrics,
 ) *Server {
@@ -71,6 +72,7 @@ func NewServer(
 	adminUserHandler := handlers.NewAdminUserHandler(userRepo, domainRepo, logger)
 	adminDomainHandler := handlers.NewAdminDomainHandler(domainRepo, logger)
 	adminStatsHandler := handlers.NewAdminStatsHandler(userRepo, emailRepo, queueRepo, logger)
+	adminSystemHandler := handlers.NewSystemHandler(updateManager, logger)
 	tlsRptHandler := handlers.NewTLSRptHandler(tlsRptRepo, logger)
 	sieveHandler := handlers.NewSieveHandler(sieveRepo, logger)
 	sendHandler, err := handlers.NewSendHandler(
@@ -171,6 +173,12 @@ func NewServer(
 			r.Get("/domains", adminDomainHandler.ListDomains)
 			r.Post("/domains", adminDomainHandler.CreateDomain)
 			r.Delete("/domains/{domain}", adminDomainHandler.DeleteDomain)
+
+			// System Management (Updates)
+			if updateManager != nil {
+				r.Get("/system/update", adminSystemHandler.CheckUpdate)
+				r.Post("/system/update", adminSystemHandler.PerformUpdate)
+			}
 		})
 	})
 

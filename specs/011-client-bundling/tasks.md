@@ -16,18 +16,18 @@
 ## Phase 2: Updater Core
 **Goal**: Safe self-update capability.
 
-- [ ] T007 Add dependencies `github.com/minio/selfupdate` and `github.com/jedisct1/go-minisign`
-- [ ] T008 Define `UpdateManager` interface in `internal/core/ports/system.go`
-- [ ] T009 Implement `GitHubUpdater` in `internal/adapters/updater/github.go` (Check, Download, Verify)
-- [ ] T010 Implement `ApplyUpdate` logic (Windows-safe binary replacement)
-- [ ] T011 Create `minisign` public key constant in `internal/config` (or embedded)
+- [x] T007 Add dependencies `github.com/minio/selfupdate` and `github.com/jedisct1/go-minisign`
+- [x] T008 Define `UpdateManager` interface in `internal/core/ports/system.go`
+- [x] T009 Implement `GitHubUpdater` in `internal/adapters/updater/github.go` (Check, Download, Verify)
+- [x] T010 Implement `ApplyUpdate` logic (Windows-safe binary replacement)
+- [x] T011 Create `minisign` public key constant in `internal/config` (or embedded)
 
 ## Phase 3: Update API
 **Goal**: Admin control via Web UI.
 
-- [ ] T012 Implement HTTP handlers `CheckUpdate` and `PerformUpdate` in `internal/adapters/http/system_handlers.go`
-- [ ] T013 Register new routes in `internal/adapters/http/router.go`
-- [ ] T014 Integration: Verify API triggers download and replacement (Mocked for test)
+- [x] T012 Implement HTTP handlers `CheckUpdate` and `PerformUpdate` in `internal/adapters/http/handlers/system.go`
+- [x] T013 Register new routes in `internal/adapters/http/server.go`
+- [x] T014 Integration: Verify API triggers download and replacement (Mocked for test)
 
 ## Implementation Strategy
 Start with embedding (Phase 1) as it simplifies the dev workflow and is low risk. Phase 2 requires careful testing on Windows due to file locking.

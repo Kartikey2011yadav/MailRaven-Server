@@ -23,6 +23,7 @@ import (
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/storage/disk"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/storage/postgres"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/storage/sqlite"
+	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/updater"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/config"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/ports"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/services"
@@ -204,8 +205,11 @@ func RunServe() error {
 	blobBackup := backup.NewBlobBackup(cfg.Storage.BlobPath)
 	backupService := services.NewBackupService(cfg.Backup, dbBackup, blobBackup, logger)
 
+	// Initialize Updater
+	githubUpdater := updater.NewGitHubUpdater("Kartikey2011yadav", "mailraven-server")
+
 	// Initialize HTTP server
-	httpServer := httpAdapter.NewServer(cfg, emailRepo, userRepo, queueRepo, domainRepo, blobStore, searchIdx, acmeService, backupService, tlsRptRepo, scriptRepo, logger, metrics)
+	httpServer := httpAdapter.NewServer(cfg, emailRepo, userRepo, queueRepo, domainRepo, blobStore, searchIdx, acmeService, backupService, tlsRptRepo, scriptRepo, githubUpdater, logger, metrics)
 
 	// Create context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
