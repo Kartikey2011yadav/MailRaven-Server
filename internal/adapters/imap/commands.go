@@ -365,6 +365,19 @@ func (s *Session) handleUidCopy(tag string, rangeSpec string, destName string) {
 		return
 	}
 
+	// Perform Copy
+	var ids []string
+	for _, m := range msgs {
+		ids = append(ids, m.ID)
+	}
+
+	err = s.emailRepo.CopyMessages(context.Background(), s.user.Email, ids, destName)
+	if err != nil {
+		s.logger.Error("IMAP COPY Error", "error", err)
+		s.send(fmt.Sprintf("%s NO Copy failed", tag))
+		return
+	}
+
 	// Spam Training Hook
 	srcJunk := strings.EqualFold(s.selectedMailbox.Name, "Junk")
 	destJunk := strings.EqualFold(destName, "Junk")
@@ -396,19 +409,6 @@ func (s *Session) handleUidCopy(tag string, rangeSpec string, destName string) {
 				}
 			}
 		}(trainingMsgs, destJunk)
-	}
-
-	// Perform Copy
-	var ids []string
-	for _, m := range msgs {
-		ids = append(ids, m.ID)
-	}
-
-	err = s.emailRepo.CopyMessages(context.Background(), s.user.Email, ids, destName)
-	if err != nil {
-		s.logger.Error("IMAP COPY Error", "error", err)
-		s.send(fmt.Sprintf("%s NO Copy failed", tag))
-		return
 	}
 
 	s.send(fmt.Sprintf("%s OK UID COPY completed", tag))
