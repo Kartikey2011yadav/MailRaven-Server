@@ -72,6 +72,7 @@ func (s *Service) Check(ctx context.Context, tuple domain.GreylistTuple) error {
 		entry.LastSeenAt = now
 		entry.BlockedCount++
 		// Best effort update of last_seen
+		//nolint:errcheck // We are already rejecting, update failure is secondary
 		_ = s.repo.Upsert(ctx, entry)
 
 		remaining := s.retryDelay - elapsed
@@ -82,8 +83,7 @@ func (s *Service) Check(ctx context.Context, tuple domain.GreylistTuple) error {
 	entry.LastSeenAt = now
 	// We do not reset blocked count, it serves as metric
 	if err := s.repo.Upsert(ctx, entry); err != nil {
-		// Non-critical if update fails
-		// log.Warn? We don't have logger here, return nil is fine.
+		return fmt.Errorf("failed to update greylist entry: %w", err)
 	}
 	return nil
 }

@@ -36,7 +36,7 @@ Each user story is designed to be independently testable. The foundational phase
 - [x] T010 [US1] Update `ports.SpamFilter` implementation (e.g., `internal/adapters/spam/spam_filter.go`) to use `GreylistService`.
 - [x] T011 [US1] Update `internal/adapters/smtp/server.go` to call `SpamFilter.CheckRecipient` in the `RCPT` command handler.
 - [x] T012 [US1] Add configuration for `Greylist` (Enabled, RetryDelay, Expiration) in `internal/config/config.go`.
-- [ ] T013 [US1] [TEST] Create integration test in `tests/spam_greylist_test.go` verifying 451 response on first attempt and 250 on retry.
+- [x] T013 [US1] [TEST] Create integration test in `tests/spam_greylist_test.go` verifying 451 response on first attempt and 250 on retry.
 
 ## Phase 4: User Story 2 - Bayesian Analysis (P2)
 
