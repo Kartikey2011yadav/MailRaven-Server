@@ -259,7 +259,10 @@ func RunServe() error {
 			} else if cfg.API.TLS && cfg.API.TLSCert != "" && cfg.API.TLSKey != "" {
 				cert, err := tls.LoadX509KeyPair(cfg.API.TLSCert, cfg.API.TLSKey)
 				if err == nil {
-					tlsCfg = &tls.Config{Certificates: []tls.Certificate{cert}}
+					tlsCfg = &tls.Config{
+						Certificates: []tls.Certificate{cert},
+						MinVersion:   tls.VersionTLS12,
+					}
 				} else {
 					logger.Warn("failed to load TLS certs for ManageSieve", "error", err)
 				}

@@ -25,9 +25,9 @@ type Session struct {
 	logger    *observability.Logger
 	tlsConfig *tls.Config
 
-	state     State
-	user      string // Authenticated user email
-	saslStage string // For multi-step SASL
+	state State
+	user  string // Authenticated user email
+	// saslStage removed as unused
 }
 
 type State int
@@ -98,7 +98,7 @@ func (s *Session) Serve() {
 			s.printf("NO \"Unknown command: %s\"\r\n", cmd)
 			// Consume rest of line to reset parser state?
 			// Simple parser might get stuck. In reality we should skip line.
-			s.reader.ReadString('\n')
+			_, _ = s.reader.ReadString('\n') //nolint:errcheck
 		}
 		s.flush()
 
@@ -111,8 +111,10 @@ func (s *Session) Serve() {
 func (s *Session) handleHaveSpace() {
 	// HAVESPACE <name> <size>
 	// We ignore name usually for quota
-	_, _ = s.tokenizer.ReadWord() // name
-	_, _ = s.tokenizer.ReadWord() // size (int)
+	//nolint:errcheck // We ignore args for now
+	s.tokenizer.ReadWord() // name
+	//nolint:errcheck // We ignore args for now
+	s.tokenizer.ReadWord() // size (int)
 	// We don't enforce quota yet or assume we have space
 	s.printf("OK\r\n")
 }
@@ -200,13 +202,17 @@ func (s *Session) handleAuthenticate() {
 	}
 
 	// Optional initial response
-	resp, _ := s.tokenizer.ReadWord()
+	resp, _ := s.tokenizer.ReadWord() //nolint:errcheck
 	if resp == "" {
 		// Send challenge
 		s.printf("+\r\n")
 		s.flush()
 		// Read line
-		resp, _ = s.reader.ReadString('\n')
+		var err error
+		resp, err = s.reader.ReadString('\n')
+		if err != nil {
+			return
+		}
 		resp = strings.TrimSpace(resp)
 	}
 

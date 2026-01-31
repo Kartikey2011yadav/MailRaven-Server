@@ -17,7 +17,7 @@ type VacationManager struct {
 	vacationRepo ports.VacationRepository
 	queueRepo    ports.QueueRepository
 	blobStore    ports.BlobStore
-	domainRepo   ports.DomainRepository // To check if we host the domain (optional, but good for sender verification)
+	// domainRepo removed as unused
 }
 
 // NewVacationManager creates a new VacationManager.
@@ -99,8 +99,10 @@ func (m *VacationManager) ProcessVacation(ctx context.Context, recipient string,
 	}
 
 	// 4. Construct Reply
-	subject := "Auto: " + args["subject"].(string)
-	if args["subject"] == nil {
+	var subject string
+	if s, ok := args["subject"].(string); ok {
+		subject = "Auto: " + s
+	} else {
 		// "Auto: " + Original Subject
 		subject = "Auto: " + msg.Header.Get("Subject")
 	}

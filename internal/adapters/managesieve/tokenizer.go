@@ -25,7 +25,7 @@ func (t *Tokenizer) SkipWhitespace() error {
 			return err
 		}
 		if b[0] == ' ' || b[0] == '\t' {
-			t.r.ReadByte()
+			_, _ = t.r.ReadByte() //nolint:errcheck
 		} else {
 			break
 		}
@@ -65,7 +65,7 @@ func (t *Tokenizer) ReadWord() (string, error) {
 		if c <= ' ' || c == '(' || c == ')' || c == '{' || c == '"' {
 			break
 		}
-		t.r.ReadByte()
+		_, _ = t.r.ReadByte() //nolint:errcheck
 		sb.WriteByte(c)
 	}
 	if sb.Len() == 0 {
@@ -75,7 +75,7 @@ func (t *Tokenizer) ReadWord() (string, error) {
 }
 
 func (t *Tokenizer) readQuoted() (string, error) {
-	t.r.ReadByte() // consume "
+	_, _ = t.r.ReadByte() //nolint:errcheck // consume "
 	var sb strings.Builder
 	for {
 		b, err := t.r.ReadByte()
@@ -98,7 +98,7 @@ func (t *Tokenizer) readQuoted() (string, error) {
 
 func (t *Tokenizer) readLiteral() (string, error) {
 	// {123+}
-	t.r.ReadByte() // {
+	_, _ = t.r.ReadByte() //nolint:errcheck // consume {
 	var lenStr strings.Builder
 	for {
 		b, err := t.r.ReadByte()
@@ -113,7 +113,7 @@ func (t *Tokenizer) readLiteral() (string, error) {
 			// Literals: {<number>} CR LF <content>
 			// ManageSieve allows {<number>+} CR LF <content>
 			if b == '+' {
-				t.r.ReadByte() // consume }
+				_, _ = t.r.ReadByte() //nolint:errcheck // consume }
 				break
 			}
 			if b == '}' {
@@ -128,12 +128,11 @@ func (t *Tokenizer) readLiteral() (string, error) {
 
 	// Read CRLF after }
 	// Expect \r\n
-	b, _ := t.r.ReadByte()
+	b, _ := t.r.ReadByte() //nolint:errcheck
 	if b == '\r' {
-		t.r.ReadByte() // \n
-	} else if b == '\n' {
-		// fine
+		t.r.ReadByte() //nolint:errcheck
 	}
+	// if b == '\n', it's fine, implicit consumer
 
 	length, err := strconv.Atoi(lenStr.String())
 	if err != nil {
