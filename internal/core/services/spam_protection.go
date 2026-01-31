@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/spam"
+	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/spam/bayesian"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/config"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/domain"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/ports"
@@ -22,7 +24,9 @@ type SpamProtectionService struct {
 	config     config.SpamConfig
 	logger     *observability.Logger
 	greylister ports.Greylister      // Core greylist logic
-	bayes      ports.BayesRepository // Placeholder for future usage
+	bayes      ports.BayesRepository // Placeholder for training usage
+	classifier ports.BayesClassifier // Naive Bayes classifier
+	trainer    ports.BayesTrainer    // Naive Bayes trainer
 }
 
 // NewSpamProtectionService creates a new spam protection service
@@ -38,6 +42,14 @@ func NewSpamProtectionService(cfg config.SpamConfig, logger *observability.Logge
 		rspamdClient = spam.NewClient(cfg.RspamdURL)
 	}
 
+	// Initialize Classifier and Trainer if repo provided
+	var classifier ports.BayesClassifier
+	var trainer ports.BayesTrainer
+	if bayes != nil {
+		classifier = bayesian.NewClassifier(bayes)
+		trainer = bayesian.NewTrainer(bayes)
+	}
+
 	return &SpamProtectionService{
 		dnsbl:      spam.NewDNSBLChecker(cfg.DNSBLs),
 		rateLimit:  spam.NewRateLimiter(window, cfg.RateLimit.Count),
@@ -46,7 +58,25 @@ func NewSpamProtectionService(cfg config.SpamConfig, logger *observability.Logge
 		logger:     logger,
 		greylister: greylister,
 		bayes:      bayes,
+		classifier: classifier,
+		trainer:    trainer,
 	}, nil
+}
+
+// TrainSpam learns from spam content
+func (s *SpamProtectionService) TrainSpam(ctx context.Context, content io.Reader) error {
+	if s.trainer == nil {
+		return nil
+	}
+	return s.trainer.TrainSpam(ctx, content)
+}
+
+// TrainHam learns from ham (non-spam) content
+func (s *SpamProtectionService) TrainHam(ctx context.Context, content io.Reader) error {
+	if s.trainer == nil {
+		return nil
+	}
+	return s.trainer.TrainHam(ctx, content)
 }
 
 // CheckConnection checks if the connection is allowed
@@ -113,45 +143,100 @@ func normalizeIP(ipStr string) string {
 
 // CheckContent checks the message content for spam
 func (s *SpamProtectionService) CheckContent(ctx context.Context, content io.Reader, headers map[string]string) (*domain.SpamCheckResult, error) {
-	if !s.config.Enabled || s.rspamd == nil {
+	if !s.config.Enabled {
 		return &domain.SpamCheckResult{Action: domain.SpamActionPass}, nil
 	}
 
-	res, err := s.rspamd.Check(content, headers)
+	// Buffer the content so we can read it multiple times (Rspamd + Bayes)
+	bodyBytes, err := io.ReadAll(content)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read content for spam check: %w", err)
 	}
 
-	action := domain.SpamActionPass
-	switch res.Action {
-	case "reject":
-		action = domain.SpamActionReject
-	case "add header", "rewrite subject":
-		action = domain.SpamActionAddHeader
-	case "soft reject":
-		action = domain.SpamActionSoftReject
+	var totalScore float64
+	var rspamdAction domain.SpamAction
+	var details string
+
+	// 1. Check Rspamd
+	if s.rspamd != nil {
+		res, err := s.rspamd.Check(bytes.NewReader(bodyBytes), headers)
+		if err != nil {
+			s.logger.WarnContext(ctx, "rspamd check failed", "error", err)
+		} else {
+			totalScore += res.Score
+			// Map Rspamd action to domain action
+			switch res.Action {
+			case "reject":
+				rspamdAction = domain.SpamActionReject
+			case "add header", "rewrite subject":
+				rspamdAction = domain.SpamActionAddHeader
+			case "soft reject":
+				rspamdAction = domain.SpamActionSoftReject
+			default:
+				rspamdAction = domain.SpamActionPass
+			}
+		}
 	}
 
-	// Override based on scores defined in config
-	if s.config.RejectScore > 0 && res.Score >= s.config.RejectScore {
-		action = domain.SpamActionReject
-	} else if s.config.HeaderScore > 0 && res.Score >= s.config.HeaderScore {
-		if action == domain.SpamActionPass {
-			action = domain.SpamActionAddHeader
+	// 2. Check Naive Bayes
+	var bayesScore float64
+	if s.classifier != nil {
+		prob, err := s.classifier.Classify(ctx, bytes.NewReader(bodyBytes))
+		if err != nil {
+			s.logger.WarnContext(ctx, "bayes check failed", "error", err)
+		} else {
+			// Convert Probability to Score modifier
+			// < 0.1 -> -2.0 (Hammy)
+			// > 0.9 -> +5.0 (Spammy)
+			// > 0.7 -> +2.0 (Likely Spam)
+			if prob > 0.9 {
+				bayesScore = 5.0
+			} else if prob > 0.7 {
+				bayesScore = 2.0
+			} else if prob < 0.1 {
+				bayesScore = -2.0
+			}
+			totalScore += bayesScore
+			details += fmt.Sprintf("Bayes:%.2f;", prob)
+		}
+	}
+
+	// Determine Final Action
+	// Priority: Reject > SoftReject > AddHeader > Pass
+	// We use the aggregated Score vs Config thresholds.
+
+	finalAction := domain.SpamActionPass
+
+	// Use Rspamd action as baseline if available and severe
+	if rspamdAction == domain.SpamActionReject {
+		finalAction = domain.SpamActionReject
+	} else if rspamdAction == domain.SpamActionSoftReject {
+		finalAction = domain.SpamActionSoftReject
+	}
+
+	// Apply Score Thresholds
+	if s.config.RejectScore > 0 && totalScore >= s.config.RejectScore {
+		finalAction = domain.SpamActionReject
+	} else if s.config.HeaderScore > 0 && totalScore >= s.config.HeaderScore {
+		if finalAction == domain.SpamActionPass {
+			finalAction = domain.SpamActionAddHeader
 		}
 	}
 
 	spamHeaders := make(map[string]string)
-	spamHeaders["X-Spam-Score"] = fmt.Sprintf("%.2f", res.Score)
-	if action != domain.SpamActionPass {
+	spamHeaders["X-Spam-Score"] = fmt.Sprintf("%.2f", totalScore)
+	if finalAction != domain.SpamActionPass {
 		spamHeaders["X-Spam-Status"] = "Yes"
 	} else {
 		spamHeaders["X-Spam-Status"] = "No"
 	}
+	if details != "" {
+		spamHeaders["X-Spam-Details"] = details
+	}
 
 	return &domain.SpamCheckResult{
-		Action:  action,
-		Score:   res.Score,
+		Action:  finalAction,
+		Score:   totalScore,
 		Headers: spamHeaders,
 	}, nil
 }

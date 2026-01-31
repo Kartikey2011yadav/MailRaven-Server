@@ -33,6 +33,10 @@ type Metrics struct {
 	OutboundFailedTransient int64
 	OutboundFailedPermanent int64
 
+	// Spam metrics
+	SpamDetected    int64
+	GreylistBlocked int64
+
 	// Request duration histogram (simplified for MVP)
 	APIRequestDurations []time.Duration
 }
@@ -166,6 +170,8 @@ func (m *Metrics) GetSnapshot() MetricsSnapshot {
 		OutboundSent:            m.OutboundSent,
 		OutboundFailedTransient: m.OutboundFailedTransient,
 		OutboundFailedPermanent: m.OutboundFailedPermanent,
+		SpamDetected:            m.SpamDetected,
+		GreylistBlocked:         m.GreylistBlocked,
 		RequestDurationCount:    len(m.APIRequestDurations),
 	}
 }
@@ -196,6 +202,23 @@ func (m *Metrics) WritePrometheus(w io.Writer) {
 	writeMetric("mailraven_outbound_sent_total", "Total messages successfully delivered", "counter", snap.OutboundSent)
 	writeMetric("mailraven_outbound_transient_failures_total", "Total transient outbound delivery failures", "counter", snap.OutboundFailedTransient)
 	writeMetric("mailraven_outbound_permanent_failures_total", "Total permanent outbound delivery failures", "counter", snap.OutboundFailedPermanent)
+
+	writeMetric("mailraven_spam_detected_total", "Total messages classified as spam", "counter", snap.SpamDetected)
+	writeMetric("mailraven_greylist_blocked_total", "Total connections blocked by greylisting", "counter", snap.GreylistBlocked)
+}
+
+// IncrementSpamDetected increments the spam detected counter
+func (m *Metrics) IncrementSpamDetected() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.SpamDetected++
+}
+
+// IncrementGreylistBlocked increments the greylist blocked counter
+func (m *Metrics) IncrementGreylistBlocked() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.GreylistBlocked++
 }
 
 // MetricsSnapshot is a read-only view of metrics at a point in time
@@ -213,5 +236,7 @@ type MetricsSnapshot struct {
 	OutboundSent            int64
 	OutboundFailedTransient int64
 	OutboundFailedPermanent int64
+	SpamDetected            int64
+	GreylistBlocked         int64
 	RequestDurationCount    int
 }

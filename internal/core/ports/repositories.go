@@ -43,6 +43,10 @@ type EmailRepository interface {
 	// FindByUIDRange retrieves messages by UID range [min, max]
 	FindByUIDRange(ctx context.Context, userID, mailbox string, min, max uint32) ([]*domain.Message, error)
 
+	// CopyMessages copies messages to a destination mailbox
+	// Returns map of oldUID -> newUID if possible, or just error
+	CopyMessages(ctx context.Context, userID string, messageIDs []string, destMailbox string) error
+
 	// Flags
 	AddFlags(ctx context.Context, messageID string, flags ...string) error
 	RemoveFlags(ctx context.Context, messageID string, flags ...string) error

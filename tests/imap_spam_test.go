@@ -32,7 +32,7 @@ func TestIMAPListener(t *testing.T) {
 	logger := observability.NewLogger("error", "text")
 
 	// Start Server
-	server := imap.NewServer(cfg, logger, env.userRepo, env.emailRepo)
+	server := imap.NewServer(cfg, logger, env.userRepo, env.emailRepo, &NoOpSpamFilter{}, env.blobStore)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

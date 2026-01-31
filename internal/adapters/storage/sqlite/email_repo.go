@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/domain"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/notifications"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/ports"
@@ -493,4 +495,59 @@ func (r *EmailRepository) AssignUID(ctx context.Context, messageID string, mailb
 		return 0, err
 	}
 	return assignedUID, nil
+}
+
+// CopyMessages copies messages to a destination mailbox
+func (r *EmailRepository) CopyMessages(ctx context.Context, userID string, messageIDs []string, destMailbox string) error {
+	if len(messageIDs) == 0 {
+		return nil
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	// Ensure dest mailbox exists
+	var exists bool
+	err = tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM mailboxes WHERE user_id = ? AND name = ?)", userID, destMailbox).Scan(&exists)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		return ports.ErrNotFound
+	}
+
+	for _, id := range messageIDs {
+		// Increment UID
+		var newUID uint32
+		err = tx.QueryRowContext(ctx, "UPDATE mailboxes SET uid_next = uid_next + 1, message_count = message_count + 1 WHERE user_id = ? AND name = ? RETURNING uid_next - 1", userID, destMailbox).Scan(&newUID)
+		if err != nil {
+			return err
+		}
+
+		newID := uuid.New().String()
+
+		// Insert Copy
+		_, err = tx.ExecContext(ctx, `
+			INSERT INTO messages (
+				id, message_id, sender, recipient, subject, snippet, body_path,
+				read_state, received_at, spf_result, dkim_result, dmarc_result, dmarc_policy,
+				uid, mailbox, flags, mod_seq
+			)
+			SELECT 
+				?, message_id, sender, recipient, subject, snippet, body_path,
+				read_state, received_at, spf_result, dkim_result, dmarc_result, dmarc_policy,
+				?, ?, flags, mod_seq
+			FROM messages WHERE id = ?
+		`, newID, newUID, destMailbox, id)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }

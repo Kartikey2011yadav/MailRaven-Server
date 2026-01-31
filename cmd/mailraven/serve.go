@@ -228,7 +228,7 @@ func RunServe() error {
 	// Start IMAP server in background (if enabled)
 	if cfg.IMAP.Enabled {
 		go func() {
-			imapServer := imap.NewServer(cfg.IMAP, logger, userRepo, emailRepo)
+			imapServer := imap.NewServer(cfg.IMAP, logger, userRepo, emailRepo, spamService, blobStore)
 			logger.Info("starting IMAP server", "port", cfg.IMAP.Port)
 			if err := imapServer.Start(ctx); err != nil {
 				logger.Error("IMAP server error", "error", err)
@@ -238,6 +238,9 @@ func RunServe() error {
 
 	// Start Delivery Worker
 	deliveryWorker.Start()
+
+	// Start Greylist Pruner
+	greylistSvc.StartPruning(ctx, 1*time.Hour, logger)
 
 	// Start SMTP server (blocking)
 	logger.Info("starting SMTP server", "port", cfg.SMTP.Port)

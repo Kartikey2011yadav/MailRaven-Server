@@ -9,7 +9,7 @@ A modern, modular email server built with mobile-first architecture. MailRaven i
 - **Reliable Email Reception**: SMTP server with SPF/DKIM/DMARC validation
 - **Modern Security**: MTA-STS (Strict Transport Security), TLS-RPT (Reporting), and DANE verification for high-security delivery
 - **Production Ready**: Docker support, Postgres or SQLite backend, Automatic HTTPS, and Hot Backups
-- **Spam Protection**: Rspamd integration, DNSBL checking, and Connection Rate Limiting
+- **Spam Protection**: Native Bayesian Filtering (with IMAP retraining), Greylisting, DNSBL checking, and Rate Limiting
 - **IMAP4rev1 Support**: Standard IMAP listener with IDLE (Push) for Outlook/Mobile compatibility
 - **Autodiscover**: XML configuration for simplified client setup
 - **Full-Text Search**: SQLite FTS5 or Postgres TSVECTOR for fast message search

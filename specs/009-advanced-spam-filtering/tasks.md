@@ -42,27 +42,27 @@ Each user story is designed to be independently testable. The foundational phase
 
 **Goal**: Score email content and route spam to Junk.
 
-- [ ] T014 [US2] Implement tokenizer (Unicode scanner) in `internal/adapters/spam/bayesian/tokenizer.go`.
-- [ ] T015 [US2] Implement `BayesClassifier` logic (Naive Bayes math) in `internal/adapters/spam/bayesian/classifier.go`.
-- [ ] T016 [US2] Implement `SpamCheckMiddleware` in `internal/adapters/smtp/middleware/spam.go` utilizing the classifier.
-- [ ] T017 [US2] Register `SpamCheckMiddleware` in the SMTP server pipeline in `cmd/mailraven/serve.go`.
-- [ ] T018 [US2] Update `internal/adapters/imap/server.go` mechanism to verify `X-Spam-Status` header routing (if not already handled by delivery-time rules).
-- [ ] T019 [US2] [TEST] Unit test for Tokenizer and Classifier correctness in `internal/adapters/spam/bayesian/bayes_test.go`.
+- [x] T014 [US2] Implement tokenizer (Unicode scanner) in `internal/adapters/spam/bayesian/tokenizer.go`.
+- [x] T015 [US2] Implement `BayesClassifier` logic (Naive Bayes math) in `internal/adapters/spam/bayesian/classifier.go`.
+- [x] T016 [US2] Implement `SpamCheckMiddleware` in `internal/adapters/smtp/middleware/spam.go` utilizing the classifier. (Integrated into `SpamProtectionService` and `server.go`)
+- [x] T017 [US2] Register `SpamCheckMiddleware` in the SMTP server pipeline in `cmd/mailraven/serve.go`. (Via Service)
+- [x] T018 [US2] Update `internal/adapters/imap/server.go` mechanism to verify `X-Spam-Status` header routing (if not already handled by delivery-time rules). (Handled in `smtp/handler.go`)
+- [x] T019 [US2] [TEST] Unit test for Tokenizer and Classifier correctness in `internal/adapters/spam/bayesian/bayes_test.go`.
 
 ## Phase 5: User Story 3 - Feedback Loop (P3)
 
 **Goal**: Enable users to train the filter by moving messages.
 
-- [ ] T020 [US3] Implement `BayesTrainer` logic (`TrainSpam`, `TrainHam`) in `internal/adapters/spam/bayesian/trainer.go`.
-- [ ] T021 [US3] Implement `COPY` command handler in `internal/adapters/imap/commands.go` (required for "Move").
-- [ ] T022 [US3] Add hook in `COPY` handler: If destination is `Junk`, call `TrainSpam`. If source is `Junk`, call `TrainHam`.
-- [ ] T023 [US3] [TEST] Integration test in `tests/spam_training_test.go`: Move message -> Verify token count increases in DB.
+- [x] T020 [US3] Implement `BayesTrainer` logic (`TrainSpam`, `TrainHam`) in `internal/adapters/spam/bayesian/trainer.go`.
+- [x] T021 [US3] Implement `COPY` command handler in `internal/adapters/imap/commands.go` (required for "Move").
+- [x] T022 [US3] Add hook in `COPY` handler: If destination is `Junk`, call `TrainSpam`. If source is `Junk`, call `TrainHam`.
+- [x] T023 [US3] [TEST] Integration test in `tests/spam_training_test.go`: Move message -> Verify token count increases in DB.
 
 ## Phase 6: Polish & Cross-Cutting
 
-- [ ] T024 Add background goroutine to prune expired Greylist entries in `internal/adapters/spam/greylist/pruner.go`.
-- [ ] T025 Add Prometheus metrics for `spam_detected_total`, `greylist_blocked_total` in `internal/observability/metrics.go`.
-- [ ] T026 Update `README.md` and `docs/COMPARISON_MOX.md` to reflect new capabilities.
+- [x] T024 Add background goroutine to prune expired Greylist entries in `internal/adapters/spam/greylist/pruner.go`.
+- [x] T025 Add Prometheus metrics for `spam_detected_total`, `greylist_blocked_total` in `internal/observability/metrics.go`.
+- [x] T026 Update `README.md` and `docs/COMPARISON_MOX.md` to reflect new capabilities.
 
 ## Dependencies
 

@@ -19,6 +19,12 @@ type SpamFilter interface {
 	// CheckRecipient checks if the sender/recipient pair allows delivery (Greylisting).
 	// Returns an error (typically transient) if the recipient is currently greylisted.
 	CheckRecipient(ctx context.Context, ip, sender, recipient string) error
+
+	// TrainSpam learns from spam content
+	TrainSpam(ctx context.Context, content io.Reader) error
+
+	// TrainHam learns from ham (non-spam) content
+	TrainHam(ctx context.Context, content io.Reader) error
 }
 
 // Greylister defines the core logic for the grey-listing mechanism.

@@ -1,10 +1,13 @@
 package imap
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/Kartikey2011yadav/mailraven-server/internal/core/domain"
 )
 
 // handleCommand dispatches to specific command handlers
@@ -34,6 +37,8 @@ func (s *Session) handleCommand(cmd *Command) {
 		s.handleUid(cmd)
 	case "STORE":
 		s.handleStore(cmd)
+	case "COPY":
+		s.handleCopy(cmd)
 	case "IDLE":
 		s.handleIdle(cmd)
 	default:
@@ -234,6 +239,13 @@ func (s *Session) handleUid(cmd *Command) {
 	} else if subCmd == "STORE" {
 		// UID STORE <range> <mode> <flags>
 		s.handleUidStore(cmd.Tag, cmd.Args[1], cmd.Args[2:])
+	} else if subCmd == "COPY" {
+		// UID COPY <range> <mailbox>
+		if len(cmd.Args) < 3 {
+			s.send(fmt.Sprintf("%s BAD Missing COPY arguments", cmd.Tag))
+			return
+		}
+		s.handleUidCopy(cmd.Tag, cmd.Args[1], cmd.Args[2])
 	} else {
 		s.send(fmt.Sprintf("%s BAD Unknown UID command", cmd.Tag))
 	}
@@ -338,4 +350,70 @@ func parseUidRange(rangeSpec string) (uint32, uint32) {
 		max = uint32(v)
 	}
 	return uint32(min), max
+}
+
+func (s *Session) handleUidCopy(tag string, rangeSpec string, destName string) {
+	min, max := parseUidRange(rangeSpec)
+
+	msgs, err := s.emailRepo.FindByUIDRange(context.Background(), s.user.Email, s.selectedMailbox.Name, min, max)
+	if err != nil {
+		s.send(fmt.Sprintf("%s NO DB Error", tag))
+		return
+	}
+	if len(msgs) == 0 {
+		s.send(fmt.Sprintf("%s NO No messages in range", tag))
+		return
+	}
+
+	// Spam Training Hook
+	srcJunk := strings.EqualFold(s.selectedMailbox.Name, "Junk")
+	destJunk := strings.EqualFold(destName, "Junk")
+
+	if s.spamService != nil && (srcJunk != destJunk) {
+		// Async training
+		trainingMsgs := msgs // Copy slice header
+		go func(messages []*domain.Message, isSpam bool) {
+			ctx := context.Background()
+			for _, msg := range messages {
+				if s.blobStore == nil {
+					continue
+				}
+				contentBytes, err := s.blobStore.Read(ctx, msg.BodyPath)
+				if err != nil {
+					s.logger.Error("Failed to read blob for training", "error", err)
+					continue
+				}
+
+				reader := bytes.NewReader(contentBytes)
+				if isSpam {
+					if err := s.spamService.TrainSpam(ctx, reader); err != nil {
+						s.logger.Error("Failed to train spam", "error", err, "msg_id", msg.ID)
+					}
+				} else {
+					if err := s.spamService.TrainHam(ctx, reader); err != nil {
+						s.logger.Error("Failed to train ham", "error", err, "msg_id", msg.ID)
+					}
+				}
+			}
+		}(trainingMsgs, destJunk)
+	}
+
+	// Perform Copy
+	var ids []string
+	for _, m := range msgs {
+		ids = append(ids, m.ID)
+	}
+
+	err = s.emailRepo.CopyMessages(context.Background(), s.user.Email, ids, destName)
+	if err != nil {
+		s.logger.Error("IMAP COPY Error", "error", err)
+		s.send(fmt.Sprintf("%s NO Copy failed", tag))
+		return
+	}
+
+	s.send(fmt.Sprintf("%s OK UID COPY completed", tag))
+}
+
+func (s *Session) handleCopy(cmd *Command) {
+	s.send(fmt.Sprintf("%s NO Use UID COPY", cmd.Tag))
 }

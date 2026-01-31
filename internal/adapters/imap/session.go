@@ -29,6 +29,8 @@ type Session struct {
 	logger          *observability.Logger
 	userRepo        ports.UserRepository
 	emailRepo       ports.EmailRepository
+	spamService     ports.SpamFilter
+	blobStore       ports.BlobStore
 	reader          *bufio.Reader
 	writer          *bufio.Writer
 	isTLS           bool
@@ -36,16 +38,18 @@ type Session struct {
 	selectedMailbox *domain.Mailbox // Currently selected mailbox
 }
 
-func NewSession(conn net.Conn, cfg config.IMAPConfig, logger *observability.Logger, userRepo ports.UserRepository, emailRepo ports.EmailRepository) *Session {
+func NewSession(conn net.Conn, cfg config.IMAPConfig, logger *observability.Logger, userRepo ports.UserRepository, emailRepo ports.EmailRepository, spamService ports.SpamFilter, blobStore ports.BlobStore) *Session {
 	return &Session{
-		conn:      conn,
-		state:     StateNotAuthenticated,
-		config:    cfg,
-		logger:    logger,
-		userRepo:  userRepo,
-		emailRepo: emailRepo,
-		reader:    bufio.NewReader(conn),
-		writer:    bufio.NewWriter(conn),
+		conn:        conn,
+		state:       StateNotAuthenticated,
+		config:      cfg,
+		logger:      logger,
+		userRepo:    userRepo,
+		emailRepo:   emailRepo,
+		spamService: spamService,
+		blobStore:   blobStore,
+		reader:      bufio.NewReader(conn),
+		writer:      bufio.NewWriter(conn),
 	}
 }
 
