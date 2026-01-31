@@ -22,7 +22,9 @@ This document analyzes the differences between our project (**MailRaven**) and t
 | Security | SPF, DKIM, DMARC, DANE, MTA-STS | SPF, DKIM, DMARC, DANE, MTA-STS, TLS-RPT | **Gap Closed**. We now support MTA-STS (Receive), TLS-RPT (Receive), and DANE (Send). |
 | TLS/ACME         | Built-in Automatic ACME | Built-in Automatic ACME | Implemented via `autocert`. |
 | Spam Filter      | Bayesian, Grey-listing | Bayesian, Grey-listing, DNSBL | **Gap Closed**. Added Native Bayesian filter (with IMAP feedback loop) and Greylisting. |
-| Administration   | Web Admin UI | Web Admin API | Mox has a full GUI. We have a robust REST API for Admin functions. |
+| **Sieve Scripts**| Full (RFC 5228)    | None             | We lack server-side rules for vacation messages or automatic sorting. |
+| **Quotas**       | Full (RFC 2087)    | None             | No enforcement of storage limits per user. |
+| Administration   | Web Admin UI       | Web Admin API    | Mox has a full GUI. We have a robust REST API for Admin functions. |
 | **Frontend**     |  Integrated Webmail |  Separate React App | We have a specialized Frontend (Client), Mox has generic Webmail. |
 
 ## Deep Dive Analysis: Protocol Compatibility
@@ -45,6 +47,12 @@ To reach parity with Mox for a "drop-in replacement" server, we need to address 
 This difference is intentional but noteworthy. Mox includes full Webmail and Admin UIs in the single binary.
 - **Webmail**: While we have a specialized React Client, `mox` enables a self-contained deployment. We might consider bundling our client assets into the Go binary for "single file" deployment parity.
 - **Admin UI**: We currently offer a comprehensive REST API. Parity would require building a GUI consuming this API, potentially embedded in the binary.
+
+### 2. Protocol Feature Gaps (Functional Gap)
+These are standard email server features present in Mox (and Dovecot) that we have not yet implemented:
+- **Sieve Filtering (RFC 5228)**: Users cannot set server-side rules for vacation responses or automatic folder sorting. Clients must keep running to filter mail.
+- **Storage Quotas (RFC 2087)**: We cannot limit user mailbox sizes, which is critical for hosted environments.
+- **IMAP ACLs (RFC 4314)**: No support for shared mailboxes or delegation (e.g., "secretary accesses boss's inbox").
 
 ### Completed Items
 - [x] **IMAP Core**: SELECT, FETCH, UID, STORE implemented.
