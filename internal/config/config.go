@@ -10,16 +10,17 @@ import (
 
 // Config represents the MailRaven server configuration
 type Config struct {
-	Domain  string        `yaml:"domain"` // Primary mail domain (e.g., mail.example.com)
-	SMTP    SMTPConfig    `yaml:"smtp"`
-	API     APIConfig     `yaml:"api"`
-	Storage StorageConfig `yaml:"storage"`
-	DKIM    DKIMConfig    `yaml:"dkim"`
-	Logging LogConfig     `yaml:"logging"`
-	TLS     TLSConfig     `yaml:"tls"`
-	Spam    SpamConfig    `yaml:"spam"`
-	IMAP    IMAPConfig    `yaml:"imap"`
-	Backup  BackupConfig  `yaml:"backup"`
+	Domain      string            `yaml:"domain"` // Primary mail domain (e.g., mail.example.com)
+	SMTP        SMTPConfig        `yaml:"smtp"`
+	API         APIConfig         `yaml:"api"`
+	Storage     StorageConfig     `yaml:"storage"`
+	DKIM        DKIMConfig        `yaml:"dkim"`
+	Logging     LogConfig         `yaml:"logging"`
+	TLS         TLSConfig         `yaml:"tls"`
+	Spam        SpamConfig        `yaml:"spam"`
+	IMAP        IMAPConfig        `yaml:"imap"`
+	Backup      BackupConfig      `yaml:"backup"`
+	ManageSieve ManageSieveConfig `yaml:"managesieve"`
 }
 
 // SMTPConfig contains SMTP server settings
@@ -122,6 +123,12 @@ type BackupConfig struct {
 	RetentionDays int    `yaml:"retention_days"` // Retention period
 }
 
+// ManageSieveConfig contains ManageSieve server settings
+type ManageSieveConfig struct {
+	Enabled bool `yaml:"enabled"` // Enable ManageSieve server (default: true)
+	Port    int  `yaml:"port"`    // ManageSieve listen port (default: 4190)
+}
+
 // LoadFromFile loads configuration from a YAML file
 func LoadFromFile(path string) (*Config, error) {
 	// Sanitize path
@@ -181,6 +188,9 @@ func LoadFromFile(path string) (*Config, error) {
 	}
 	if cfg.Backup.RetentionDays == 0 {
 		cfg.Backup.RetentionDays = 7
+	}
+	if cfg.ManageSieve.Port == 0 {
+		cfg.ManageSieve.Port = 4190
 	}
 	return &cfg, nil
 }

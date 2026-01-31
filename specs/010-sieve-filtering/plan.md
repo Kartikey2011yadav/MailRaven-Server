@@ -5,19 +5,19 @@
 
 ## Summary
 
-Implement server-side email filtering using the Sieve language (RFC 5228) to allow users to automatically sort emails into folders and set up vacation auto-replies. This includes a Sieve interpreter integration, database storage for scripts, a ManageSieve (RFC 5804) protocol listener for desktop clients, and REST APIs for web administration.
+Implement server-side email filtering using the Sieve language (RFC 5228) and ManageSieve protocol (RFC 5804). This allows users to enable robust server-side rules for folder sorting, rejection, and vacation auto-replies. The feature includes a Sieve interpreter hook in the delivery pipeline, a ManageSieve TCP server for client integration, and Web Admin APIs for management.
 
 ## Technical Context
 
-**Language/Version**: Go 1.22+
-**Primary Dependencies**: `github.com/emersion/go-sieve` (likely candidate for interpreter/protocol), `github.com/emersion/go-sasl` (for ManageSieve auth).
-**Storage**: SQLite (scripts table, vacation tracking table).
-**Testing**: Unit tests for interpreter hooks, Integration tests for SMTP+Sieve delivery, Protocol tests for ManageSieve.
-**Target Platform**: Pure Go (Cross-platform).
-**Project Type**: Server Backend.
-**Performance Goals**: <50ms overhead per message.
-**Constraints**: Must fail open (deliver to Inbox) on script errors.
-**Scale/Scope**: Per-user scripts, typical script size <32KB.
+**Language/Version**: Go 1.24.0
+**Primary Dependencies**: `github.com/emersion/go-sieve` (Interpreter/Protocol), `github.com/emersion/go-sasl` (Authentication)
+**Storage**: SQLite (Tables: `sieve_scripts`, `vacation_trackers`)
+**Testing**: Unit tests for Sieve Engine, Integration tests for SMTP Delivery hook, Protocol tests for ManageSieve.
+**Target Platform**: Pure Go Server (Cross-platform)
+**Project Type**: Server Backend
+**Performance Goals**: Script execution < 10ms per message.
+**Constraints**: Must fail open (Implicit Keep) on runtime errors to prevent data loss.
+**Scale/Scope**: Per-user scripts, script size hard limit (e.g., 32KB).
 
 ## Constitution Check
 
@@ -25,70 +25,71 @@ Implement server-side email filtering using the Sieve language (RFC 5228) to all
 
 Verify compliance with [MailRaven Constitution](../../.specify/memory/constitution.md):
 
-- [x] **Reliability**: Scripts stored in SQLite (Durability). Execution failure defaults to Inbox (Safety).
-- [x] **Protocol Parity**: Implements RFC 5228 and RFC 5804, matching Mox/Dovecot capabilities.
-- [x] **Mobile-First Architecture**: N/A for Sieve engine, but Management API is REST-based for web/mobile admin.
-- [x] **Dependency Minimalism**: Will evaluate `emersion/go-sieve` vs writing from scratch. Writing a Sieve interpreter from scratch is likely error-prone and non-maintenance friendly, so a robust library is justified if CGO-free.
-- [x] **Observability**: Execution logs will include applied rules and filing actions.
-- [x] **Interface-Driven Design**: `ScriptRepository` and `SieveEngine` will be interfaces.
-- [x] **Extensibility**: Sieve will be implemented as a hook in the `LocalDelivery` phase, compatible with the middleware concept.
-- [x] **Protocol Isolation**: Sieve logic resides in `core/services`, accessible by SMTP (execution) and ManageSieve/REST (management).
-- [x] **Testing Standards**: Standard unit/integration tests planned.
+- [x] **Reliability**: Scripts stored in SQLite (Durability). Execution defaults to Inbox on error (Safety).
+- [x] **Protocol Parity**: Implements standard RFC 5228 and RFC 5804, matching mox capabilities.
+- [x] **Mobile-First Architecture**: Script management available via REST API for mobile admin apps.
+- [x] **Dependency Minimalism**: `emersion/go-sieve` is a high-quality, pure Go library, avoiding CGO.
+- [x] **Observability**: Execution logs will track rule matches and actions taken.
+- [x] **Interface-Driven Design**: `SieveExecutor` and `ScriptRepository` defined as interfaces.
+- [x] **Extensibility**: Implemented as a post-data/pre-commit hook in the Local Delivery Agent.
+- [x] **Protocol Isolation**: Logic resides in `core/services`, accessible by both SMTP and ManageSieve.
+- [x] **Testing Standards**: Includes unit tests for rules and integration tests for full delivery flow.
+
+**Violations Requiring Justification**: None.
 
 ## Project Structure
 
 ### Documentation (this feature)
-- `specs/010-sieve-filtering/research.md`: Research findings (Library choice, DB Schema)
-- `specs/010-sieve-filtering/data-model.md`: DB Schema for scripts/vacation
-- `specs/010-sieve-filtering/contracts/`: ManageSieve logic does not need new contracts (Standard RFC), REST API spec.
+- `specs/010-sieve-filtering/research.md`: Library selection and Schema design.
+- `specs/010-sieve-filtering/data-model.md`: Database structure.
+- `specs/010-sieve-filtering/contracts/`: REST API specifications.
+- `specs/010-sieve-filtering/quickstart.md`: Testing guide.
 
 ### Modules / Packages
-- `internal/core/ports/sieve.go`: Interfaces (`SieveExecutor`, `ScriptRepository`)
-- `internal/core/domain/sieve.go`: Domain entities
-- `internal/adapters/sieve/manager.go`: ManageSieve Protocol Server
-- `internal/adapters/sieve/engine.go`: Interpreter integration
-- `internal/adapters/storage/sqlite/sieve_repo.go`: Storage implementation
+- `internal/core/ports/sieve.go`: Domain interfaces.
+- `internal/core/domain/sieve/`: Domain entities.
+- `internal/adapters/sieve/`: Engine implementation and ManageSieve server.
+- `internal/adapters/storage/sqlite/`: Repository implementations.
 
 ## Phase 0: Outline & Research
 
-1.  **Unknowns & Research Tasks**:
-    *   [ ] **Research Task**: Evaluate `github.com/emersion/go-sieve` for CGO dependencies and extensibility (Vacation/FileInto support).
-    *   [ ] **Research Task**: Determine schema for `sieve_scripts` (Active vs Inactive) and `vacation_replies` (Auto-expiry).
-    *   [ ] **Research Task**: Identify the exact hook point in `internal/core/services/email_service.go` or `LocalDelivery` flow.
-    *   [ ] **Research Task**: Review `go-sasl` interaction with existing `AuthService` for ManageSieve.
+1.  **Resolved Unknowns**:
+    *   **Library**: Selected `emersion/go-sieve`.
+    *   **Data Model**: Defined `sieve_scripts` (with active flag) and `vacation_trackers`.
+    *   **Integration**: Hook into `LocalDeliveryAgent`.
 
-2.  **Output**: `specs/010-sieve-filtering/research.md`
+2.  **Output**: [research.md](research.md) (Completed)
 
 ## Phase 1: Design & Contracts
 
-1.  **Data Model (`data-model.md`)**:
-    *   `sieve_scripts` table.
-    *   `vacation_tracking` table.
-
-2.  **Interfaces**:
-    *   `ScriptRepository`
-    *   `SieveExecutor`
-
-3.  **Contracts**:
-    *   REST API for Script Management (`modules/openapi.yaml` update or documented in `contracts/`).
+1.  **Data Models**: Designed `sieve_scripts` and `vacation_trackers`.
+2.  **Contracts**: Created `sieve_api.yaml` for Web Admin API.
+3.  **Agent Context**: Updated to include Sieve capabilities.
 
 ## Phase 2: Implementation (Checklist)
 
+See [checklists/implementation.md](checklists/implementation.md) and [tasks.md](tasks.md).
+
 ### Step 1: Core & Storage
-- [ ] Define Domain & Ports (`internal/core/{domain,ports}/sieve.go`).
-- [ ] Implement `SqliteScriptRepository` & Migrations.
+- [ ] Define Entities and Interfaces.
+- [ ] Implement SQLite Repositories.
 
-### Step 2: Interpreter Engine
-- [ ] Integrate `go-sieve`.
-- [ ] Implement `FileInto` and `Vacation` extensions.
+### Step 2: Sieve Engine
+- [ ] Implement Engine wrapper around `emersion/go-sieve`.
+- [ ] Implement `fileinto` and `vacation` extensions.
 
-### Step 3: SMTP Integration
-- [ ] Hook Sieve into Delivery Pipeline.
+### Step 3: Integration
+- [ ] Inject Sieve hook into Local Delivery.
 
-### Step 4: Management Protocols
-- [ ] Implement ManageSieve Server (TCP 4190).
-- [ ] Implement REST API handlers.
+### Step 4: ManageSieve Server
+- [ ] Implement TCP 4190 Listener.
+- [ ] Implement ManageSieve commands.
+- [ ] Wire up SASL.
 
-### Step 5: Testing
-- [ ] Unit tests for engine.
-- [ ] Integration test (SMTP -> Sieve -> Mailbox).
+### Step 5: Web API
+- [ ] Implement REST endpoints.
+
+### Step 6: Testing
+- [ ] Verify message sorting.
+- [ ] Verify auto-replies.
+

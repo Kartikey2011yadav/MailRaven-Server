@@ -56,6 +56,7 @@ func NewServer(
 	backupService ports.BackupService,
 	// Add new repo
 	tlsRptRepo ports.TLSRptRepository,
+	sieveRepo ports.ScriptRepository,
 	logger *observability.Logger,
 	metrics *observability.Metrics,
 ) *Server {
@@ -70,6 +71,7 @@ func NewServer(
 	adminDomainHandler := handlers.NewAdminDomainHandler(domainRepo, logger)
 	adminStatsHandler := handlers.NewAdminStatsHandler(userRepo, emailRepo, queueRepo, logger)
 	tlsRptHandler := handlers.NewTLSRptHandler(tlsRptRepo, logger)
+	sieveHandler := handlers.NewSieveHandler(sieveRepo, logger)
 	sendHandler, err := handlers.NewSendHandler(
 		queueRepo,
 		blobStore,
@@ -136,6 +138,15 @@ func NewServer(
 		if sendHandler != nil {
 			r.Post("/api/v1/messages/send", sendHandler.Send)
 		}
+
+		// Sieve Scripts
+		r.Route("/api/v1/sieve/scripts", func(r chi.Router) {
+			r.Get("/", sieveHandler.ListScripts)
+			r.Post("/", sieveHandler.CreateScript)
+			r.Get("/{name}", sieveHandler.GetScript)
+			r.Delete("/{name}", sieveHandler.DeleteScript)
+			r.Put("/{name}/active", sieveHandler.ActivateScript)
+		})
 
 		// Admin endpoints
 		r.Route("/api/v1/admin", func(r chi.Router) {

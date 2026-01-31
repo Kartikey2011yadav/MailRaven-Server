@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/textproto"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -26,21 +25,6 @@ func TestGreylisting_SMTP_Interaction(t *testing.T) {
 	env := setupTestEnvironment(t) // Creates temp dir, db, basic logic
 	// Note: setupTestEnvironment closes DB/server on cleanup?
 	// It doesn't close DB, but we get the connection.
-
-	// 2. Apply Greylist Migration manually (since helpers might not have it yet)
-	migrationPath := "../internal/adapters/storage/sqlite/migrations/006_add_greylist.sql"
-	// Verify path exists relative to test execution
-	absMigPath, _ := filepath.Abs(migrationPath)
-	if _, err := filepath.Abs(migrationPath); err != nil {
-		t.Logf("Warning: could not verify migration path: %v", err)
-	}
-	if err := env.conn.RunMigrations(migrationPath); err != nil {
-		t.Logf("Migration warning (006): %v. Trying absolute path: %s", err, absMigPath)
-		// Try absolute path if relative fails
-		if err := env.conn.RunMigrations(absMigPath); err != nil {
-			t.Fatalf("Failed to run Greylist migration: %v", err)
-		}
-	}
 
 	// 3. Initialize Greylist Service
 	repo := sqlite.NewGreylistRepository(env.conn.DB)
