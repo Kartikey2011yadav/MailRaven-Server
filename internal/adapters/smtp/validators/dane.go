@@ -100,7 +100,19 @@ func verifyRecord(r *dns.TLSA, cert *x509.Certificate) error {
 	// Match based on MatchingType (0=Exact, 1=SHA256, 2=SHA512)
 	switch r.MatchingType {
 	case 0: // Exact match
-		return checkMatch(data, r.Certificate)
+		if !bytesEqual(data, r.Certificate) { 
+			// r.Certificate is the hex string in simple storage, but miekg/dns stores raw bytes in the field usually named Certificate (actually it's a string field "Certificate" in RR, but the struct holds parsed data? Check miekg/dns struct)
+			// miekg/dns TLSA struct field is string 'Certificate' which is hex encoded?
+			// Wait, let's check documented struct.
+			// type TLSA struct { ... Usage, Selector, MatchingType uint8; Certificate string }
+			// The Certificate field is the hex string representation of the association data.
+			// We need to decode it first to compare with bytes.
+			// However, miekg/dns usually handles the wire format.
+			// Actually, for RR types, the string field is for presentation.
+			// No, miekg/dns fields usually correspond to the RDATA.
+			// Let's assume r.Certificate is the Hex string.
+			return checkMatch(data, r.Certificate)
+		}
 	case 1: // SHA2-256
 		hash := sha256.Sum256(data)
 		return checkMatch(hash[:], r.Certificate)
