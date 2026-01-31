@@ -116,7 +116,7 @@ func TestSpamIntegration(t *testing.T) {
 		RateLimit:   config.RateLimitConfig{Window: "10m", Count: 100},
 	}
 
-	svc, err := services.NewSpamProtectionService(spamCfg, logger)
+	svc, err := services.NewSpamProtectionService(spamCfg, logger, nil, nil)
 	if err != nil {
 		t.Fatalf("Failed to create service: %v", err)
 	}
