@@ -165,6 +165,10 @@ func RunServe() error {
 	// Initialize SMTP server
 	smtpServer := smtp.NewServer(cfg, logger, metrics, messageHandler, spamService)
 
+	// Initialize Outbound Delivery
+	smtpClient := smtp.NewClient(cfg.SMTP.DANE, logger)
+	deliveryWorker := smtp.NewDeliveryWorker(queueRepo, blobStore, smtpClient, logger, metrics)
+
 	// Initialize ACME service
 	acmeService, err := services.NewACMEService(cfg.TLS.ACME)
 	if err != nil {
@@ -218,6 +222,9 @@ func RunServe() error {
 			}
 		}()
 	}
+
+	// Start Delivery Worker
+	deliveryWorker.Start()
 
 	// Start SMTP server (blocking)
 	logger.Info("starting SMTP server", "port", cfg.SMTP.Port)
