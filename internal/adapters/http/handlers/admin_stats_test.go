@@ -90,6 +90,9 @@ func (m *MockEmailRepo) SetFlags(ctx context.Context, messageID string, flags ..
 func (m *MockEmailRepo) AssignUID(ctx context.Context, messageID string, mailbox string) (uint32, error) {
 	return 0, nil
 }
+func (m *MockEmailRepo) CopyMessages(ctx context.Context, userID string, msgIDs []string, destMailbox string) error {
+	return nil
+}
 
 type MockQueueRepo struct{ mock.Mock }
 

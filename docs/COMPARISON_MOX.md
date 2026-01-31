@@ -19,10 +19,12 @@ This document analyzes the differences between our project (**MailRaven**) and t
 | **IMAP4**        |  Full (RFC 3501 + Extensions) |  Core RFC 3501 Compliance | Supports LOGIN, LIST, SELECT, FETCH, UID, STORE. Compatible with Standard Clients. |
 | **Mobile Push**  |  IMAP IDLE / Notifications |  IMAP IDLE Supported | Real-time notifications for standard clients. |
 | **Autodiscover** |  SRV, XML, Apple Profiles |  XML (MS/Mozilla) | Supports Outlook and Thunderbird auto-config. |
-| **Security**     |  SPF, DKIM, DMARC, DANE, MTA-STS |  SPF, DKIM, DMARC, DANE, MTA-STS, TLS-RPT | **Gap Closed**. We now support MTA-STS (Receive), TLS-RPT (Receive), and DANE (Send). |
-| **TLS/ACME**     |  Built-in Automatic ACME |  Built-in Automatic ACME | Implemented via `autocert`. |
-| **Spam Filter**  |  Bayesian, Grey-listing |  DNSBL + Rate Limiting | Connection-level filtering present. Content analysis (Bayesian) missing. |
-| **Administration**|  Web Admin UI |  Web Admin API | Mox has a full GUI. We have a robust REST API for Admin functions. |
+| Security | SPF, DKIM, DMARC, DANE, MTA-STS | SPF, DKIM, DMARC, DANE, MTA-STS, TLS-RPT | **Gap Closed**. We now support MTA-STS (Receive), TLS-RPT (Receive), and DANE (Send). |
+| TLS/ACME         | Built-in Automatic ACME | Built-in Automatic ACME | Implemented via `autocert`. |
+| Spam Filter      | Bayesian, Grey-listing | Bayesian, Grey-listing, DNSBL | **Gap Closed**. Added Native Bayesian filter (with IMAP feedback loop) and Greylisting. |
+| **Sieve Scripts**| Full (RFC 5228)    | None             | We lack server-side rules for vacation messages or automatic sorting. |
+| **Quotas**       | Full (RFC 2087)    | None             | No enforcement of storage limits per user. |
+| Administration   | Web Admin UI       | Web Admin API    | Mox has a full GUI. We have a robust REST API for Admin functions. |
 | **Frontend**     |  Integrated Webmail |  Separate React App | We have a specialized Frontend (Client), Mox has generic Webmail. |
 
 ## Deep Dive Analysis: Protocol Compatibility
@@ -41,23 +43,23 @@ This document analyzes the differences between our project (**MailRaven**) and t
 
 To reach parity with Mox for a "drop-in replacement" server, we need to address these gaps.
 
-### 1. Anti-Abuse & Filtering (Strategic Gap)
-MailRaven currently relies on external systems or basic checks, whereas `mox` favors a "batteries-included" monolithic approach.
-- **Bayesian Filter**: Native implementation or tighter integration with Rspamd (currently we rely on external containers).
-- **IP Reputation**: Deeper integration of DNSBL with internal scoring (Mox style) rather than just rejection.
-- **Grey-listing**: Temporary rejection of unknown senders to filter spam bots.
-- **DMARC Reporting**: Capability to generate and send aggregate XML reports to senders (We now support *receiving* reports via TLS-RPT and DMARC, but need generation logic).
-
-### 2. User Interface & Administration (Philosophical Gap)
+### 1. User Interface & Administration (Philosophical Gap)
 This difference is intentional but noteworthy. Mox includes full Webmail and Admin UIs in the single binary.
 - **Webmail**: While we have a specialized React Client, `mox` enables a self-contained deployment. We might consider bundling our client assets into the Go binary for "single file" deployment parity.
 - **Admin UI**: We currently offer a comprehensive REST API. Parity would require building a GUI consuming this API, potentially embedded in the binary.
+
+### 2. Protocol Feature Gaps (Functional Gap)
+These are standard email server features present in Mox (and Dovecot) that we have not yet implemented:
+- **Sieve Filtering (RFC 5228)**: Users cannot set server-side rules for vacation responses or automatic folder sorting. Clients must keep running to filter mail.
+- **Storage Quotas (RFC 2087)**: We cannot limit user mailbox sizes, which is critical for hosted environments.
+- **IMAP ACLs (RFC 4314)**: No support for shared mailboxes or delegation (e.g., "secretary accesses boss's inbox").
 
 ### Completed Items
 - [x] **IMAP Core**: SELECT, FETCH, UID, STORE implemented.
 - [x] **IMAP IDLE**: Real-time push notification support.
 - [x] **Autodiscover**: XML configuration for Outlook and Thunderbird.
 - [x] **Modern Security**: MTA-STS (Serve), TLS-RPT (Serve), DANE (Send Verification).
+- [x] **Spam Protection**: Native Bayesian Filtering, Greylisting, and IMAP retraining hooks.
 
 ## Conclusion
 
@@ -66,4 +68,4 @@ This difference is intentional but noteworthy. Mox includes full Webmail and Adm
 **MailRaven** is an **API-First** Email Platform. It now supports standard clients (Outlook, iOS) via our new IMAP implementation, but philosophically prioritizes programmatic access and flexibility.
 
 **Recommendation**:
-With the Basic Client Compliance and Modern Security gaps closed, the next major hurdle for "Drop-In" replacement status is **Advanced Spam Filtering** (Bayesian/Greylisting) to match Mox's "batteries-included" anti-abuse reputation. After that, we must decide if we want to abandon the "Headless/API" philosophy to build bundled UIs.
+With Basic Client Compliance, Modern Security, and now **Advanced Spam Filtering** gaps closed, MailRaven is nearly feature-complete as a backend server. The remaining major difference is the included UI/Frontend (Mox has it, we separate it). We must decide if we want to abandon the "Headless/API" philosophy to build bundled UIs.

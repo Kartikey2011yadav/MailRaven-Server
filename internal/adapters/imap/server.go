@@ -11,19 +11,23 @@ import (
 )
 
 type Server struct {
-	config    config.IMAPConfig
-	logger    *observability.Logger
-	userRepo  ports.UserRepository
-	emailRepo ports.EmailRepository
-	listener  net.Listener
+	config      config.IMAPConfig
+	logger      *observability.Logger
+	userRepo    ports.UserRepository
+	emailRepo   ports.EmailRepository
+	spamService ports.SpamFilter
+	blobStore   ports.BlobStore
+	listener    net.Listener
 }
 
-func NewServer(cfg config.IMAPConfig, logger *observability.Logger, userRepo ports.UserRepository, emailRepo ports.EmailRepository) *Server {
+func NewServer(cfg config.IMAPConfig, logger *observability.Logger, userRepo ports.UserRepository, emailRepo ports.EmailRepository, spamService ports.SpamFilter, blobStore ports.BlobStore) *Server {
 	return &Server{
-		config:    cfg,
-		logger:    logger,
-		userRepo:  userRepo,
-		emailRepo: emailRepo,
+		config:      cfg,
+		logger:      logger,
+		userRepo:    userRepo,
+		emailRepo:   emailRepo,
+		spamService: spamService,
+		blobStore:   blobStore,
 	}
 }
 
@@ -64,6 +68,6 @@ func (s *Server) Addr() net.Addr {
 }
 
 func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
-	session := NewSession(conn, s.config, s.logger, s.userRepo, s.emailRepo)
+	session := NewSession(conn, s.config, s.logger, s.userRepo, s.emailRepo, s.spamService, s.blobStore)
 	session.Serve()
 }

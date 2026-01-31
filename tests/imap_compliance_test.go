@@ -39,7 +39,7 @@ func TestIMAP_Compliance(t *testing.T) {
 		AllowInsecureAuth: true,
 	}
 	logger := observability.NewLogger("error", "text")
-	server := imap.NewServer(imapCfg, logger, env.userRepo, env.emailRepo)
+	server := imap.NewServer(imapCfg, logger, env.userRepo, env.emailRepo, &NoOpSpamFilter{}, env.blobStore)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

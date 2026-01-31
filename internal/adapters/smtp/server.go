@@ -169,6 +169,18 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 				continue
 			}
 			recipient := extractEmailAddress(strings.TrimPrefix(strings.ToUpper(args), "TO:"))
+
+			// Check Greylisting/Spam for this recipient
+			if s.spamFilter != nil {
+				if err := s.spamFilter.CheckRecipient(ctx, session.RemoteIP, session.Sender, recipient); err != nil {
+					sessionLogger.Warn("recipient blocked by spam filter", "recipient", recipient, "reason", err)
+					// 451 Requested action aborted: local error in processing (used for greylisting)
+					// We pass the error text which contains "scheduled retry" info
+					s.send(writer, "451 %v", err)
+					continue
+				}
+			}
+
 			session.Recipients = append(session.Recipients, recipient)
 			sessionLogger.Info("rcpt to", "recipient", recipient)
 			s.send(writer, "250 OK")

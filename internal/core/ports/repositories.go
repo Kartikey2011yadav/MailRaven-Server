@@ -43,6 +43,10 @@ type EmailRepository interface {
 	// FindByUIDRange retrieves messages by UID range [min, max]
 	FindByUIDRange(ctx context.Context, userID, mailbox string, min, max uint32) ([]*domain.Message, error)
 
+	// CopyMessages copies messages to a destination mailbox
+	// Returns map of oldUID -> newUID if possible, or just error
+	CopyMessages(ctx context.Context, userID string, messageIDs []string, destMailbox string) error
+
 	// Flags
 	AddFlags(ctx context.Context, messageID string, flags ...string) error
 	RemoveFlags(ctx context.Context, messageID string, flags ...string) error
@@ -51,6 +55,28 @@ type EmailRepository interface {
 	// UID Management
 	// AssignUID assigns a UID to a message if it doesn't have one (atomic with increments)
 	AssignUID(ctx context.Context, messageID string, mailbox string) (uint32, error)
+}
+
+// GreylistRepository defines storage for spam greylisting
+type GreylistRepository interface {
+	Get(ctx context.Context, tuple domain.GreylistTuple) (*domain.GreylistEntry, error)
+	Upsert(ctx context.Context, entry *domain.GreylistEntry) error
+	DeleteOlderThan(ctx context.Context, timestamp int64) (int64, error)
+}
+
+// BayesRepository defines storage for bayesian classifier data
+type BayesRepository interface {
+	// GetTokens fetches multiple tokens in a single operation
+	GetTokens(ctx context.Context, tokens []string) (map[string]*domain.BayesToken, error)
+
+	// IncrementToken adds to the spam or ham count of a token (Upsert)
+	IncrementToken(ctx context.Context, token string, isSpam bool) error
+
+	// GetGlobalStats retrieves the total spam/ham counts
+	GetGlobalStats(ctx context.Context) (*domain.BayesGlobalStats, error)
+
+	// IncrementGlobal adds to the global spam/ham counters
+	IncrementGlobal(ctx context.Context, isSpam bool) error
 }
 
 // UserRepository defines storage operations for user accounts

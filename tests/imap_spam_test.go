@@ -32,7 +32,7 @@ func TestIMAPListener(t *testing.T) {
 	logger := observability.NewLogger("error", "text")
 
 	// Start Server
-	server := imap.NewServer(cfg, logger, env.userRepo, env.emailRepo)
+	server := imap.NewServer(cfg, logger, env.userRepo, env.emailRepo, &NoOpSpamFilter{}, env.blobStore)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -116,7 +116,7 @@ func TestSpamIntegration(t *testing.T) {
 		RateLimit:   config.RateLimitConfig{Window: "10m", Count: 100},
 	}
 
-	svc, err := services.NewSpamProtectionService(spamCfg, logger)
+	svc, err := services.NewSpamProtectionService(spamCfg, logger, nil, nil)
 	if err != nil {
 		t.Fatalf("Failed to create service: %v", err)
 	}

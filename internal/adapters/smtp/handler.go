@@ -1,6 +1,7 @@
 package smtp
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
@@ -133,6 +134,17 @@ func (h *Handler) storeMessageAtomic(
 		return fmt.Errorf("failed to write blob: %w", err)
 	}
 
+	// Determine Mailbox (Spam Routing)
+	mailbox := "INBOX"
+	// Parse headers to check for X-Spam-Status
+	headerEnd := bytes.Index(rawMessage, []byte("\r\n\r\n"))
+	if headerEnd == -1 {
+		headerEnd = len(rawMessage)
+	}
+	if bytes.Contains(rawMessage[:headerEnd], []byte("X-Spam-Status: Yes")) {
+		mailbox = "Junk"
+	}
+
 	// Create domain message
 	msg := &domain.Message{
 		ID:          messageID,
@@ -144,6 +156,7 @@ func (h *Handler) storeMessageAtomic(
 		BodyPath:    bodyPath,
 		ReadState:   false,
 		ReceivedAt:  time.Now(),
+		Mailbox:     mailbox, // Routing
 		SPFResult:   string(spfResult),
 		DKIMResult:  string(dkimResult),
 		DMARCResult: string(dmarcResult),

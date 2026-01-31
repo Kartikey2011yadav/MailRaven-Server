@@ -35,6 +35,7 @@ type testEnvironment struct {
 	tempDir   string
 	emailRepo *sqlite.EmailRepository
 	userRepo  *sqlite.UserRepository
+	blobStore *disk.BlobStore
 	messages  []*domain.Message
 	conn      *sqlite.Connection
 }
@@ -197,6 +198,7 @@ func setupTestEnvironment(t *testing.T) *testEnvironment {
 		conn:      conn,
 		emailRepo: emailRepo,
 		userRepo:  userRepo,
+		blobStore: blobStore,
 		messages:  messages,
 	}
 }
@@ -323,3 +325,16 @@ func generateTestDKIMKey(t *testing.T, path string) {
 		t.Fatalf("Failed to write DKIM key: %v", err)
 	}
 }
+
+// NoOpSpamFilter for tests
+type NoOpSpamFilter struct{}
+
+func (n *NoOpSpamFilter) CheckConnection(ctx context.Context, ip string) error { return nil }
+func (n *NoOpSpamFilter) CheckContent(ctx context.Context, content io.Reader, headers map[string]string) (*domain.SpamCheckResult, error) {
+	return &domain.SpamCheckResult{Action: domain.SpamActionPass, Score: 0.0}, nil
+}
+func (n *NoOpSpamFilter) CheckRecipient(ctx context.Context, ip, sender, recipient string) error {
+	return nil
+}
+func (n *NoOpSpamFilter) TrainSpam(ctx context.Context, content io.Reader) error { return nil }
+func (n *NoOpSpamFilter) TrainHam(ctx context.Context, content io.Reader) error  { return nil }
