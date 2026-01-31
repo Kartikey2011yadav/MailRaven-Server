@@ -22,7 +22,7 @@ This document analyzes the differences between our project (**MailRaven**) and t
 | Security | SPF, DKIM, DMARC, DANE, MTA-STS | SPF, DKIM, DMARC, DANE, MTA-STS, TLS-RPT | **Gap Closed**. We now support MTA-STS (Receive), TLS-RPT (Receive), and DANE (Send). |
 | TLS/ACME         | Built-in Automatic ACME | Built-in Automatic ACME | Implemented via `autocert`. |
 | Spam Filter      | Bayesian, Grey-listing | Bayesian, Grey-listing, DNSBL | **Gap Closed**. Added Native Bayesian filter (with IMAP feedback loop) and Greylisting. |
-| **Sieve Scripts**| Full (RFC 5228)    | None             | We lack server-side rules for vacation messages or automatic sorting. |
+| **Sieve Scripts**| Full (RFC 5228)    | Full (RFC 5228)  | **Gap Closed**. Added Sieve engine RFC 5228 + ManageSieve RFC 5804 + Vacation RFC 5230. |
 | **Quotas**       | Full (RFC 2087)    | None             | No enforcement of storage limits per user. |
 | Administration   | Web Admin UI       | Web Admin API    | Mox has a full GUI. We have a robust REST API for Admin functions. |
 | **Frontend**     |  Integrated Webmail |  Separate React App | We have a specialized Frontend (Client), Mox has generic Webmail. |
@@ -50,7 +50,6 @@ This difference is intentional but noteworthy. Mox includes full Webmail and Adm
 
 ### 2. Protocol Feature Gaps (Functional Gap)
 These are standard email server features present in Mox (and Dovecot) that we have not yet implemented:
-- **Sieve Filtering (RFC 5228)**: Users cannot set server-side rules for vacation responses or automatic folder sorting. Clients must keep running to filter mail.
 - **Storage Quotas (RFC 2087)**: We cannot limit user mailbox sizes, which is critical for hosted environments.
 - **IMAP ACLs (RFC 4314)**: No support for shared mailboxes or delegation (e.g., "secretary accesses boss's inbox").
 
@@ -60,6 +59,7 @@ These are standard email server features present in Mox (and Dovecot) that we ha
 - [x] **Autodiscover**: XML configuration for Outlook and Thunderbird.
 - [x] **Modern Security**: MTA-STS (Serve), TLS-RPT (Serve), DANE (Send Verification).
 - [x] **Spam Protection**: Native Bayesian Filtering, Greylisting, and IMAP retraining hooks.
+- [x] **Sieve Filtering**: RFC 5228 Engine, RFC 5804 ManageSieve Protocol, and Vacation extension.
 
 ## Conclusion
 
@@ -68,4 +68,4 @@ These are standard email server features present in Mox (and Dovecot) that we ha
 **MailRaven** is an **API-First** Email Platform. It now supports standard clients (Outlook, iOS) via our new IMAP implementation, but philosophically prioritizes programmatic access and flexibility.
 
 **Recommendation**:
-With Basic Client Compliance, Modern Security, and now **Advanced Spam Filtering** gaps closed, MailRaven is nearly feature-complete as a backend server. The remaining major difference is the included UI/Frontend (Mox has it, we separate it). We must decide if we want to abandon the "Headless/API" philosophy to build bundled UIs.
+With Basic Client Compliance, Modern Security, and now **Advanced Spam & Sieve Filtering** gaps closed, MailRaven is nearly feature-complete as a backend server. The remaining major difference is the included UI/Frontend (Mox has it, we separate it). We must decide if we want to abandon the "Headless/API" philosophy to build bundled UIs.
