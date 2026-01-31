@@ -177,3 +177,42 @@ func (r *EmailRepository) FindSince(ctx context.Context, email string, since tim
 
 	return messages, nil
 }
+
+// IMAP Support Stubs (TODO: Implement for Postgres)
+
+func (r *EmailRepository) GetMailbox(ctx context.Context, userID, name string) (*domain.Mailbox, error) {
+	return nil, nil // Not implemented
+}
+
+func (r *EmailRepository) CreateMailbox(ctx context.Context, userID, name string) error {
+	return nil // Not implemented
+}
+
+func (r *EmailRepository) ListMailboxes(ctx context.Context, userID string) ([]*domain.Mailbox, error) {
+	return nil, nil // Not implemented
+}
+
+func (r *EmailRepository) FindByUIDRange(ctx context.Context, userID, mailbox string, min, max uint32) ([]*domain.Message, error) {
+	return nil, nil // Not implemented
+}
+
+func (r *EmailRepository) AddFlags(ctx context.Context, messageID string, flags ...string) error {
+	return nil // Not implemented
+}
+
+func (r *EmailRepository) RemoveFlags(ctx context.Context, messageID string, flags ...string) error {
+	return nil // Not implemented
+}
+
+func (r *EmailRepository) SetFlags(ctx context.Context, messageID string, flags ...string) error {
+	return nil // Not implemented
+}
+
+func (r *EmailRepository) AssignUID(ctx context.Context, messageID string, mailbox string) (uint32, error) {
+	return 0, nil // Not implemented
+}
+
+// CopyMessages copies messages to a destination mailbox
+func (r *EmailRepository) CopyMessages(ctx context.Context, userID string, messageIDs []string, destMailbox string) error {
+	return ports.ErrStorageFailure // Not implemented
+}

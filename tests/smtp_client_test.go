@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/smtp"
+	"github.com/Kartikey2011yadav/mailraven-server/internal/config"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/observability"
 )
 
@@ -142,7 +143,7 @@ func TestSMTPClientDelivery(t *testing.T) {
 	defer mockServer.Close()
 
 	logger := observability.NewLogger("debug", "text")
-	client := smtp.NewClient(logger)
+	client := smtp.NewClient(config.DANEConfig{Mode: "off"}, logger)
 
 	// Configure client to talk to mock server
 	client.Port = mockServer.Port

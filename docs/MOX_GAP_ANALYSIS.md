@@ -6,7 +6,7 @@ This document outlines the functional and architectural differences between Mail
 
 | Feature | MailRaven | Mox | Gap / Diff |
 |---------|-----------|-----|------------|
-| **Core Protocol** | SMTP + Custom REST API | SMTP + IMAP4 + JMAP | **Major**: MailRaven removes IMAP in favor of a modern HTTP API for mobile clients. |
+| **Core Protocol** | SMTP + IMAP + Custom REST API | SMTP + IMAP4 + JMAP | **Major**: MailRaven adds IMAP support while retaining its modern HTTP API focus. |
 | **Storage** | SQLite OR PostgreSQL | SQLite (bbolt/sqlite) | **Extension**: MailRaven supports PostgreSQL for scalability. |
 | **Frontend** | React (SPA) | Go Templates / Embedded JS | **Modernization**: Separated frontend allows richer UI/UX. |
 | **Language** | Go (Backend) + TS (Frontend) | Go (Monolith) | **Complexity**: Increased complexity for flexibility. |
@@ -17,16 +17,18 @@ This document outlines the functional and architectural differences between Mail
 |---------|------------------|------------|-------|
 | **SMTP (Inbound)** | ✅ Implemented | ✅ Implemented | Functionally equivalent. |
 | **SMTP (Outbound)** | ✅ Implemented (Queued) | ✅ Implemented | MailRaven uses `SKIP LOCKED` for Postgres queue. |
-| **IMAP4** | ❌ Planned (P3) | ✅ Full Support | Intentional omission for MVP, but required for adoption. |
+| **IMAP4** | ✅ Implemented | ✅ Full Support | Core RFC 3501 + IDLE supported. |
 | **JMAP** | ❌ Custom API | ✅ Full Support | MailRaven uses a simplified REST API. |
 | **DKIM/SPF/DMARC** | ✅ Implemented | ✅ Implemented | Parity achieved. |
-| **MTA-STS** | ❌ Planned (P3) | ✅ Implemented | Future roadmap item. |
-| **DANE** | ❌ Planned (P3) | ✅ Implemented | Future roadmap item. |
-| **Spam Filtering** | 🟡 Basic (DNSBL) | ✅ Advanced | Missing Bayesian/Content filtering. |
+| **MTA-STS** | ✅ Implemented | ✅ Implemented | Parity achieved (Receive). |
+| **TLS-RPT** | ✅ Implemented | ✅ Implemented | Parity achieved (Receive). |
+| **DANE** | ✅ Implemented | ✅ Implemented | Parity achieved (Outbound Verification). |
+| **Spam Filtering** | ✅ Advanced | ✅ Advanced | Native Bayesian + DNSBL + Greylisting. |
+| **Sieve Filtering**| ✅ Implemented| ✅ Implemented | RFC 5228 + ManageSieve RFC 5804 + Vacation. |
 | **Webmail** | ✅ React Client (Admin) | ✅ Built-in | MailRaven Admin UI is active. |
 | **Multi-Domain** | ✅ Supported | ✅ Supported | Parity achieved. |
 | **Account Mgmt** | ✅ Web Admin | ✅ Web Admin | Parity achieved. |
 
 ## Conclusion
 
-MailRaven is a specialized fork/evolution focusing on **API-first** interaction for mobile clients, deliberately sacrificing legacy protocol support (IMAP) for a streamlined architecture. While Mox is a complete drop-in replacement for traditional mail servers (Postfix/Dovecot), MailRaven is an application platform for modern email apps.
+MailRaven is a specialized evolution focusing on **API-first** interaction for mobile clients, while now supporting legacy protocols (IMAP) for compatibility. While Mox is a complete drop-in replacement for traditional mail servers (Postfix/Dovecot), MailRaven bridges the gap between modern application platforms and standard email clients.

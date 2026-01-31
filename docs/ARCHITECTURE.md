@@ -4,16 +4,20 @@ MailRaven is a modern, modular email server designed with a "Mobile-First" philo
 
 ## High-Level Overview
 
-MailRaven follows the **Ports and Adapters (Hexagonal)** architecture. This ensures that the core business logic (email processing, storage rules) is decoupled from external interfaces (SMTP listeners, HTTP APIs, Database implementations).
+MailRaven follows the **Ports and Adapters (Hexagonal)** architecture. 
 
 ```mermaid
 graph TD
     Client[Mobile Client / Web App] -->|HTTP/JSON| API[API Layer]
+    IMAP_Client[Standard Email App] -->|IMAP| IMAP[IMAP Listener]
     SMTP_In[External SMTP Servers] -->|SMTP| Listener[SMTP Listener]
     
     subgraph "Core Domain"
         API --> Service[Email Service]
         Listener --> Service
+        IMAP --> Hub[Notification Hub]
+        IMAP --> RepoPort[Repository Port]
+        Service --> Hub
         Service --> Domain[Domain Logic]
     end
     
@@ -31,14 +35,22 @@ graph TD
 ### 1. Interface Layer (Primary Adapters)
 - **SMTP Listener**: Listens on port 25/587. Handles the SMTP protocol state machine (RFC 5321).
   - Implementation: `internal/adapters/smtp`
+- **IMAP Listener**: Listens on port 143/993. Handles RFC 3501 (Client Access).
+  - Implementation: `internal/adapters/imap`
+  - Supports: core commands and `IDLE` (Push).
 - **HTTP API**: Exposes endpoints for email retrieval, sending, domain management, and system stats.
   - Implementation: `internal/adapters/http`
   - Authentication: JWT-based.
+  - **Security Endpoints**: Serves `.well-known/mta-sts.txt` and receives TLS Reports via `.well-known/tlsrpt`.
 
 ### 2. Core Layer (Business Logic)
 - **Services**: Orchestrate the flow of data.
   - `EmailService`: Handles receiving emails, validating them (SPF/DKIM/DMARC), and storing them.
-  - `OutboundService`: Manages the sending queue and delivery to remote servers.
+  - `OutboundService`: Manages the sending queue and delivery to remote servers with **DANE** verification support.
+  - `NotificationHub`: Global event bus for Real-time updates (IMAP IDLE).
+- **Domain Security**:
+  - `MTASTSPolicy`: Logic for generating and serving Strict Transport Security policies.
+  - `DANEValidator`: DNSSEC-based validator for verifying remote SMTP servers.
 - **Ports**: Interfaces defining how the core interacts with the outside world (e.g., `EmailRepository`, `BlobStore`).
 - **Domain**: Pure Go structs representing `Email`, `User`, `Thread`.
 

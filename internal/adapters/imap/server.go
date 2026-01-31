@@ -11,17 +11,23 @@ import (
 )
 
 type Server struct {
-	config   config.IMAPConfig
-	logger   *observability.Logger
-	userRepo ports.UserRepository
-	listener net.Listener
+	config      config.IMAPConfig
+	logger      *observability.Logger
+	userRepo    ports.UserRepository
+	emailRepo   ports.EmailRepository
+	spamService ports.SpamFilter
+	blobStore   ports.BlobStore
+	listener    net.Listener
 }
 
-func NewServer(cfg config.IMAPConfig, logger *observability.Logger, userRepo ports.UserRepository) *Server {
+func NewServer(cfg config.IMAPConfig, logger *observability.Logger, userRepo ports.UserRepository, emailRepo ports.EmailRepository, spamService ports.SpamFilter, blobStore ports.BlobStore) *Server {
 	return &Server{
-		config:   cfg,
-		logger:   logger,
-		userRepo: userRepo,
+		config:      cfg,
+		logger:      logger,
+		userRepo:    userRepo,
+		emailRepo:   emailRepo,
+		spamService: spamService,
+		blobStore:   blobStore,
 	}
 }
 
@@ -53,7 +59,15 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 }
 
+// Addr returns the listener address
+func (s *Server) Addr() net.Addr {
+	if s.listener != nil {
+		return s.listener.Addr()
+	}
+	return nil
+}
+
 func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
-	session := NewSession(conn, s.config, s.logger, s.userRepo)
+	session := NewSession(conn, s.config, s.logger, s.userRepo, s.emailRepo, s.spamService, s.blobStore)
 	session.Serve()
 }

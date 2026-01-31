@@ -32,6 +32,7 @@ MailRaven is configured via a YAML file, typically located at `/etc/mailraven/co
 | `port` | int | `25` | Port to listen for incoming SMTP traffic. |
 | `hostname` | string | (Required) | The hostname used in SMTP HELO/EHLO headers. |
 | `max_size` | int | `10485760` | Maximum message size in bytes (default 10MB). |
+| `dane.mode` | string | `advisory` | DANE verification mode for outbound mail. Options: `off`, `advisory` (log only), `enforce` (fail delivery on mismatch). |
 
 ## API
 
@@ -66,6 +67,14 @@ MailRaven is configured via a YAML file, typically located at `/etc/mailraven/co
 | `max_recipients` | int | `50` | Maximum number of recipients per message. |
 | `rate_limit.count` | int | `100` | Max SMTP connections/commands per window. |
 | `rate_limit.window` | string | `1h` | Duration of the rate limit window. |
+
+## ManageSieve
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `port` | int | `4190` | Port to listen for ManageSieve connections. |
+| `max_script_size` | int | `32768` | Maximum size of a Sieve script in bytes (default 32KB). |
+| `vacation_min_days` | int | `1` | Minimum days between vacation replies to the same sender. |
 
 ## IMAP
 

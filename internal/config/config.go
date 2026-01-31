@@ -10,23 +10,30 @@ import (
 
 // Config represents the MailRaven server configuration
 type Config struct {
-	Domain  string        `yaml:"domain"` // Primary mail domain (e.g., mail.example.com)
-	SMTP    SMTPConfig    `yaml:"smtp"`
-	API     APIConfig     `yaml:"api"`
-	Storage StorageConfig `yaml:"storage"`
-	DKIM    DKIMConfig    `yaml:"dkim"`
-	Logging LogConfig     `yaml:"logging"`
-	TLS     TLSConfig     `yaml:"tls"`
-	Spam    SpamConfig    `yaml:"spam"`
-	IMAP    IMAPConfig    `yaml:"imap"`
-	Backup  BackupConfig  `yaml:"backup"`
+	Domain      string            `yaml:"domain"` // Primary mail domain (e.g., mail.example.com)
+	SMTP        SMTPConfig        `yaml:"smtp"`
+	API         APIConfig         `yaml:"api"`
+	Storage     StorageConfig     `yaml:"storage"`
+	DKIM        DKIMConfig        `yaml:"dkim"`
+	Logging     LogConfig         `yaml:"logging"`
+	TLS         TLSConfig         `yaml:"tls"`
+	Spam        SpamConfig        `yaml:"spam"`
+	IMAP        IMAPConfig        `yaml:"imap"`
+	Backup      BackupConfig      `yaml:"backup"`
+	ManageSieve ManageSieveConfig `yaml:"managesieve"`
 }
 
 // SMTPConfig contains SMTP server settings
 type SMTPConfig struct {
-	Port     int    `yaml:"port"`     // SMTP listen port (default: 25)
-	Hostname string `yaml:"hostname"` // SMTP HELO hostname
-	MaxSize  int64  `yaml:"max_size"` // Maximum message size in bytes (default: 10MB)
+	Port     int        `yaml:"port"`     // SMTP listen port (default: 25)
+	Hostname string     `yaml:"hostname"` // SMTP HELO hostname
+	MaxSize  int64      `yaml:"max_size"` // Maximum message size in bytes (default: 10MB)
+	DANE     DANEConfig `yaml:"dane"`     // DANE verification settings
+}
+
+// DANEConfig contains DANE verification settings
+type DANEConfig struct {
+	Mode string `yaml:"mode"` // Mode: "off", "advisory" (log only), "enforce" (fail delivery). Default: "advisory"
 }
 
 // APIConfig contains REST API settings
@@ -82,6 +89,14 @@ type SpamConfig struct {
 	RateLimit     RateLimitConfig `yaml:"rate_limit"`     // Rate limiting settings
 	RejectScore   float64         `yaml:"reject_score"`   // Score threshold to reject
 	HeaderScore   float64         `yaml:"header_score"`   // Score threshold to add header
+	Greylist      GreylistConfig  `yaml:"greylist"`       // Greylisting settings
+}
+
+// GreylistConfig contains greylisting settings
+type GreylistConfig struct {
+	Enabled    bool   `yaml:"enabled"`     // Enable greylisting
+	RetryDelay string `yaml:"retry_delay"` // Time to wait before retry (e.g. "5m")
+	Expiration string `yaml:"expiration"`  // Time before record expires (e.g. "24h")
 }
 
 // IMAPConfig contains IMAP server settings
@@ -108,6 +123,12 @@ type BackupConfig struct {
 	RetentionDays int    `yaml:"retention_days"` // Retention period
 }
 
+// ManageSieveConfig contains ManageSieve server settings
+type ManageSieveConfig struct {
+	Enabled bool `yaml:"enabled"` // Enable ManageSieve server (default: true)
+	Port    int  `yaml:"port"`    // ManageSieve listen port (default: 4190)
+}
+
 // LoadFromFile loads configuration from a YAML file
 func LoadFromFile(path string) (*Config, error) {
 	// Sanitize path
@@ -129,6 +150,9 @@ func LoadFromFile(path string) (*Config, error) {
 	if cfg.SMTP.MaxSize == 0 {
 		cfg.SMTP.MaxSize = 10 * 1024 * 1024 // 10MB
 	}
+	if cfg.SMTP.DANE.Mode == "" {
+		cfg.SMTP.DANE.Mode = "advisory"
+	}
 	if cfg.API.Host == "" {
 		cfg.API.Host = "0.0.0.0"
 	}
@@ -137,6 +161,12 @@ func LoadFromFile(path string) (*Config, error) {
 	}
 	if cfg.DKIM.Selector == "" {
 		cfg.DKIM.Selector = "default"
+	}
+	if cfg.Spam.Greylist.RetryDelay == "" {
+		cfg.Spam.Greylist.RetryDelay = "5m"
+	}
+	if cfg.Spam.Greylist.Expiration == "" {
+		cfg.Spam.Greylist.Expiration = "24h"
 	}
 	if cfg.Logging.Level == "" {
 		cfg.Logging.Level = "info"
@@ -158,6 +188,9 @@ func LoadFromFile(path string) (*Config, error) {
 	}
 	if cfg.Backup.RetentionDays == 0 {
 		cfg.Backup.RetentionDays = 7
+	}
+	if cfg.ManageSieve.Port == 0 {
+		cfg.ManageSieve.Port = 4190
 	}
 	return &cfg, nil
 }

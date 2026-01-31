@@ -1,0 +1,80 @@
+openapi: 3.0.0
+info:
+  title: MailRaven Autodiscover API
+  version: 1.0.0
+  description: Endpoints for automatic email client configuration.
+paths:
+  /.well-known/autoconfig/mail/config-v1.1.xml:
+    get:
+      summary: Mozilla Autoconfig
+      description: Returns XML configuration for Thunderbird and other Mozilla-compatible clients.
+      parameters:
+        - in: query
+          name: emailaddress
+          schema:
+            type: string
+          description: Email address to configure (optional, some clients guess based on domain).
+      responses:
+        '200':
+          description: XML Configuration
+          content:
+            text/xml:
+              schema:
+                type: string
+                example: |
+                  <?xml version="1.0" encoding="UTF-8"?>
+                  <clientConfig version="1.1">
+                    <emailProvider id="example.com">
+                      <domain>example.com</domain>
+                      <displayName>MailRaven</displayName>
+                      <incomingServer type="imap">
+                        <hostname>mail.example.com</hostname>
+                        <port>993</port>
+                        <socketType>SSL</socketType>
+                        <authentication>password-cleartext</authentication>
+                        <username>%EMAILADDRESS%</username>
+                      </incomingServer>
+                      <outgoingServer type="smtp">
+                        <hostname>mail.example.com</hostname>
+                        <port>587</port>
+                        <socketType>STARTTLS</socketType>
+                        <authentication>password-cleartext</authentication>
+                        <username>%EMAILADDRESS%</username>
+                      </outgoingServer>
+                    </emailProvider>
+                  </clientConfig>
+
+  /autodiscover/autodiscover.xml:
+    post:
+      summary: Microsoft Autodiscover (POX)
+      description: Returns XML configuration for Outlook and Exchange-compatible clients.
+      requestBody:
+        required: true
+        content:
+          text/xml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: Autodiscover Response
+          content:
+            text/xml:
+              schema:
+                type: string
+                example: |
+                  <?xml version="1.0" encoding="utf-8"?>
+                  <Autodiscover xmlns="http://schemas.microsoft.com/exchange/autodiscover/responseschema/2006">
+                    <Response xmlns="http://schemas.microsoft.com/exchange/autodiscover/outlook/responseschema/2006a">
+                      <Account>
+                        <AccountType>email</AccountType>
+                        <Action>settings</Action>
+                        <Protocol>
+                          <Type>IMAP</Type>
+                          <Server>mail.example.com</Server>
+                          <Port>993</Port>
+                          <SSL>on</SSL>
+                          <AuthRequired>on</AuthRequired>
+                        </Protocol>
+                      </Account>
+                    </Response>
+                  </Autodiscover>

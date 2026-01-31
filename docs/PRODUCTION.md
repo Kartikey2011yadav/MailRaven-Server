@@ -63,6 +63,9 @@ See `config.example.yaml` for full options.
 | TXT  | @    | "v=spf1 mx -all" | SPF (Allow only this server) |
 | TXT  | default._domainkey | <PUBLIC_KEY_CONTENT> | DKIM Signature |
 | TXT  | _dmarc | "v=DMARC1; p=quarantine; rua=mailto:postmaster@example.com" | DMARC Policy |
+| A    | mta-sts | <IP_ADDRESS> | MTA-STS (Hosting Policy) |
+| TXT  | _mta-sts | "v=STSv1; id=2024010101;" | MTA-STS (Version ID) |
+| TXT  | _smtp._tls | "v=TLSRPTv1; rua=mailto:tls-reports@example.com" | TLS Reporting |
 
 ## Monitoring
 

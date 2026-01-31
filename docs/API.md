@@ -23,12 +23,26 @@ Authorization: Bearer <token>
 - `POST /auth/login`: Exchange credentials for a JWT.
 - `POST /auth/refresh`: Refresh an expiring token.
 
+### Autodiscover & Public Well-Known
+- `POST /autodiscover/autodiscover.xml`: Microsoft Outlook autoconfig protocol.
+- `GET /mail/config-v1.1.xml`: Mozilla Thunderbird autoconfig protocol.
+- `GET /.well-known/mta-sts.txt`: MTA-STS policy file (served on `mta-sts.<domain>`).
+- `POST /.well-known/tlsrpt`: TLS Reporting endpoint (JSON ingestion).
+- Note: These endpoints are public and do not require JWT authentication.
+
 ### Messages
 - `GET /messages`: List messages. Supports pagination (cursor-based) and filtering (folder, read status).
 - `GET /messages/{id}`: Get full message details.
 - `GET /messages/{id}/raw`: Get the raw MIME source.
 - `POST /messages/send`: Submit an email for delivery.
 - `PATCH /messages/{id}`: Update specific fields (e.g., mark as read/archived).
+
+### Sieve Scripts
+- `GET /sieve/scripts`: List all Sieve scripts for the authenticated user.
+- `POST /sieve/scripts`: Upload a new Sieve script.
+- `GET /sieve/scripts/{name}`: Download the content of a specific script.
+- `DELETE /sieve/scripts/{name}`: Delete a script.
+- `PUT /sieve/scripts/{name}/active`: Activate a script (deactivates others).
 
 ### Search
 - `GET /search`: dedicated full-text search endpoint utilizing FTS5 or Postgres TSVECTOR.

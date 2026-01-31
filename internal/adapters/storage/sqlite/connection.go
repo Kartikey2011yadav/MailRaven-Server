@@ -24,7 +24,7 @@ func NewConnection(dbPath string) (*Connection, error) {
 
 	// Connection string with WAL mode and full durability
 	// Note: PRAGMA statements in migration file will also be applied
-	connectionString := fmt.Sprintf("file:%s?_journal_mode=WAL&_synchronous=FULL&_foreign_keys=ON", dbPath)
+	connectionString := fmt.Sprintf("file:%s?_journal_mode=WAL&_synchronous=FULL&_foreign_keys=ON&_busy_timeout=5000", dbPath)
 
 	db, err := sql.Open("sqlite", connectionString)
 	if err != nil {

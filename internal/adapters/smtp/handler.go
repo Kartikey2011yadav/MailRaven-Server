@@ -17,12 +17,13 @@ import (
 
 // Handler processes SMTP messages with validation and storage
 type Handler struct {
-	emailRepo ports.EmailRepository
-	blobStore ports.BlobStore
-	searchIdx ports.SearchIndex
-	db        *sql.DB
-	logger    *observability.Logger
-	metrics   *observability.Metrics
+	emailRepo     ports.EmailRepository
+	blobStore     ports.BlobStore
+	searchIdx     ports.SearchIndex
+	sieveExecutor ports.SieveExecutor
+	db            *sql.DB
+	logger        *observability.Logger
+	metrics       *observability.Metrics
 }
 
 // NewHandler creates a new SMTP message handler
@@ -30,17 +31,19 @@ func NewHandler(
 	emailRepo ports.EmailRepository,
 	blobStore ports.BlobStore,
 	searchIdx ports.SearchIndex,
+	sieveExecutor ports.SieveExecutor,
 	db *sql.DB,
 	logger *observability.Logger,
 	metrics *observability.Metrics,
 ) *Handler {
 	return &Handler{
-		emailRepo: emailRepo,
-		blobStore: blobStore,
-		searchIdx: searchIdx,
-		db:        db,
-		logger:    logger,
-		metrics:   metrics,
+		emailRepo:     emailRepo,
+		blobStore:     blobStore,
+		searchIdx:     searchIdx,
+		sieveExecutor: sieveExecutor,
+		db:            db,
+		logger:        logger,
+		metrics:       metrics,
 	}
 }
 
@@ -133,35 +136,70 @@ func (h *Handler) storeMessageAtomic(
 		return fmt.Errorf("failed to write blob: %w", err)
 	}
 
-	// Create domain message
-	msg := &domain.Message{
-		ID:          messageID,
-		MessageID:   parsed.MessageID,
-		Sender:      session.Sender,
-		Recipient:   session.Recipients[0], // MVP: single recipient
-		Subject:     parsed.Subject,
-		Snippet:     parsed.Snippet,
-		BodyPath:    bodyPath,
-		ReadState:   false,
-		ReceivedAt:  time.Now(),
-		SPFResult:   string(spfResult),
-		DKIMResult:  string(dkimResult),
-		DMARCResult: string(dmarcResult),
-		DMARCPolicy: string(dmarcPolicy),
+	// Determine Mailbox (Routing via Sieve)
+	targets, err := h.sieveExecutor.Execute(ctx, session.Recipients[0], rawMessage)
+	if err != nil {
+		// Log error but fallback to INBOX to prevent data loss (Fail Open)
+		h.logger.Error("sieve execution failed (fallback to INBOX)", "error", err)
+		targets = []string{"INBOX"}
 	}
 
-	// Save to database (within transaction)
-	h.logger.Info("saving message to database", "message_id", messageID)
-	h.metrics.IncrementStorageWrites()
-	if err := h.emailRepo.Save(ctx, msg); err != nil {
-		return fmt.Errorf("failed to save message: %w", err)
+	// Handle Discard
+	if len(targets) == 0 {
+		h.logger.Info("message discarded by sieve", "message_id", messageID)
+		// Cleanup blob since we are not referencing it
+		if err := h.blobStore.Delete(ctx, bodyPath); err != nil {
+			h.logger.Warn("failed to cleanup discarded blob", "error", err)
+		}
+		// Nothing to save to DB, but we consider delivery "successful" (as in handled)
+		return nil
 	}
 
-	// Index for full-text search
-	h.logger.Info("indexing message for search", "message_id", messageID)
-	if err := h.searchIdx.Index(ctx, msg, parsed.PlainText); err != nil {
-		h.logger.Warn("failed to index message", "error", err)
-		// Don't fail on search indexing error
+	// Save to database for each target mailbox
+	for _, folder := range targets {
+		// Create domain message copy
+		msg := &domain.Message{
+			ID: messageID, // Same ID? Or should we generate unique IDs per copy? Generally IMAP messages have unique UIDs but Message-ID header is same.
+			// domain.Message.ID is the primary key in DB? If so, we need unique IDs for storage if we store multiple rows.
+			// Let's assume domain.Message.ID is the DB primary key string.
+			// If we save multiple times, we likely need different IDs or the Repo handles it.
+			// Usually `emailRepo.Save` inserts a row. If ID is provided, it might accept it.
+			// If I reuse `messageID` (UUID) for multiple rows, PK constraint violation?
+			// Let's check `emailRepo.Save`.
+			MessageID:   parsed.MessageID,
+			Sender:      session.Sender,
+			Recipient:   session.Recipients[0],
+			Subject:     parsed.Subject,
+			Snippet:     parsed.Snippet,
+			BodyPath:    bodyPath,
+			ReadState:   false,
+			ReceivedAt:  time.Now(),
+			Mailbox:     folder,
+			SPFResult:   string(spfResult),
+			DKIMResult:  string(dkimResult),
+			DMARCResult: string(dmarcResult),
+			DMARCPolicy: string(dmarcPolicy),
+		}
+
+		// If saving multiple copies, we need unique PKs for the DB entries.
+		// The original code generated `messageID := uuid.New().String()`.
+		// If len(targets) > 1, all but one will fail if ID is PK.
+		if len(targets) > 1 {
+			msg.ID = uuid.New().String()
+		} else {
+			msg.ID = messageID
+		}
+
+		h.logger.Info("saving message to database", "message_id", msg.ID, "mailbox", folder)
+		h.metrics.IncrementStorageWrites()
+		if err := h.emailRepo.Save(ctx, msg); err != nil {
+			return fmt.Errorf("failed to save message to %s: %w", folder, err)
+		}
+
+		// Index for search (optimize: index once? Search index usually by ID. If we have multiple IDs, we index multiple times)
+		if err := h.searchIdx.Index(ctx, msg, parsed.PlainText); err != nil {
+			h.logger.Warn("failed to index message", "error", err)
+		}
 	}
 
 	// Commit transaction (includes fsync via PRAGMA synchronous=FULL)

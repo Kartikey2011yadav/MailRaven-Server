@@ -67,6 +67,33 @@ func (m *MockEmailRepo) CountTotal(ctx context.Context) (int64, error) {
 	return args.Get(0).(int64), args.Error(1)
 }
 
+// IMAP Support Stubs
+func (m *MockEmailRepo) GetMailbox(ctx context.Context, userID, name string) (*domain.Mailbox, error) {
+	return nil, nil
+}
+func (m *MockEmailRepo) CreateMailbox(ctx context.Context, userID, name string) error { return nil }
+func (m *MockEmailRepo) ListMailboxes(ctx context.Context, userID string) ([]*domain.Mailbox, error) {
+	return nil, nil
+}
+func (m *MockEmailRepo) FindByUIDRange(ctx context.Context, userID, mailbox string, min, max uint32) ([]*domain.Message, error) {
+	return nil, nil
+}
+func (m *MockEmailRepo) AddFlags(ctx context.Context, messageID string, flags ...string) error {
+	return nil
+}
+func (m *MockEmailRepo) RemoveFlags(ctx context.Context, messageID string, flags ...string) error {
+	return nil
+}
+func (m *MockEmailRepo) SetFlags(ctx context.Context, messageID string, flags ...string) error {
+	return nil
+}
+func (m *MockEmailRepo) AssignUID(ctx context.Context, messageID string, mailbox string) (uint32, error) {
+	return 0, nil
+}
+func (m *MockEmailRepo) CopyMessages(ctx context.Context, userID string, msgIDs []string, destMailbox string) error {
+	return nil
+}
+
 type MockQueueRepo struct{ mock.Mock }
 
 func (m *MockQueueRepo) Enqueue(ctx context.Context, msg *domain.OutboundMessage) error { return nil }
