@@ -14,11 +14,12 @@ You can use `openssl` or a dedicated client.
 # Connect
 openssl s_client -connect localhost:4190 -starttls sieve
 
-# Authenticate (PLANNED)
-AUTHENTICATE "PLAIN" "..."
+# Authenticate
+# (Base64 encoded "\0username\0password")
+AUTHENTICATE "PLAIN" "AHNvbWUudXNlcgBzZWNyZXQ="
 
 # Upload Script
-PUTSCRIPT "myscript" {15+}
+PUTSCRIPT "myscript" {61+}
 require "fileinto";
 if header :contains "subject" "spam" {
   fileinto "Junk";
@@ -29,8 +30,8 @@ SETACTIVE "myscript"
 ```
 
 ## Running Tests
-Run the integration tests to verify the Sieve engine processes emails correctly.
+Run the unit and integration tests to verify the Sieve engine processes emails correctly.
 
 ```bash
-go test ./internal/core/sieve/...
+go test ./internal/adapters/sieve/... ./internal/adapters/managesieve/...
 ```

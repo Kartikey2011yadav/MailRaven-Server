@@ -37,6 +37,13 @@ Authorization: Bearer <token>
 - `POST /messages/send`: Submit an email for delivery.
 - `PATCH /messages/{id}`: Update specific fields (e.g., mark as read/archived).
 
+### Sieve Scripts
+- `GET /sieve/scripts`: List all Sieve scripts for the authenticated user.
+- `POST /sieve/scripts`: Upload a new Sieve script.
+- `GET /sieve/scripts/{name}`: Download the content of a specific script.
+- `DELETE /sieve/scripts/{name}`: Delete a script.
+- `PUT /sieve/scripts/{name}/active`: Activate a script (deactivates others).
+
 ### Search
 - `GET /search`: dedicated full-text search endpoint utilizing FTS5 or Postgres TSVECTOR.
   - Query parameters: `q` (search term), `from`, `has_attachment`.
