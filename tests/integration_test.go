@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/http/dto"
+	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/sieve"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/smtp"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/storage/disk"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/storage/sqlite"
@@ -39,6 +40,9 @@ func TestEndToEnd_Loopback(t *testing.T) {
 	}
 	searchIdx := sqlite.NewSearchRepository(env.conn.DB)
 	queueRepo := sqlite.NewQueueRepository(env.conn.DB)
+	scriptRepo := sqlite.NewSqliteScriptRepository(env.conn.DB)
+	vacationRepo := sqlite.NewSqliteVacationRepository(env.conn.DB)
+	sieveEngine := sieve.NewSieveEngine(scriptRepo, env.emailRepo, vacationRepo, queueRepo, blobStore)
 
 	// 2. Start SMTP Server (US2) on random port
 	smtpCfg := &config.Config{
@@ -49,7 +53,7 @@ func TestEndToEnd_Loopback(t *testing.T) {
 		},
 	}
 
-	smtpHandler := smtp.NewHandler(env.emailRepo, blobStore, searchIdx, env.conn.DB, logger, metrics)
+	smtpHandler := smtp.NewHandler(env.emailRepo, blobStore, searchIdx, sieveEngine, env.conn.DB, logger, metrics)
 	messageHandler := smtpHandler.BuildMiddlewarePipeline()
 	smtpServer := smtp.NewServer(smtpCfg, logger, metrics, messageHandler, nil)
 

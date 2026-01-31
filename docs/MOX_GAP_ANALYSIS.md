@@ -23,7 +23,8 @@ This document outlines the functional and architectural differences between Mail
 | **MTA-STS** | ✅ Implemented | ✅ Implemented | Parity achieved (Receive). |
 | **TLS-RPT** | ✅ Implemented | ✅ Implemented | Parity achieved (Receive). |
 | **DANE** | ✅ Implemented | ✅ Implemented | Parity achieved (Outbound Verification). |
-| **Spam Filtering** | 🟡 Basic (DNSBL) | ✅ Advanced | Missing Bayesian/Content filtering. |
+| **Spam Filtering** | ✅ Advanced | ✅ Advanced | Native Bayesian + DNSBL + Greylisting. |
+| **Sieve Filtering**| ✅ Implemented| ✅ Implemented | RFC 5228 + ManageSieve RFC 5804 + Vacation. |
 | **Webmail** | ✅ React Client (Admin) | ✅ Built-in | MailRaven Admin UI is active. |
 | **Multi-Domain** | ✅ Supported | ✅ Supported | Parity achieved. |
 | **Account Mgmt** | ✅ Web Admin | ✅ Web Admin | Parity achieved. |

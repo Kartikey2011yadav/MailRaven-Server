@@ -1,0 +1,104 @@
+openapi: 3.0.0
+info:
+  title: Sieve Script Management API
+  version: 1.0.0
+paths:
+  /api/v1/sieve/scripts:
+    get:
+      summary: List all scripts
+      operationId: listScripts
+      responses:
+        '200':
+          description: List of scripts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SieveScriptMethod'
+    post:
+      summary: Upload a new script
+      operationId: createScript
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - content
+              properties:
+                name:
+                  type: string
+                content:
+                  type: string
+      responses:
+        '201':
+          description: Created
+        '400':
+          description: Invalid Sieve Syntax
+
+  /api/v1/sieve/scripts/{scriptName}:
+    get:
+      summary: Get script content
+      operationId: getScript
+      parameters:
+        - name: scriptName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Script content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SieveScript'
+    delete:
+      summary: Delete a script
+      operationId: deleteScript
+      parameters:
+        - name: scriptName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+
+  /api/v1/sieve/scripts/{scriptName}/active:
+    put:
+      summary: Set script as active
+      operationId: setActiveScript
+      parameters:
+        - name: scriptName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Activated
+
+components:
+  schemas:
+    SieveScriptMethod:
+      type: object
+      properties:
+        name:
+          type: string
+        isActive:
+          type: boolean
+
+    SieveScript:
+      type: object
+      properties:
+        name:
+          type: string
+        content:
+          type: string
+        isActive:
+          type: boolean

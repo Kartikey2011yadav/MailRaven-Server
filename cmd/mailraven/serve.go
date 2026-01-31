@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"os"
@@ -15,6 +16,8 @@ import (
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/backup"
 	httpAdapter "github.com/Kartikey2011yadav/mailraven-server/internal/adapters/http"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/imap"
+	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/managesieve"
+	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/sieve"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/smtp"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/spam/greylist"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/storage/disk"
@@ -68,6 +71,8 @@ func RunServe() error {
 		tlsRptRepo   ports.TLSRptRepository
 		greylistRepo ports.GreylistRepository
 		bayesRepo    ports.BayesRepository
+		scriptRepo   ports.ScriptRepository
+		vacationRepo ports.VacationRepository
 	)
 
 	if cfg.Storage.Driver == "postgres" {
@@ -108,6 +113,8 @@ func RunServe() error {
 		tlsRptRepo = sqlite.NewTLSRptRepository(conn.DB)
 		greylistRepo = sqlite.NewGreylistRepository(conn.DB)
 		bayesRepo = sqlite.NewBayesRepository(conn.DB)
+		scriptRepo = sqlite.NewSqliteScriptRepository(conn.DB)
+		vacationRepo = sqlite.NewSqliteVacationRepository(conn.DB)
 
 	} else {
 		// Initialize database connection
@@ -151,6 +158,8 @@ func RunServe() error {
 		tlsRptRepo = sqlite.NewTLSRptRepository(conn.DB)
 		greylistRepo = sqlite.NewGreylistRepository(conn.DB)
 		bayesRepo = sqlite.NewBayesRepository(conn.DB)
+		scriptRepo = sqlite.NewSqliteScriptRepository(conn.DB)
+		vacationRepo = sqlite.NewSqliteVacationRepository(conn.DB)
 	}
 
 	// Initialize blob store
@@ -159,8 +168,11 @@ func RunServe() error {
 		return fmt.Errorf("failed to initialize blob store: %w", err)
 	}
 
+	// Initialize Sieve Engine
+	sieveEngine := sieve.NewSieveEngine(scriptRepo, emailRepo, vacationRepo, queueRepo, blobStore)
+
 	// Initialize SMTP handler
-	smtpHandler := smtp.NewHandler(emailRepo, blobStore, searchIdx, dbConn, logger, metrics)
+	smtpHandler := smtp.NewHandler(emailRepo, blobStore, searchIdx, sieveEngine, dbConn, logger, metrics)
 	messageHandler := smtpHandler.BuildMiddlewarePipeline()
 
 	// Initialize Spam Protection
@@ -193,7 +205,7 @@ func RunServe() error {
 	backupService := services.NewBackupService(cfg.Backup, dbBackup, blobBackup, logger)
 
 	// Initialize HTTP server
-	httpServer := httpAdapter.NewServer(cfg, emailRepo, userRepo, queueRepo, domainRepo, blobStore, searchIdx, acmeService, backupService, tlsRptRepo, logger, metrics)
+	httpServer := httpAdapter.NewServer(cfg, emailRepo, userRepo, queueRepo, domainRepo, blobStore, searchIdx, acmeService, backupService, tlsRptRepo, scriptRepo, logger, metrics)
 
 	// Create context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
@@ -236,6 +248,34 @@ func RunServe() error {
 		}()
 	}
 
+	// Start ManageSieve server in background (if enabled)
+	if cfg.ManageSieve.Enabled {
+		go func() {
+			addr := fmt.Sprintf(":%d", cfg.ManageSieve.Port)
+			var tlsCfg *tls.Config
+
+			if acmeService != nil {
+				tlsCfg = acmeService.TLSConfig()
+			} else if cfg.API.TLS && cfg.API.TLSCert != "" && cfg.API.TLSKey != "" {
+				cert, err := tls.LoadX509KeyPair(cfg.API.TLSCert, cfg.API.TLSKey)
+				if err == nil {
+					tlsCfg = &tls.Config{
+						Certificates: []tls.Certificate{cert},
+						MinVersion:   tls.VersionTLS12,
+					}
+				} else {
+					logger.Warn("failed to load TLS certs for ManageSieve", "error", err)
+				}
+			}
+
+			msServer := managesieve.NewServer(addr, tlsCfg, scriptRepo, userRepo, logger)
+			logger.Info("starting ManageSieve server", "port", cfg.ManageSieve.Port)
+			if err := msServer.Start(); err != nil {
+				logger.Error("ManageSieve server error", "error", err)
+			}
+		}()
+	}
+
 	// Start Delivery Worker
 	deliveryWorker.Start()
 
@@ -252,6 +292,9 @@ func RunServe() error {
 	fmt.Printf("HTTP Port:   %d (TLS: %v)\n", cfg.API.Port, cfg.API.TLS)
 	if cfg.IMAP.Enabled {
 		fmt.Printf("IMAP Port:   %d\n", cfg.IMAP.Port)
+	}
+	if cfg.ManageSieve.Enabled {
+		fmt.Printf("Sieve Port:  %d\n", cfg.ManageSieve.Port)
 	}
 	fmt.Printf("Domain:      %s\n", cfg.Domain)
 	fmt.Printf("Log Level:   %s\n", cfg.Logging.Level)

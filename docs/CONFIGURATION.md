@@ -68,6 +68,14 @@ MailRaven is configured via a YAML file, typically located at `/etc/mailraven/co
 | `rate_limit.count` | int | `100` | Max SMTP connections/commands per window. |
 | `rate_limit.window` | string | `1h` | Duration of the rate limit window. |
 
+## ManageSieve
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `port` | int | `4190` | Port to listen for ManageSieve connections. |
+| `max_script_size` | int | `32768` | Maximum size of a Sieve script in bytes (default 32KB). |
+| `vacation_min_days` | int | `1` | Minimum days between vacation replies to the same sender. |
+
 ## IMAP
 
 | Key | Type | Default | Description |

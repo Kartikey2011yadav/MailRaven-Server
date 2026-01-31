@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -23,17 +22,6 @@ func TestSpamTrainingFeedback(t *testing.T) {
 	// 1. Setup Environment
 	env := setupTestEnvironment(t)
 	defer env.cleanup()
-
-	// Apply Spam Migrations (Manual, since helpers might not have them yet)
-	// We assume relative path from tests/ dir
-	migrationsDir := "../internal/adapters/storage/sqlite/migrations"
-	_ = env.conn.RunMigrations(filepath.Join(migrationsDir, "006_add_greylist.sql"))
-	if err := env.conn.RunMigrations(filepath.Join(migrationsDir, "007_add_bayes.sql")); err != nil {
-		t.Fatalf("Failed to apply Bayes migration: %v", err)
-	}
-	if err := env.conn.RunMigrations(filepath.Join(migrationsDir, "008_remove_unique_message_id.sql")); err != nil {
-		t.Fatalf("Failed to apply Fix MessageID migration: %v", err)
-	}
 
 	// 2. Setup Services
 	logger := observability.NewLogger("error", "text")
