@@ -7,7 +7,12 @@ BINARY_NAME=mailraven
 BUILD_DIR=bin
 MAIN_PATH=./cmd/mailraven
 
-all: lint test build
+all: lint test ui build
+
+## ui: Build the React frontend
+ui:
+	@echo "Building Frontend..."
+	cd client && npm install && npm run build
 
 ## build: Build the binary
 build:

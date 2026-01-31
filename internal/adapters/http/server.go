@@ -10,6 +10,7 @@ import (
 
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/http/handlers"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/http/middleware"
+	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/http/static"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/config"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/domain"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/ports"
@@ -179,6 +180,13 @@ func NewServer(
 		//nolint:errcheck // Health check simple write
 		_, _ = w.Write([]byte("OK"))
 	})
+
+	// Mount Static Assets (SPA)
+	if fs, err := static.GetFS(); err == nil {
+		router.Handle("/*", static.Handler(fs))
+	} else {
+		logger.Warn("Failed to load static assets (SPA)", "error", err)
+	}
 
 	return &Server{
 		router:        router,
