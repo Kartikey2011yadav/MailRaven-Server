@@ -16,6 +16,7 @@ import (
 	httpAdapter "github.com/Kartikey2011yadav/mailraven-server/internal/adapters/http"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/imap"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/smtp"
+	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/spam/greylist"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/storage/disk"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/storage/postgres"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/storage/sqlite"
@@ -57,14 +58,16 @@ func RunServe() error {
 
 	// Initialize repositories
 	var (
-		dbConn     *sql.DB
-		emailRepo  ports.EmailRepository
-		userRepo   ports.UserRepository
-		domainRepo ports.DomainRepository
-		queueRepo  ports.QueueRepository
-		searchIdx  ports.SearchIndex
-		dbBackup   ports.DatabaseBackup
-		tlsRptRepo ports.TLSRptRepository
+		dbConn       *sql.DB
+		emailRepo    ports.EmailRepository
+		userRepo     ports.UserRepository
+		domainRepo   ports.DomainRepository
+		queueRepo    ports.QueueRepository
+		searchIdx    ports.SearchIndex
+		dbBackup     ports.DatabaseBackup
+		tlsRptRepo   ports.TLSRptRepository
+		greylistRepo ports.GreylistRepository
+		bayesRepo    ports.BayesRepository
 	)
 
 	if cfg.Storage.Driver == "postgres" {
@@ -103,6 +106,8 @@ func RunServe() error {
 		// Let's use the sqlite struct but maybe rename it later to `sql` adapter.
 		// Checking T004 implementation...
 		tlsRptRepo = sqlite.NewTLSRptRepository(conn.DB)
+		greylistRepo = sqlite.NewGreylistRepository(conn.DB)
+		bayesRepo = sqlite.NewBayesRepository(conn.DB)
 
 	} else {
 		// Initialize database connection
@@ -144,6 +149,8 @@ func RunServe() error {
 		searchIdx = sqlite.NewSearchRepository(conn.DB)
 		dbBackup = backup.NewSQLiteBackup(conn.DB)
 		tlsRptRepo = sqlite.NewTLSRptRepository(conn.DB)
+		greylistRepo = sqlite.NewGreylistRepository(conn.DB)
+		bayesRepo = sqlite.NewBayesRepository(conn.DB)
 	}
 
 	// Initialize blob store
@@ -157,7 +164,13 @@ func RunServe() error {
 	messageHandler := smtpHandler.BuildMiddlewarePipeline()
 
 	// Initialize Spam Protection
-	spamService, err := services.NewSpamProtectionService(cfg.Spam, logger)
+	greylistSvc, err := greylist.NewService(greylistRepo, cfg.Spam.Greylist)
+	// Usually NewService doesn't fail unless config bad? But it returns error, so check it.
+	if err != nil {
+		return fmt.Errorf("failed to init greylist service: %w", err)
+	}
+
+	spamService, err := services.NewSpamProtectionService(cfg.Spam, logger, greylistSvc, bayesRepo)
 	if err != nil {
 		logger.Warn("Failed to initialize spam protection", "error", err)
 	}

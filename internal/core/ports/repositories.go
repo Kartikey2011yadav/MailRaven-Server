@@ -53,6 +53,28 @@ type EmailRepository interface {
 	AssignUID(ctx context.Context, messageID string, mailbox string) (uint32, error)
 }
 
+// GreylistRepository defines storage for spam greylisting
+type GreylistRepository interface {
+	Get(ctx context.Context, tuple domain.GreylistTuple) (*domain.GreylistEntry, error)
+	Upsert(ctx context.Context, entry *domain.GreylistEntry) error
+	DeleteOlderThan(ctx context.Context, timestamp int64) (int64, error)
+}
+
+// BayesRepository defines storage for bayesian classifier data
+type BayesRepository interface {
+	// GetTokens fetches multiple tokens in a single operation
+	GetTokens(ctx context.Context, tokens []string) (map[string]*domain.BayesToken, error)
+
+	// IncrementToken adds to the spam or ham count of a token (Upsert)
+	IncrementToken(ctx context.Context, token string, isSpam bool) error
+
+	// GetGlobalStats retrieves the total spam/ham counts
+	GetGlobalStats(ctx context.Context) (*domain.BayesGlobalStats, error)
+
+	// IncrementGlobal adds to the global spam/ham counters
+	IncrementGlobal(ctx context.Context, isSpam bool) error
+}
+
 // UserRepository defines storage operations for user accounts
 type UserRepository interface {
 	// Create creates a new user with hashed password

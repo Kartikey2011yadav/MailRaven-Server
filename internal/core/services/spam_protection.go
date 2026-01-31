@@ -4,25 +4,29 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"time"
 
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/spam"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/config"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/domain"
+	"github.com/Kartikey2011yadav/mailraven-server/internal/core/ports"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/observability"
 )
 
 // SpamProtectionService implements ports.SpamFilter
 type SpamProtectionService struct {
-	dnsbl     *spam.DNSBLChecker
-	rateLimit *spam.RateLimiter
-	rspamd    *spam.Client
-	config    config.SpamConfig
-	logger    *observability.Logger
+	dnsbl      *spam.DNSBLChecker
+	rateLimit  *spam.RateLimiter
+	rspamd     *spam.Client
+	config     config.SpamConfig
+	logger     *observability.Logger
+	greylister ports.Greylister      // Core greylist logic
+	bayes      ports.BayesRepository // Placeholder for future usage
 }
 
 // NewSpamProtectionService creates a new spam protection service
-func NewSpamProtectionService(cfg config.SpamConfig, logger *observability.Logger) (*SpamProtectionService, error) {
+func NewSpamProtectionService(cfg config.SpamConfig, logger *observability.Logger, greylister ports.Greylister, bayes ports.BayesRepository) (*SpamProtectionService, error) {
 	window, err := time.ParseDuration(cfg.RateLimit.Window)
 	if err != nil {
 		// Fallback or error?
@@ -35,11 +39,13 @@ func NewSpamProtectionService(cfg config.SpamConfig, logger *observability.Logge
 	}
 
 	return &SpamProtectionService{
-		dnsbl:     spam.NewDNSBLChecker(cfg.DNSBLs),
-		rateLimit: spam.NewRateLimiter(window, cfg.RateLimit.Count),
-		rspamd:    rspamdClient,
-		config:    cfg,
-		logger:    logger,
+		dnsbl:      spam.NewDNSBLChecker(cfg.DNSBLs),
+		rateLimit:  spam.NewRateLimiter(window, cfg.RateLimit.Count),
+		rspamd:     rspamdClient,
+		config:     cfg,
+		logger:     logger,
+		greylister: greylister,
+		bayes:      bayes,
 	}, nil
 }
 
@@ -60,6 +66,49 @@ func (s *SpamProtectionService) CheckConnection(ctx context.Context, ip string) 
 	}
 
 	return nil
+}
+
+// CheckRecipient checks if the sender/recipient pair allows delivery (Greylisting)
+func (s *SpamProtectionService) CheckRecipient(ctx context.Context, ip, sender, recipient string) error {
+	// Construct the tuple for checking
+	tuple := domain.GreylistTuple{
+		IPNet:     normalizeIP(ip),
+		Sender:    sender,
+		Recipient: recipient,
+	}
+
+	// Helper log
+	s.logger.DebugContext(ctx, "checking greylist status",
+		"ip_net", tuple.IPNet,
+		"sender", sender,
+		"recipient", recipient,
+	)
+
+	// Delegate to the specialized greylist service
+	// If greylisting is disabled via config, the service.Check returns nil immediately.
+	if err := s.greylister.Check(ctx, tuple); err != nil {
+		s.logger.InfoContext(ctx, "greylist check prevented delivery",
+			"reason", err,
+			"tuple", tuple,
+		)
+		return err
+	}
+
+	return nil
+}
+
+// normalizeIP masks the IP to /24 (IPv4) or /64 (IPv6)
+func normalizeIP(ipStr string) string {
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return ipStr
+	}
+	if v4 := ip.To4(); v4 != nil {
+		mask := net.CIDRMask(24, 32)
+		return v4.Mask(mask).String()
+	}
+	mask := net.CIDRMask(64, 128)
+	return ip.Mask(mask).String()
 }
 
 // CheckContent checks the message content for spam

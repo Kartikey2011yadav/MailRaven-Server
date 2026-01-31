@@ -88,6 +88,14 @@ type SpamConfig struct {
 	RateLimit     RateLimitConfig `yaml:"rate_limit"`     // Rate limiting settings
 	RejectScore   float64         `yaml:"reject_score"`   // Score threshold to reject
 	HeaderScore   float64         `yaml:"header_score"`   // Score threshold to add header
+	Greylist      GreylistConfig  `yaml:"greylist"`       // Greylisting settings
+}
+
+// GreylistConfig contains greylisting settings
+type GreylistConfig struct {
+	Enabled    bool   `yaml:"enabled"`     // Enable greylisting
+	RetryDelay string `yaml:"retry_delay"` // Time to wait before retry (e.g. "5m")
+	Expiration string `yaml:"expiration"`  // Time before record expires (e.g. "24h")
 }
 
 // IMAPConfig contains IMAP server settings
@@ -146,6 +154,12 @@ func LoadFromFile(path string) (*Config, error) {
 	}
 	if cfg.DKIM.Selector == "" {
 		cfg.DKIM.Selector = "default"
+	}
+	if cfg.Spam.Greylist.RetryDelay == "" {
+		cfg.Spam.Greylist.RetryDelay = "5m"
+	}
+	if cfg.Spam.Greylist.Expiration == "" {
+		cfg.Spam.Greylist.Expiration = "24h"
 	}
 	if cfg.Logging.Level == "" {
 		cfg.Logging.Level = "info"
