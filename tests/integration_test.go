@@ -83,7 +83,7 @@ func TestEndToEnd_Loopback(t *testing.T) {
 
 	// 3. Setup Delivery Worker (US5)
 	// Create SMTP Client pointing to our server
-	client := smtp.NewClient(logger)
+	client := smtp.NewClient(config.DANEConfig{Mode: "off"}, logger)
 	client.Port = portStr // Force client to connect to our test port
 
 	// Mock MX lookup to direct "loopback.local" to localhost

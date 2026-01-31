@@ -184,8 +184,11 @@ func setupTestEnvironment(t *testing.T) *testEnvironment {
 		}
 	}
 
+	// Create TLSRpt Repo for tests
+	tlsRptRepo := sqlite.NewTLSRptRepository(conn.DB)
+
 	// Create HTTP server
-	httpServer := httpAdapter.NewServer(cfg, emailRepo, userRepo, queueRepo, domainRepo, blobStore, searchIdx, nil, nil, logger, metrics)
+	httpServer := httpAdapter.NewServer(cfg, emailRepo, userRepo, queueRepo, domainRepo, blobStore, searchIdx, nil, nil, tlsRptRepo, logger, metrics)
 	testServer := httptest.NewServer(httpServer.Router())
 
 	return &testEnvironment{

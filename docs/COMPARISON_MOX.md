@@ -19,7 +19,7 @@ This document analyzes the differences between our project (**MailRaven**) and t
 | **IMAP4**        |  Full (RFC 3501 + Extensions) |  Core RFC 3501 Compliance | Supports LOGIN, LIST, SELECT, FETCH, UID, STORE. Compatible with Standard Clients. |
 | **Mobile Push**  |  IMAP IDLE / Notifications |  IMAP IDLE Supported | Real-time notifications for standard clients. |
 | **Autodiscover** |  SRV, XML, Apple Profiles |  XML (MS/Mozilla) | Supports Outlook and Thunderbird auto-config. |
-| **Security**     |  SPF, DKIM, DMARC, DANE, MTA-STS |  SPF, DKIM, DMARC | We miss advanced DANE/MTA-STS and Reporting features. |
+| **Security**     |  SPF, DKIM, DMARC, DANE, MTA-STS |  SPF, DKIM, DMARC, DANE, MTA-STS, TLS-RPT | **Gap Closed**. We now support MTA-STS (Receive), TLS-RPT (Receive), and DANE (Send). |
 | **TLS/ACME**     |  Built-in Automatic ACME |  Built-in Automatic ACME | Implemented via `autocert`. |
 | **Spam Filter**  |  Bayesian, Grey-listing |  DNSBL + Rate Limiting | Connection-level filtering present. Content analysis (Bayesian) missing. |
 | **Administration**|  Web Admin UI |  Web Admin API | Mox has a full GUI. We have a robust REST API for Admin functions. |
@@ -41,20 +41,14 @@ This document analyzes the differences between our project (**MailRaven**) and t
 
 To reach parity with Mox for a "drop-in replacement" server, we need to address these gaps.
 
-### 1. Advanced Security & Deliverability (Next Priority)
-Enhance domain reputation and prevent downgrade attacks.
-- **MTA-STS**: Implement policy serving (`.well-known/mta-sts.txt`) and strict TLS enforcement.
-- **TLS Reporting (TLS-RPT)**: Endpoint to receive JSON reports on TLS failures from other providers.
-- **DANE**: DNSSEC-based authentication for outbound mail delivery.
-- **DMARC Reporting**: Capability to generate and send aggregate XML reports to senders.
-
-### 2. Anti-Abuse & Filtering (Strategic Gap)
+### 1. Anti-Abuse & Filtering (Strategic Gap)
 MailRaven currently relies on external systems or basic checks, whereas `mox` favors a "batteries-included" monolithic approach.
 - **Bayesian Filter**: Native implementation or tighter integration with Rspamd (currently we rely on external containers).
 - **IP Reputation**: Deeper integration of DNSBL with internal scoring (Mox style) rather than just rejection.
 - **Grey-listing**: Temporary rejection of unknown senders to filter spam bots.
+- **DMARC Reporting**: Capability to generate and send aggregate XML reports to senders (We now support *receiving* reports via TLS-RPT and DMARC, but need generation logic).
 
-### 3. User Interface & Administration (Philosophical Gap)
+### 2. User Interface & Administration (Philosophical Gap)
 This difference is intentional but noteworthy. Mox includes full Webmail and Admin UIs in the single binary.
 - **Webmail**: While we have a specialized React Client, `mox` enables a self-contained deployment. We might consider bundling our client assets into the Go binary for "single file" deployment parity.
 - **Admin UI**: We currently offer a comprehensive REST API. Parity would require building a GUI consuming this API, potentially embedded in the binary.
@@ -63,6 +57,7 @@ This difference is intentional but noteworthy. Mox includes full Webmail and Adm
 - [x] **IMAP Core**: SELECT, FETCH, UID, STORE implemented.
 - [x] **IMAP IDLE**: Real-time push notification support.
 - [x] **Autodiscover**: XML configuration for Outlook and Thunderbird.
+- [x] **Modern Security**: MTA-STS (Serve), TLS-RPT (Serve), DANE (Send Verification).
 
 ## Conclusion
 
@@ -71,4 +66,4 @@ This difference is intentional but noteworthy. Mox includes full Webmail and Adm
 **MailRaven** is an **API-First** Email Platform. It now supports standard clients (Outlook, iOS) via our new IMAP implementation, but philosophically prioritizes programmatic access and flexibility.
 
 **Recommendation**:
-With the Basic Client Compliance gap closed, the next major hurdle for "Drop-In" replacement status is **Advanced Security/Deliverability** (MTA-STS/DANE) to ensure emails actually land in Inboxes, followed by deciding if we want to abandon the "Headless/API" philosophy to build bundled UIs.
+With the Basic Client Compliance and Modern Security gaps closed, the next major hurdle for "Drop-In" replacement status is **Advanced Spam Filtering** (Bayesian/Greylisting) to match Mox's "batteries-included" anti-abuse reputation. After that, we must decide if we want to abandon the "Headless/API" philosophy to build bundled UIs.

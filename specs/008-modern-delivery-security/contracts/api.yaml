@@ -1,0 +1,59 @@
+openapi: 3.0.0
+info:
+  title: TLS Reporting Endpoint
+  version: 1.0.0
+paths:
+  /.well-known/tlsrpt:
+    post:
+      summary: Receive TLS Aggregate Reports (RFC 8460)
+      description: Ingests JSON reports from external mail providers describing their success/failure capability connecting to our MTA.
+      requestBody:
+        required: true
+        content:
+          application/tlsrpt+json:
+            schema:
+              $ref: '#/components/schemas/TLSReport'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TLSReport'
+      responses:
+        '200':
+          description: Report accepted
+        '400':
+          description: Invalid JSON structure
+        '413':
+          description: Payload too large
+
+  /.well-known/mta-sts.txt:
+    get:
+      summary: Serve MTA-STS Policy (RFC 8461)
+      description: Returns the plain text policy file. MUST be served on the `mta-sts` subdomain via HTTPS.
+      responses:
+        '200':
+          description: Policy file
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  version: STSv1
+                  mode: enforce
+                  mx: mail.example.com
+                  max_age: 86400
+
+components:
+  schemas:
+    TLSReport:
+      type: object
+      properties:
+        organization-name:
+          type: string
+        date-range:
+          type: object
+          properties:
+            start-datetime: { type: string, format: date-time }
+            end-datetime: { type: string, format: date-time }
+        policies:
+          type: array
+          items:
+            type: object
