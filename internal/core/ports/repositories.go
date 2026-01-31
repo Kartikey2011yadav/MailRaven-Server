@@ -116,3 +116,12 @@ type DomainRepository interface {
 	// Exists checks if a domain exists
 	Exists(ctx context.Context, name string) (bool, error)
 }
+
+// TLSRptRepository defines storage operations for TLS Reports
+type TLSRptRepository interface {
+	// Save stores an incoming TLS report
+	Save(ctx context.Context, report *domain.TLSReport) error
+
+	// FindLatest retrieves the most recent reports
+	FindLatest(ctx context.Context, limit int) ([]*domain.TLSReport, error)
+}

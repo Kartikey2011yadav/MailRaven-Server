@@ -7,6 +7,7 @@ A modern, modular email server built with mobile-first architecture. MailRaven i
 - **Mobile-First API**: RESTful JSON API with pagination, compression, and delta sync
 - **Web Admin UI**: React-based dashboard for managing domains, users, and system stats
 - **Reliable Email Reception**: SMTP server with SPF/DKIM/DMARC validation
+- **Modern Security**: MTA-STS (Strict Transport Security), TLS-RPT (Reporting), and DANE verification for high-security delivery
 - **Production Ready**: Docker support, Postgres or SQLite backend, Automatic HTTPS, and Hot Backups
 - **Spam Protection**: Rspamd integration, DNSBL checking, and Connection Rate Limiting
 - **IMAP4rev1 Support**: Standard IMAP listener with IDLE (Push) for Outlook/Mobile compatibility

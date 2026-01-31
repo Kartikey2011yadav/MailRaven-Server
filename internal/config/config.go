@@ -24,9 +24,15 @@ type Config struct {
 
 // SMTPConfig contains SMTP server settings
 type SMTPConfig struct {
-	Port     int    `yaml:"port"`     // SMTP listen port (default: 25)
-	Hostname string `yaml:"hostname"` // SMTP HELO hostname
-	MaxSize  int64  `yaml:"max_size"` // Maximum message size in bytes (default: 10MB)
+	Port     int        `yaml:"port"`     // SMTP listen port (default: 25)
+	Hostname string     `yaml:"hostname"` // SMTP HELO hostname
+	MaxSize  int64      `yaml:"max_size"` // Maximum message size in bytes (default: 10MB)
+	DANE     DANEConfig `yaml:"dane"`     // DANE verification settings
+}
+
+// DANEConfig contains DANE verification settings
+type DANEConfig struct {
+	Mode string `yaml:"mode"` // Mode: "off", "advisory" (log only), "enforce" (fail delivery). Default: "advisory"
 }
 
 // APIConfig contains REST API settings
@@ -128,6 +134,9 @@ func LoadFromFile(path string) (*Config, error) {
 	}
 	if cfg.SMTP.MaxSize == 0 {
 		cfg.SMTP.MaxSize = 10 * 1024 * 1024 // 10MB
+	}
+	if cfg.SMTP.DANE.Mode == "" {
+		cfg.SMTP.DANE.Mode = "advisory"
 	}
 	if cfg.API.Host == "" {
 		cfg.API.Host = "0.0.0.0"

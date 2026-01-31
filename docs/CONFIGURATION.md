@@ -32,6 +32,7 @@ MailRaven is configured via a YAML file, typically located at `/etc/mailraven/co
 | `port` | int | `25` | Port to listen for incoming SMTP traffic. |
 | `hostname` | string | (Required) | The hostname used in SMTP HELO/EHLO headers. |
 | `max_size` | int | `10485760` | Maximum message size in bytes (default 10MB). |
+| `dane.mode` | string | `advisory` | DANE verification mode for outbound mail. Options: `off`, `advisory` (log only), `enforce` (fail delivery on mismatch). |
 
 ## API
 

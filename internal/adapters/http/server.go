@@ -6,9 +6,12 @@ import (
 	"net/http"
 	"time"
 
+	"strings"
+
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/http/handlers"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/http/middleware"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/config"
+	"github.com/Kartikey2011yadav/mailraven-server/internal/core/domain"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/ports"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/services"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/observability"
@@ -17,16 +20,27 @@ import (
 
 // Server represents the HTTP server
 type Server struct {
-	router      *chi.Mux
-	httpServer  *http.Server
-	cfg         *config.Config
-	logger      *observability.Logger
-	acmeService *services.ACMEService
+	router        *chi.Mux
+	httpServer    *http.Server
+	cfg           *config.Config
+	logger        *observability.Logger
+	acmeService   *services.ACMEService
+	mtaStsHandler *handlers.MTASTSHandler
 }
 
 // Router returns the chi router (for testing)
 func (s *Server) Router() *chi.Mux {
 	return s.router
+}
+
+// ServeHTTP implements http.Handler with host-based routing interceptor
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Host-based routing for MTA-STS
+	if strings.HasPrefix(r.Host, "mta-sts.") && s.mtaStsHandler != nil {
+		s.mtaStsHandler.ServePolicy(w, r)
+		return
+	}
+	s.router.ServeHTTP(w, r)
 }
 
 // NewServer creates a new HTTP server
@@ -40,6 +54,8 @@ func NewServer(
 	searchIdx ports.SearchIndex,
 	acmeService *services.ACMEService,
 	backupService ports.BackupService,
+	// Add new repo
+	tlsRptRepo ports.TLSRptRepository,
 	logger *observability.Logger,
 	metrics *observability.Metrics,
 ) *Server {
@@ -53,6 +69,7 @@ func NewServer(
 	adminUserHandler := handlers.NewAdminUserHandler(userRepo, domainRepo, logger)
 	adminDomainHandler := handlers.NewAdminDomainHandler(domainRepo, logger)
 	adminStatsHandler := handlers.NewAdminStatsHandler(userRepo, emailRepo, queueRepo, logger)
+	tlsRptHandler := handlers.NewTLSRptHandler(tlsRptRepo, logger)
 	sendHandler, err := handlers.NewSendHandler(
 		queueRepo,
 		blobStore,
@@ -79,12 +96,25 @@ func NewServer(
 	// Create Autodiscover handler
 	autodiscoverHandler := handlers.NewAutodiscoverHandler(cfg, logger)
 
+	// Create MTA-STS Handler
+	// Using hardcoded config derived from system config for now
+	mtaStsPolicy := &domain.MTASTSPolicy{
+		Version: "STSv1",
+		Mode:    domain.MTASTSModeEnforce,
+		MX:      []string{cfg.Domain}, // Assume MX is same as domain for simple setup
+		MaxAge:  86400,
+	}
+	mtaStsHandler := handlers.NewMTASTSHandler(mtaStsPolicy)
+
 	// Public routes (no auth required)
 	router.Post("/api/v1/auth/login", authHandler.Login)
 
 	// Autodiscover endpoints
 	router.Get("/.well-known/autoconfig/mail/config-v1.1.xml", autodiscoverHandler.HandleMozillaAutoconfig)
 	router.Post("/autodiscover/autodiscover.xml", autodiscoverHandler.HandleMicrosoftAutodiscover)
+
+	// TLS-RPT Endpoint
+	router.Post("/.well-known/tlsrpt", tlsRptHandler.HandleReport)
 
 	// Metrics endpoint
 	router.Get("/metrics", func(w http.ResponseWriter, r *http.Request) {
@@ -140,10 +170,11 @@ func NewServer(
 	})
 
 	return &Server{
-		router:      router,
-		cfg:         cfg,
-		logger:      logger,
-		acmeService: acmeService,
+		router:        router,
+		cfg:           cfg,
+		logger:        logger,
+		acmeService:   acmeService,
+		mtaStsHandler: mtaStsHandler,
 	}
 }
 
@@ -153,7 +184,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 	s.httpServer = &http.Server{
 		Addr:         addr,
-		Handler:      s.router,
+		Handler:      s, // Use s (ServeHTTP) instead of s.router directly
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  120 * time.Second,

@@ -5,7 +5,7 @@
 ## Prerequisites
 
 - **OS**: Linux (amd64/arm64) or Windows (amd64).
-- **DNS**: properly configured MX records, SPF, and DKIM TXT records for your domain.
+- **DNS**: properly configured MX records, SPF, DKIM, DMARC, and MTA-STS/DANE records as detailed in `PRODUCTION.md`.
 
 ## Automated Setup (Recommended)
 
