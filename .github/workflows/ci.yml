@@ -58,6 +58,11 @@ jobs:
       with:
         go-version: '1.24'
 
+    - name: Create Dummy Frontend Assets
+      run: |
+        mkdir -p internal/adapters/http/static/dist
+        touch internal/adapters/http/static/dist/.gitkeep
+
     - name: Run Integration Tests
       # Run only the integration tests package
       run: go test -v -p 1 ./tests/...

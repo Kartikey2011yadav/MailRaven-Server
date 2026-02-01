@@ -22,7 +22,9 @@ RUN go mod download && go mod verify
 COPY . .
 
 # Copy built frontend assets
-COPY --from=frontend-builder /app/client/dist ./internal/adapters/http/static/dist
+# Note: vite output is directed to ../internal/adapters/http/static/dist relative to project root,
+# but in docker context we are in /app/client, so output goes to /app/internal/adapters/http/static/dist
+COPY --from=frontend-builder /app/internal/adapters/http/static/dist ./internal/adapters/http/static/dist
 
 # Build the binary
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o mailraven ./cmd/mailraven
