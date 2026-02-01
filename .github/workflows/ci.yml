@@ -116,6 +116,11 @@ jobs:
 
     - uses: actions/checkout@v4
 
+    - name: Create Dummy Frontend Assets
+      run: |
+        mkdir -p internal/adapters/http/static/dist
+        touch internal/adapters/http/static/dist/.gitkeep
+
     - name: Run Integration Tests in Docker
       run: |
         chmod +x scripts/test_integration_docker.sh
