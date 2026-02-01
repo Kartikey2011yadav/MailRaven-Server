@@ -6,6 +6,7 @@ A modern, modular email server built with mobile-first architecture. MailRaven i
 
 - **Mobile-First API**: RESTful JSON API with pagination, compression, and delta sync
 - **Web Admin UI**: React-based dashboard for managing domains, users, and system stats
+- **User Portal**: Dedicated portal for users to change passwords, manage vacation scripts, and Webmail Lite
 - **Reliable Email Reception**: SMTP server with SPF/DKIM/DMARC validation
 - **Modern Security**: MTA-STS (Strict Transport Security), TLS-RPT (Reporting), and DANE verification for high-security delivery
 - **Production Ready**: Docker support, Postgres or SQLite backend, Automatic HTTPS, and Hot Backups
@@ -41,7 +42,7 @@ make docker-up
 ```
 
 ### Manual Setup
-See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for detailed configuration options.
+See [docs/guides/CONFIGURATION.md](docs/guides/CONFIGURATION.md) for detailed configuration options.
 
 ## Architecture
 
@@ -66,7 +67,7 @@ MailRaven follows the Ports and Adapters (Hexagonal) pattern with 5 distinct lay
 - **Storage**: SQLite (default) or PostgreSQL
 - **Search**: SQLite FTS5 or Postgres TSVECTOR with BM25 ranking
 - **API**: REST/JSON with JWT authentication
-- **Frontend**: React + Vite (Web Admin)
+- **Frontend**: React + Vite (Unified Portal serving Web Admin and Webmail)
 
 **Designed for Future Migration**:
 - Listener: IMAP/POP3 support
@@ -147,7 +148,7 @@ This interactive command will:
 4. Create initial admin user account
 ```
 
-For detailed setup instructions, see [Production Guide](docs/PRODUCTION.md).
+For detailed setup instructions, see [Production Guide](docs/guides/PRODUCTION.md).
 
 ### Start Server
 
@@ -307,14 +308,14 @@ dkim:
 
 ## Documentation
 
-- [Feature Specification](docs/ARCHITECTURE.md) - High level design.
-- [Production Guide](docs/PRODUCTION.md) - Postgres, Docker, and deployment.
-- [Web Admin Guide](docs/WebAdmin.md) - Using the dashboard.
-- [Mobile API Spec](docs/API.md) - Endpoints for client developers.
-- [Architecture](docs/ARCHITECTURE.md) - Deep dive into internal design.
-- [Configuration](docs/CONFIGURATION.md) - Full config reference.
-- [CLI Reference](docs/CLI.md) - Command line tools.
-- [Testing](docs/TESTING.md) - How to run tests.
+- [Feature Specification](docs/architecture/ARCHITECTURE.md) - High level design.
+- [Production Guide](docs/guides/PRODUCTION.md) - Postgres, Docker, and deployment.
+- [Web Admin Guide](docs/guides/WebAdmin.md) - Using the dashboard.
+- [Mobile API Spec](docs/api/API.md) - Endpoints for client developers.
+- [Architecture](docs/architecture/ARCHITECTURE.md) - Deep dive into internal design.
+- [Configuration](docs/guides/CONFIGURATION.md) - Full config reference.
+- [CLI Reference](docs/api/CLI.md) - Command line tools.
+- [Testing](docs/development/TESTING.md) - How to run tests.
 
 ## Constitution
 
@@ -365,13 +366,6 @@ Contributions are welcome! Please:
 - Document public APIs with godoc comments
 - Keep dependencies minimal (CGO-free preferred)
 - Use semantic commit messages
-
-## Documentation
-
-- [Production Guide](docs/PRODUCTION.md) - Postgres, Docker, and deployment.
-- [Web Admin Guide](docs/WebAdmin.md) - Using the dashboard.
-- [Mobile API Spec](docs/API.md) - Endpoints for client developers.
-- [Architecture](docs/ARCHITECTURE.md) - Deep dive into internal design.
 
 ## Verification
 

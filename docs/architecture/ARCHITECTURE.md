@@ -42,6 +42,8 @@ graph TD
   - Implementation: `internal/adapters/http`
   - Authentication: JWT-based.
   - **Security Endpoints**: Serves `.well-known/mta-sts.txt` and receives TLS Reports via `.well-known/tlsrpt`.
+- **Web Portal**: React-based SPA serving both Admin Dashboard and User Webmail.
+  - Implementation: `client/` (served via `internal/adapters/http`)
 
 ### 2. Core Layer (Business Logic)
 - **Services**: Orchestrate the flow of data.
@@ -74,6 +76,7 @@ graph TD
 
 ## Directory Structure
 
+- `client/`: React Frontend (Web Admin & Webmail).
 - `cmd/`: Entry points (main application).
 - `internal/`: Private application code.
   - `core/`: Domain logic and interfaces.
