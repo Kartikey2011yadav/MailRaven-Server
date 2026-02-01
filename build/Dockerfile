@@ -1,4 +1,17 @@
-# Stage 1: Build the binary
+# Stage 1: Build the frontend
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /app/client
+
+# Copy dependencies first for caching
+COPY client/package.json client/package-lock.json ./
+RUN npm ci
+
+# Copy source and build
+COPY client/ .
+RUN npm run build
+
+# Stage 2: Build the binary
 FROM golang:1.25 AS builder
 
 WORKDIR /app
@@ -7,6 +20,9 @@ COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
 COPY . .
+
+# Copy built frontend assets
+COPY --from=frontend-builder /app/client/dist ./internal/adapters/http/static/dist
 
 # Build the binary
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o mailraven ./cmd/mailraven
