@@ -35,6 +35,7 @@ type testEnvironment struct {
 	tempDir   string
 	emailRepo *sqlite.EmailRepository
 	userRepo  *sqlite.UserRepository
+	queueRepo *sqlite.QueueRepository
 	blobStore *disk.BlobStore
 	messages  []*domain.Message
 	conn      *sqlite.Connection
@@ -218,6 +219,7 @@ func setupTestEnvironment(t *testing.T) *testEnvironment {
 		conn:      conn,
 		emailRepo: emailRepo,
 		userRepo:  userRepo,
+		queueRepo: queueRepo,
 		blobStore: blobStore,
 		messages:  messages,
 	}
