@@ -63,19 +63,6 @@ type UpdateMessageRequest struct {
 	ReadState *bool `json:"read_state"`
 }
 
-// LoginRequest for POST /auth/login
-type LoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
-// LoginResponse for POST /auth/login
-type LoginResponse struct {
-	Token     string    `json:"token"`
-	Email     string    `json:"email"`
-	ExpiresAt time.Time `json:"expires_at"`
-}
-
 // ErrorResponse for 4xx/5xx responses
 type ErrorResponse struct {
 	Error   string `json:"error"`

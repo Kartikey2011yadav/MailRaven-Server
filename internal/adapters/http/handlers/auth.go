@@ -108,8 +108,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	response := dto.LoginResponse{
 		Token:     tokenString,
-		Email:     user.Email,
-		ExpiresAt: expiresAt,
+		ExpiresAt: expiresAt.Format(time.RFC3339),
+		Role:      string(user.Role),
 	}
 	h.sendJSON(w, http.StatusOK, response)
 }

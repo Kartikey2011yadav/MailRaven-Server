@@ -75,6 +75,7 @@ func NewServer(
 	adminSystemHandler := handlers.NewSystemHandler(updateManager, logger)
 	tlsRptHandler := handlers.NewTLSRptHandler(tlsRptRepo, logger)
 	sieveHandler := handlers.NewSieveHandler(sieveRepo, logger)
+	userSelfHandler := handlers.NewUserSelfHandler(userRepo, logger)
 	sendHandler, err := handlers.NewSendHandler(
 		queueRepo,
 		blobStore,
@@ -141,6 +142,9 @@ func NewServer(
 		if sendHandler != nil {
 			r.Post("/api/v1/messages/send", sendHandler.Send)
 		}
+
+		// User Self-Management
+		r.Put("/api/v1/users/self/password", userSelfHandler.ChangePassword)
 
 		// Sieve Scripts
 		r.Route("/api/v1/sieve/scripts", func(r chi.Router) {

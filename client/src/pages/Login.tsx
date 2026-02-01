@@ -57,12 +57,12 @@ export default function Login() {
         password: values.password 
       });
       
-      const { token, user } = response.data;
-      
       // Map API response to AuthContext User shape
+      const { token, role } = response.data;
+      
       const authUser = {
-        username: user?.email || values.username,
-        role: user?.Role || user?.role || "admin" // Handle case sensitivity
+        username: values.username,
+        role: role || "user"
       };
 
       login(token, authUser);
