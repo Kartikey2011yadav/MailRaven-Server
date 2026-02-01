@@ -26,12 +26,12 @@
 ## Phase 3: Webmail Sender
 **Goal**: Sending capability.
 
-- [ ] T013 Frontend: Create `Composer` component
-- [ ] T014 Backend: Ensure `POST /messages/send` validates `From` matches Auth User
-- [ ] T015 Integration: End-to-end test (Login -> Compose -> Send -> Receive)
+- [x] T013 Frontend: Create `Composer` component
+- [x] T014 Backend: Ensure `POST /messages/send` validates `From` matches Auth User
+- [x] T015 Integration: End-to-end test (Login -> Compose -> Send -> Receive)
 
 ## Phase 4: Polish
 **Goal**: UX Parity with Mox.
 
-- [ ] T016 Enable "Dark Mode" for Webmail (inherited from system)
-- [ ] T017 Add "Logout" button to User layout
+- [x] T016 Enable "Dark Mode" for Webmail (inherited from system)
+- [x] T017 Add "Logout" button to User layout

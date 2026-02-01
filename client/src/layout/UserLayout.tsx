@@ -8,13 +8,12 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { Separator } from "@/components/ui/separator"
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { ModeToggle } from "@/components/ModeToggle"
 import { Outlet, useLocation } from "react-router-dom"
+import { useAuth } from "@/contexts/AuthContext"
+import { Button } from "@/components/ui/button"
+import { LogOut } from "lucide-react"
 
 export default function UserLayout() {
   const location = useLocation();
@@ -22,6 +21,7 @@ export default function UserLayout() {
   const pageName = path.split('/').pop() || 'Mail';
   // Capitalize
   const title = pageName.charAt(0).toUpperCase() + pageName.slice(1);
+  const { logout } = useAuth();
 
   return (
     <SidebarProvider>
@@ -41,8 +41,11 @@ export default function UserLayout() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
              <ModeToggle />
+             <Button variant="ghost" size="icon" onClick={logout} title="Logout">
+                <LogOut className="h-4 w-4" />
+             </Button>
           </div>
         </header>
         <div className="flex flex-1 flex-col gap-4 p-4">

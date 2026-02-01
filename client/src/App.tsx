@@ -11,6 +11,7 @@ import MainLayout from "@/layout/MainLayout";
 import UserLayout from "@/layout/UserLayout";
 import Settings from "@/pages/mail/Settings";
 import Inbox from "@/pages/mail/Inbox";
+import Compose from "@/pages/mail/Compose";
 import "./App.css";
 
 function App() {
@@ -35,6 +36,7 @@ function App() {
                <Route path="/mail" element={<UserLayout />}>
                   <Route index element={<Navigate to="inbox" replace />} />
                   <Route path="inbox" element={<Inbox />} />
+                  <Route path="compose" element={<Compose />} />
                   <Route path="sent" element={<div className="p-4">Sent (Coming Soon)</div>} />
                   <Route path="settings" element={<Settings />} />
                </Route>

@@ -115,3 +115,59 @@ func TestMessageIsolation(t *testing.T) {
 		}
 	})
 }
+
+func TestSendingMessages(t *testing.T) {
+	env := setupTestEnvironment(t)
+	defer env.cleanup()
+
+	ctx := context.Background()
+
+	// Create User A
+	pwA, _ := bcrypt.GenerateFromPassword([]byte("passwordA"), bcrypt.DefaultCost)
+	userA := &domain.User{
+		Email:        "userA@example.com",
+		PasswordHash: string(pwA),
+		Role:         domain.RoleUser,
+		CreatedAt:    time.Now(),
+	}
+	if err := env.userRepo.Create(ctx, userA); err != nil {
+		t.Fatalf("Failed to create User A: %v", err)
+	}
+
+	// Login as User A
+	tokenA := env.authenticateUser(t, "userA@example.com", "passwordA")
+
+	// Prepare Send Request
+	sendReq := map[string]string{
+		"to":      "userB@example.com",
+		"subject": "Hello User B",
+		"body":    "This is a test message.",
+	}
+	body := env.encodeJSON(t, sendReq)
+
+	// Send Message
+	req := env.newRequest(t, "POST", "/api/v1/messages/send", body, tokenA)
+	req.Header.Set("Content-Type", "application/json")
+	resp := env.doRequest(t, req)
+
+	if resp.StatusCode != http.StatusAccepted {
+		t.Fatalf("Expected 202 Accepted, got %d", resp.StatusCode)
+	}
+
+	// Verify Queued Message
+	// We use LockNextReady which picks the next pending status item
+	msg, err := env.queueRepo.LockNextReady(ctx)
+	if err != nil {
+		t.Fatalf("Failed to fetch queued message: %v", err)
+	}
+	if msg == nil {
+		t.Fatal("Expected queued message, got nil")
+	}
+
+	if msg.Sender != "userA@example.com" {
+		t.Errorf("Expected sender userA@example.com, got %s", msg.Sender)
+	}
+	if msg.Recipient != "userB@example.com" {
+		t.Errorf("Expected recipient userB@example.com, got %s", msg.Recipient)
+	}
+}

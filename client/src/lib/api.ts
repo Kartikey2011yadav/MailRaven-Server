@@ -124,7 +124,7 @@ export const MessageAPI = {
   update: (id: string, data: { read_state?: boolean }) =>
     api.patch(`/messages/${id}`, data),
     
-  send: (data: any) => api.post('/messages/send', data), 
+  send: (data: { to: string; subject: string; body: string }) => api.post('/messages/send', data), 
 };
 
 export default api;
