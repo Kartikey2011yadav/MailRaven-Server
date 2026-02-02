@@ -16,6 +16,8 @@ type User struct {
 	Role         Role      // Access role
 	CreatedAt    time.Time // Account creation timestamp
 	LastLoginAt  time.Time // Most recent successful login
+	StorageQuota int64     // Max storage in bytes (0 for default/unlimited)
+	StorageUsed  int64     // Current storage usage in bytes
 }
 
 // AuthToken represents a JWT token for API authentication

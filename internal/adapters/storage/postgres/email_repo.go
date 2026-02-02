@@ -216,3 +216,8 @@ func (r *EmailRepository) AssignUID(ctx context.Context, messageID string, mailb
 func (r *EmailRepository) CopyMessages(ctx context.Context, userID string, messageIDs []string, destMailbox string) error {
 	return ports.ErrStorageFailure // Not implemented
 }
+
+// SetACL updates the access rights for an identifier on a mailbox
+func (r *EmailRepository) SetACL(ctx context.Context, userID, mailboxName, identifier, rights string) error {
+	return ports.ErrStorageFailure // Not implemented
+}

@@ -173,7 +173,7 @@ func RunServe() error {
 	sieveEngine := sieve.NewSieveEngine(scriptRepo, emailRepo, vacationRepo, queueRepo, blobStore)
 
 	// Initialize SMTP handler
-	smtpHandler := smtp.NewHandler(emailRepo, blobStore, searchIdx, sieveEngine, dbConn, logger, metrics)
+	smtpHandler := smtp.NewHandler(emailRepo, userRepo, blobStore, searchIdx, sieveEngine, dbConn, logger, metrics)
 	messageHandler := smtpHandler.BuildMiddlewarePipeline()
 
 	// Initialize Spam Protection

@@ -27,12 +27,12 @@ func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 		user.Role = domain.RoleUser
 	}
 	query := `
-		INSERT INTO users (email, password_hash, role, created_at, last_login_at)
-		VALUES (?, ?, ?, ?, ?)
+		INSERT INTO users (email, password_hash, role, created_at, last_login_at, storage_quota, storage_used)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := r.db.ExecContext(ctx, query,
-		user.Email, user.PasswordHash, user.Role, user.CreatedAt.Unix(), user.LastLoginAt.Unix(),
+		user.Email, user.PasswordHash, user.Role, user.CreatedAt.Unix(), user.LastLoginAt.Unix(), user.StorageQuota, user.StorageUsed,
 	)
 	if err != nil {
 		// Check for unique constraint violation
@@ -48,7 +48,7 @@ func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 // FindByEmail retrieves user by email address
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
 	query := `
-		SELECT email, password_hash, role, created_at, last_login_at
+		SELECT email, password_hash, role, created_at, last_login_at, storage_quota, storage_used
 		FROM users
 		WHERE email = ?
 	`
@@ -58,7 +58,7 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*domain
 	var role sql.NullString
 
 	err := r.db.QueryRowContext(ctx, query, email).Scan(
-		&user.Email, &user.PasswordHash, &role, &createdAtUnix, &lastLoginAtUnix,
+		&user.Email, &user.PasswordHash, &role, &createdAtUnix, &lastLoginAtUnix, &user.StorageQuota, &user.StorageUsed,
 	)
 
 	if err == sql.ErrNoRows {
@@ -211,6 +211,35 @@ func (r *UserRepository) UpdateRole(ctx context.Context, email string, role doma
 		return ports.ErrNotFound
 	}
 
+	return nil
+}
+
+// UpdateQuota sets the max storage in bytes for a user (0 = unlimited)
+func (r *UserRepository) UpdateQuota(ctx context.Context, email string, bytes int64) error {
+	query := "UPDATE users SET storage_quota = ? WHERE email = ?"
+	result, err := r.db.ExecContext(ctx, query, bytes, email)
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+	if rows == 0 {
+		return ports.ErrNotFound
+	}
+
+	return nil
+}
+
+// IncrementStorageUsed updates storage usage by delta
+func (r *UserRepository) IncrementStorageUsed(ctx context.Context, email string, delta int64) error {
+	query := "UPDATE users SET storage_used = storage_used + ? WHERE email = ?"
+	_, err := r.db.ExecContext(ctx, query, delta, email)
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
 	return nil
 }
 

@@ -1,0 +1,61 @@
+openapi: 3.0.0
+info:
+  title: MailRaven Admin API
+  version: 1.0.0
+  description: Management API for Quotas and ACLs (and other admin tasks).
+
+paths:
+  /users/{username}/quota:
+    put:
+      summary: Set user storage quota
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                bytes:
+                  type: integer
+                  description: Max storage in bytes (0 for default/unlimited)
+      responses:
+        '200':
+          description: Quota updated
+
+  /mailboxes/{mailbox_id}/acl:
+    put:
+      summary: Set ACL for a mailbox
+      parameters:
+        - name: mailbox_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                identifier:
+                  type: string
+                  description: User identifier or "anyone"
+                rights:
+                  type: string
+                  description: RFC 4314 rights string (e.g., "lrsw")
+      responses:
+        '200':
+          description: ACL updated
+
+  /mobile/context:
+    get:
+      summary: Get configuration for mobile-agent context
+      description: Returns endpoints and capabilities for mobile clients.
+      responses:
+        '200':
+          description: Usage details

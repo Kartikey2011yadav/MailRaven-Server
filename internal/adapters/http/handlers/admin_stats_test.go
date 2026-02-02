@@ -45,6 +45,12 @@ func (m *MockUserRepo) Count(ctx context.Context) (map[string]int64, error) {
 	}
 	return args.Get(0).(map[string]int64), args.Error(1)
 }
+func (m *MockUserRepo) UpdateQuota(ctx context.Context, email string, quota int64) error {
+	return nil
+}
+func (m *MockUserRepo) IncrementStorageUsed(ctx context.Context, email string, delta int64) error {
+	return nil
+}
 
 type MockEmailRepo struct{ mock.Mock }
 
@@ -91,6 +97,9 @@ func (m *MockEmailRepo) AssignUID(ctx context.Context, messageID string, mailbox
 	return 0, nil
 }
 func (m *MockEmailRepo) CopyMessages(ctx context.Context, userID string, msgIDs []string, destMailbox string) error {
+	return nil
+}
+func (m *MockEmailRepo) SetACL(ctx context.Context, userID, mailboxName, identifier, rights string) error {
 	return nil
 }
 

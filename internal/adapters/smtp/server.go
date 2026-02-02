@@ -295,7 +295,12 @@ func (s *Server) handleDATA(ctx context.Context, reader *bufio.Reader, writer *b
 	if err := s.handler(session, messageData); err != nil {
 		logger.Error("failed to process message", "error", err)
 		s.metrics.IncrementMessagesRejected()
-		s.send(writer, "451 Temporary failure: %v", err)
+
+		if strings.Contains(err.Error(), "quota exceeded") {
+			s.send(writer, "552 Message size exceeds fixed maximum")
+		} else {
+			s.send(writer, "451 Temporary failure: %v", err)
+		}
 		return
 	}
 

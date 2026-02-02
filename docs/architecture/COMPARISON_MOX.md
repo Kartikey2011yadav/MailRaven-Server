@@ -24,8 +24,8 @@ This document analyzes the differences between our project (**MailRaven**) and t
 | Spam Filter      | Bayesian, Grey-listing | Bayesian, Grey-listing, DNSBL | **Gap Closed**. Added Native Bayesian filter (with IMAP feedback loop) and Greylisting. |
 | **Sieve Scripts**| Full (RFC 5228)    | Full (RFC 5228)  | **Gap Closed**. Added Sieve engine RFC 5228 + ManageSieve RFC 5804 + Vacation RFC 5230. |
 | **Quotas**       | Full (RFC 2087)    | None             | No enforcement of storage limits per user. |
-| Administration   | Web Admin UI       | Web Admin API    | Mox has a full GUI. We have a robust REST API for Admin functions. |
-| **Frontend**     |  Integrated Webmail |  Separate React App | We have a specialized Frontend (Client), Mox has generic Webmail. |
+| Administration   | Web Admin UI       | Web Admin API + UI | **Gap Closed**. MailRaven now includes a Unified "User Portal" (Admin + User Webmail). |
+| **Frontend**     |  Integrated Webmail |  Integrated Webmail | **Gap Closed**. React App is now bundled into the binary. |
 
 ## Deep Dive Analysis: Protocol Compatibility
 
@@ -43,12 +43,7 @@ This document analyzes the differences between our project (**MailRaven**) and t
 
 To reach parity with Mox for a "drop-in replacement" server, we need to address these gaps.
 
-### 1. User Interface & Administration (Philosophical Gap)
-This difference is intentional but noteworthy. Mox includes full Webmail and Admin UIs in the single binary.
-- **Webmail**: While we have a specialized React Client, `mox` enables a self-contained deployment. We might consider bundling our client assets into the Go binary for "single file" deployment parity.
-- **Admin UI**: We currently offer a comprehensive REST API. Parity would require building a GUI consuming this API, potentially embedded in the binary.
-
-### 2. Protocol Feature Gaps (Functional Gap)
+### 1. Protocol Feature Gaps (Functional Gap)
 These are standard email server features present in Mox (and Dovecot) that we have not yet implemented:
 - **Storage Quotas (RFC 2087)**: We cannot limit user mailbox sizes, which is critical for hosted environments.
 - **IMAP ACLs (RFC 4314)**: No support for shared mailboxes or delegation (e.g., "secretary accesses boss's inbox").
@@ -60,6 +55,7 @@ These are standard email server features present in Mox (and Dovecot) that we ha
 - [x] **Modern Security**: MTA-STS (Serve), TLS-RPT (Serve), DANE (Send Verification).
 - [x] **Spam Protection**: Native Bayesian Filtering, Greylisting, and IMAP retraining hooks.
 - [x] **Sieve Filtering**: RFC 5228 Engine, RFC 5804 ManageSieve Protocol, and Vacation extension.
+- [x] **Integrated UI**: Web Admin and User Webmail (Read/Write/Vacation settings) are now available and bundled.
 
 ## Conclusion
 
@@ -68,4 +64,9 @@ These are standard email server features present in Mox (and Dovecot) that we ha
 **MailRaven** is an **API-First** Email Platform. It now supports standard clients (Outlook, iOS) via our new IMAP implementation, but philosophically prioritizes programmatic access and flexibility.
 
 **Recommendation**:
-With Basic Client Compliance, Modern Security, and now **Advanced Spam & Sieve Filtering** gaps closed, MailRaven is nearly feature-complete as a backend server. The remaining major difference is the included UI/Frontend (Mox has it, we separate it). We must decide if we want to abandon the "Headless/API" philosophy to build bundled UIs.
+With the completion of **Feature 012 (User Portal / Webmail)**, MailRaven has effectively closed the "Headless" gap. It now offers a full-stack experience (Backend + Frontend) out of the box.
+
+The update strategy should now shift away from "Catch up with Mox" to "Beyond Mox" features, such as:
+1.  **Mobile Push Notifications** (Native APNS/FCM integration, which Mox lacks).
+2.  **AI-assisted Organization** (Categorization).
+

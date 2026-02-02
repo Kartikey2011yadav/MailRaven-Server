@@ -18,6 +18,7 @@ import (
 // Handler processes SMTP messages with validation and storage
 type Handler struct {
 	emailRepo     ports.EmailRepository
+	userRepo      ports.UserRepository
 	blobStore     ports.BlobStore
 	searchIdx     ports.SearchIndex
 	sieveExecutor ports.SieveExecutor
@@ -29,6 +30,7 @@ type Handler struct {
 // NewHandler creates a new SMTP message handler
 func NewHandler(
 	emailRepo ports.EmailRepository,
+	userRepo ports.UserRepository,
 	blobStore ports.BlobStore,
 	searchIdx ports.SearchIndex,
 	sieveExecutor ports.SieveExecutor,
@@ -38,6 +40,7 @@ func NewHandler(
 ) *Handler {
 	return &Handler{
 		emailRepo:     emailRepo,
+		userRepo:      userRepo,
 		blobStore:     blobStore,
 		searchIdx:     searchIdx,
 		sieveExecutor: sieveExecutor,
@@ -144,6 +147,17 @@ func (h *Handler) storeMessageAtomic(
 		targets = []string{"INBOX"}
 	}
 
+	// Check Quota for Recipient
+	user, err := h.userRepo.FindByEmail(ctx, session.Recipients[0])
+	if err == nil && user.StorageQuota > 0 {
+		requiredSize := int64(len(rawMessage)) * int64(len(targets))
+		if user.StorageUsed+requiredSize > user.StorageQuota {
+			h.logger.Warn("delivery rejected: quota exceeded", "user", user.Email)
+			// Return string containing "quota" so server can map to 552
+			return fmt.Errorf("quota exceeded")
+		}
+	}
+
 	// Handle Discard
 	if len(targets) == 0 {
 		h.logger.Info("message discarded by sieve", "message_id", messageID)
@@ -213,6 +227,13 @@ func (h *Handler) storeMessageAtomic(
 	}
 
 	h.logger.Info("message stored atomically", "message_id", messageID)
+
+	// Increment storage usage
+	if user != nil {
+		//nolint:errcheck // Best effort storage usage update
+		_ = h.userRepo.IncrementStorageUsed(ctx, user.Email, int64(len(rawMessage))*int64(len(targets)))
+	}
+
 	return nil
 }
 

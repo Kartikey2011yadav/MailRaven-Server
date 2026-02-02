@@ -47,6 +47,10 @@ type EmailRepository interface {
 	// Returns map of oldUID -> newUID if possible, or just error
 	CopyMessages(ctx context.Context, userID string, messageIDs []string, destMailbox string) error
 
+	// ACL Management
+	// SetACL updates the access rights for an identifier on a mailbox
+	SetACL(ctx context.Context, userID, mailboxName, identifier, rights string) error
+
 	// Flags
 	AddFlags(ctx context.Context, messageID string, flags ...string) error
 	RemoveFlags(ctx context.Context, messageID string, flags ...string) error
@@ -101,6 +105,12 @@ type UserRepository interface {
 	Delete(ctx context.Context, email string) error
 	UpdatePassword(ctx context.Context, email, passwordHash string) error
 	UpdateRole(ctx context.Context, email string, role domain.Role) error
+
+	// UpdateQuota sets the max storage in bytes for a user (0 = unlimited)
+	UpdateQuota(ctx context.Context, email string, bytes int64) error
+
+	// IncrementStorageUsed updates storage usage by delta (can be negative)
+	IncrementStorageUsed(ctx context.Context, email string, delta int64) error
 
 	// Count returns simplified user statistics (total, active, admin)
 	Count(ctx context.Context) (map[string]int64, error)
