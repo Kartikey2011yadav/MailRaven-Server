@@ -1,56 +1,120 @@
 # Mobile Agent Context
 
-## Overview
-
-This document serves as the "Source of Truth" for the AI Agent building the MailRaven Mobile Client.
-It abstracts the internal complexity of the server and exposes only the public API contracts,
-authentication mechanism, and data models required for the client functioning.
+This document provides the context required for a Mobile Development AI Agent to build a mobile client for MailRaven independently. It defines the API contract, authentication flows, and data models.
 
 ## 1. Authentication
 
-MailRaven uses JWT-based authentication.
+The API uses JWT (JSON Web Tokens) for authentication.
 
-### Login
-`POST /api/v1/auth/login`
-
-**Request**:
-```json
-{
-  "email": "user@example.com",
-  "password": "secret_password"
-}
-```
-
-**Response**:
-```json
-{
-  "token": "ey...",
-  "expires_in": 3600
-}
-```
-
-The returned token must be sent in the `Authorization` header as `Bearer <token>` for all subsequent requests.
+### **Login**
+- **Endpoint**: `POST /api/v1/auth/login`
+- **Content-Type**: `application/json`
+- **Request**:
+  ```json
+  {
+    "email": "user@example.com",
+    "password": "your_password"
+  }
+  ```
+- **Response (200 OK)**:
+  ```json
+  {
+    "token": "eyJhbGciOiJIUzI1NiIsIn...",
+    "expires_at": "2026-02-09T10:00:00Z"
+  }
+  ```
+- **Usage**: Include the token in the `Authorization` header for all protected requests:
+  ```
+  Authorization: Bearer <token>
+  ```
 
 ## 2. Mailbox Synchronization
 
-### Sync Strategy
-MailRaven supports a "delta sync" mechanism using cursors/modification sequences (modseq).
-(TODO: Verify implementation details in Phase 4)
+The API supports both paginated fetching and delta synchronization (getting changes since a timestamp).
 
-### Endpoints
-- `GET /api/v1/mailboxes`: List all mailboxes
-- `GET /api/v1/mailboxes/{id}/messages`: Fetch messages (supports cursor-based pagination)
+### **List Messages (Pagination)**
+- **Endpoint**: `GET /api/v1/messages`
+- **Params**:
+  - `limit` (int, default 50): Number of messages to return.
+  - `offset` (int, default 0): Number of messages to skip.
+- **Response (200 OK)**:
+  ```json
+  [
+    {
+      "id": "uuid-string",
+      "sender": "sender@remote.com",
+      "subject": "Hello World",
+      "snippet": "This is the first 200 chars...",
+      "received_at": "2026-02-02T12:00:00Z",
+      "read": false,
+      "mailbox": "INBOX"
+    }
+  ]
+  ```
+
+### **Delta Sync (Updates)**
+- **Endpoint**: `GET /api/v1/messages/since`
+- **Params**:
+  - `timestamp` (string, RFC3339): Fetch messages received after this time.
+- **Example**: `/api/v1/messages/since?timestamp=2026-02-02T12:00:00Z`
+- **Response**: Same as List Messages.
+
+### **Get Message Details**
+- **Endpoint**: `GET /api/v1/messages/{id}`
+- **Response (200 OK)**:
+  ```json
+  {
+      "id": "uuid-string",
+      "from": "sender@remote.com",
+      "to": ["user@example.com"],
+      "subject": "Full Subject",
+      "date": "2026-02-02T12:00:00Z",
+      "body_text": "Plain text body...",
+      "body_html": "<p>HTML body...</p>"
+  }
+  ```
 
 ## 3. Sending Email
 
-### Submit
-`POST /api/v1/submission`
+- **Endpoint**: `POST /api/v1/messages/send`
+- **Request**:
+  ```json
+  {
+    "to": ["recipient@example.com", "cc@example.com"],
+    "subject": "Subject Line",
+    "body": "Message plain text content..."
+  }
+  ```
+- **Response (200 OK)**:
+  ```json
+  {
+    "status": "queued",
+    "id": "queue-id"
+  }
+  ```
 
-**Payload**:
-MIME or JSON structured email.
-(TODO: Define exact payload in Phase 4)
+## 4. IMAP/SMTP Connection Details
 
-## 4. Constraints
+For clients preferring standard protocols:
 
-- **TLS**: Use TLS 1.2+ for all connections in production.
-- **Offline**: The client MUST cache data locally (SQLite/Realm) and queue actions when offline.
+- **IMAP Server**:
+  - Port: 143 (STARTTLS) or 993 (Implicit TLS)
+  - Auth: PLAIN
+- **SMTP Server**:
+  - Port: 25 (STARTTLS) or 587 (Submission)
+  - Auth: PLAIN (Required for relay)
+
+## 5. Verification Commands
+
+Use these curl commands to verify the local server:
+
+```bash
+# 1. Login
+TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login -d '{"email":"user@example.com","password":"password"}' | jq -r .token)
+
+# 2. List Messages
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/messages
+
+# 3. Send Email
+curl -X POST -H "Authorization: Bearer $TOKEN" -d '{"to":["self@example.com"],"subject":"Test","body":"Content"}' http://localhost:8080/api/v1/messages/send
+```

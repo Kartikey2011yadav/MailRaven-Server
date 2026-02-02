@@ -42,7 +42,7 @@ We will adopt a "backend-first" strategy. We will first extend the database and 
 *Independent Test: `mailraven users set-quota` CLI works, and SMTP rejects mail when over quota.*
 
 - [x] T010 [US1] Implement `UpdateQuota` service method in `internal/core/services/user_service.go` [internal/core/services/user_service.go](internal/core/services/user_service.go)
-- [ ] T011 [US1] Create unit tests for Quota logic (checking limits) in `internal/core/services/user_service_test.go` [internal/core/services/user_service_test.go](internal/core/services/user_service_test.go)
+- [x] T011 [US1] Create unit tests for Quota logic (checking limits) in `internal/core/services/user_service_test.go` [internal/core/services/user_service_test.go](internal/core/services/user_service_test.go)
 - [x] T012 [P] [US1] Implement `GETQUOTA` and `GETQUOTAROOT` IMAP handlers in `internal/adapters/imap/quota.go` [internal/adapters/imap/quota.go](internal/adapters/imap/quota.go)
 - [x] T013 [P] [US1] Implement `SETQUOTA` IMAP handler (admin only) in `internal/adapters/imap/quota.go` [internal/adapters/imap/quota.go](internal/adapters/imap/quota.go)
 - [x] T014 [US1] Register Quota handlers in `internal/adapters/imap/server.go` [internal/adapters/imap/server.go](internal/adapters/imap/server.go)
@@ -55,10 +55,10 @@ We will adopt a "backend-first" strategy. We will first extend the database and 
 *Goal: Enable the Mobile Agent to build the client independently.*
 *Independent Test: `curl` commands from the context file work against a running local server.*
 
-- [ ] T018 [US3] Document Authentication flows (JWT) and endpoints in `docs/development/MOBILE_AGENT_CONTEXT.md` [docs/development/MOBILE_AGENT_CONTEXT.md](docs/development/MOBILE_AGENT_CONTEXT.md)
-- [ ] T019 [US3] Document Mailbox Sync endpoints (REST/IMAP) and params in `docs/development/MOBILE_AGENT_CONTEXT.md` [docs/development/MOBILE_AGENT_CONTEXT.md](docs/development/MOBILE_AGENT_CONTEXT.md)
-- [ ] T020 [US3] Document "Send Email" endpoints and payload formats in `docs/development/MOBILE_AGENT_CONTEXT.md` [docs/development/MOBILE_AGENT_CONTEXT.md](docs/development/MOBILE_AGENT_CONTEXT.md)
-- [ ] T021 [US3] Verify functionality of documented endpoints and mark as "Verified" in `docs/development/MOBILE_AGENT_CONTEXT.md` [docs/development/MOBILE_AGENT_CONTEXT.md](docs/development/MOBILE_AGENT_CONTEXT.md)
+- [x] T018 [US3] Document Authentication flows (JWT) and endpoints in `docs/development/MOBILE_AGENT_CONTEXT.md` [docs/development/MOBILE_AGENT_CONTEXT.md](docs/development/MOBILE_AGENT_CONTEXT.md)
+- [x] T019 [US3] Document Mailbox Sync endpoints (REST/IMAP) and params in `docs/development/MOBILE_AGENT_CONTEXT.md` [docs/development/MOBILE_AGENT_CONTEXT.md](docs/development/MOBILE_AGENT_CONTEXT.md)
+- [x] T020 [US3] Document "Send Email" endpoints and payload formats in `docs/development/MOBILE_AGENT_CONTEXT.md` [docs/development/MOBILE_AGENT_CONTEXT.md](docs/development/MOBILE_AGENT_CONTEXT.md)
+- [x] T021 [US3] Verify functionality of documented endpoints and mark as "Verified" in `docs/development/MOBILE_AGENT_CONTEXT.md` [docs/development/MOBILE_AGENT_CONTEXT.md](docs/development/MOBILE_AGENT_CONTEXT.md)
 
 ## Phase 5: User Story 2 - Mailbox Sharing via ACLs (P2)
 
