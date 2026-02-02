@@ -80,8 +80,8 @@ func (m *MockEmailRepository) SetFlags(ctx context.Context, messageID string, fl
 	return m.Called(ctx, messageID, flags).Error(0)
 }
 func (m *MockEmailRepository) AssignUID(ctx context.Context, messageID string, mailboxName string) (uint32, error) {
-    args := m.Called(ctx, messageID, mailboxName)
-    return uint32(args.Int(0)), args.Error(1)
+	args := m.Called(ctx, messageID, mailboxName)
+	return uint32(args.Int(0)), args.Error(1)
 }
 
 func TestUpdateACL(t *testing.T) {
@@ -106,7 +106,7 @@ func TestUpdateACL(t *testing.T) {
 
 	t.Run("Mailbox not found", func(t *testing.T) {
 		mockRepo.On("GetMailbox", ctx, "owner", "MISSING").Return(nil, errors.New("not found"))
-		
+
 		err := service.UpdateACL(ctx, "owner", "MISSING", "user1", "l")
 		assert.Error(t, err)
 		assert.Equal(t, "not found", err.Error())
