@@ -18,6 +18,8 @@ Auto-generated from all feature plans. Last updated: 2026-01-22
 - [if applicable, e.g., PostgreSQL, CoreData, files or N/A] (013-protocol-completion)
 - Go 1.24 + `mox` codebase, `modernc.org/sqlite` (013-protocol-completion)
 - SQLite (via `mox/store` abstraction or direct) (013-protocol-completion)
+- Go 1.24.0 + `github.com/go-chi/chi/v5` (HTTP), `modernc.org/sqlite` (Storage), `github.com/golang-jwt/jwt/v5` (Auth) (013-protocol-completion)
+- SQLite (embedded, `modernc.org/sqlite`) (013-protocol-completion)
 
 - Go 1.22+ (requires generics support) (001-mobile-email-server)
 
@@ -37,8 +39,8 @@ tests/
 Go 1.22+ (requires generics support): Follow standard conventions
 
 ## Recent Changes
+- 013-protocol-completion: Added Go 1.24.0 + `github.com/go-chi/chi/v5` (HTTP), `modernc.org/sqlite` (Storage), `github.com/golang-jwt/jwt/v5` (Auth)
 - 013-protocol-completion: Added Go 1.24 + `mox` codebase, `modernc.org/sqlite`
-- 013-protocol-completion: Added [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION] + [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
 - 013-protocol-completion: Added [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION] + [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
 
 

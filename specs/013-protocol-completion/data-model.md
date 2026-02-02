@@ -1,37 +1,51 @@
 # Data Model: Protocol Completion
 
-## Storage Schema Changes
-
-### Account (mox/store/account.go)
-
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| `QuotaStorageLimit` | `int64` | Max storage in bytes. 0 or -1 for unlimited (logic dependent). |
-
-### Mailbox (mox/store/mailbox.go)
-
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| `ACL` | `map[string]string` | Map of Identifier -> Rights string. <br>Key: user/group ID (e.g. "mjl@mox.example" or "anyone"). <br>Value: Rights (e.g., "lrswipcda"). |
-
 ## Entities
 
-### QuotaResource
+### Account (Extension)
 
--   **Name**: "STORAGE"
--   **Usage**: Calculated from `Account.DiskUsage` (existing).
--   **Limit**: From `QuotaStorageLimit`.
+Existing entity `Account` will be extended.
 
-### AccessControlList
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `storage_quota` | `int64` | Maximum storage in bytes. `0` means unlimited (or default). |
+| `storage_used` | `int64` | Current storage usage in bytes. Updated on atomic writes. |
 
--   **Identifier**: "anyone", "authuser", "admin", or email address.
--   **Rights**:
-    -   `l`: lookup (mailbox visible)
-    -   `r`: read (select, examine)
-    -   `s`: keep seen (seen flag)
-    -   `w`: write (flags, keywords)
-    -   `i`: insert (append, copy)
-    -   `p`: post (not used usually, but RFC 4314)
-    -   `c`: create (sub-mailboxes)
-    -   `d`: delete (mailbox)
-    -   `a`: admin (setacl)
+### Mailbox (Extension)
+
+Existing entity `Mailbox` will be extended to support ACLs (RFC 4314).
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `acl` | `JSON` | Map of `identifier` (user) -> `rights` (string of chars). |
+
+**ACL Rights Format**:
+Standard RFC 4314 characters:
+- `l`: lookup key
+- `r`: read
+- `s`: keep seen/unseen
+- `w`: write flags
+- `i`: insert (append/copy)
+- `p`: post (send) - *not strictly used for mailbox storage but part of RFC*
+- `k`: create sub-mailboxes
+- `x`: delete mailbox
+- `t`: delete messages
+- `e`: expunge
+- `a`: admin (manage ACLs)
+
+## Database Schema (SQLite)
+
+```sql
+ALTER TABLE accounts ADD COLUMN storage_quota INTEGER DEFAULT 0;
+ALTER TABLE accounts ADD COLUMN storage_used INTEGER DEFAULT 0;
+
+ALTER TABLE mailboxes ADD COLUMN acl TEXT DEFAULT '{}'; -- JSON serialized map
+```
+
+## Validation Rules
+
+1.  **Quota**: `storage_used + new_message_size <= storage_quota` (unless `storage_quota == 0` check global default).
+2.  **ACL**:
+    -   Owner always has full rights usually, or implicit `a`.
+    -   `anyone` identifier maps to anonymous/public access.
+    -   Circular dependencies in ACL groups (if groups implemented) must be avoided (Scope restriction: Users only for now).
