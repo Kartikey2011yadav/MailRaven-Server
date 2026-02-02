@@ -86,17 +86,19 @@ func setupTestEnvironment(t *testing.T) *testEnvironment {
 	}
 
 	// Run migrations
-	migrationPath := "../internal/adapters/storage/sqlite/migrations/001_init.sql"
-	if err := conn.RunMigrations(migrationPath); err != nil {
-		t.Logf("Migration warning (001): %v", err)
+	migrationsDir := "../internal/adapters/storage/sqlite/migrations"
+	files, err := os.ReadDir(migrationsDir)
+	if err != nil {
+		t.Fatalf("Failed to read migrations dir: %v", err)
 	}
-	migrationPath002 := "../internal/adapters/storage/sqlite/migrations/002_add_user_roles.sql"
-	if err := conn.RunMigrations(migrationPath002); err != nil {
-		t.Logf("Migration warning (002): %v", err)
-	}
-	migrationPath003 := "../internal/adapters/storage/sqlite/migrations/003_add_domains.sql"
-	if err := conn.RunMigrations(migrationPath003); err != nil {
-		t.Logf("Migration warning (003): %v", err)
+
+	for _, file := range files {
+		if filepath.Ext(file.Name()) == ".sql" {
+			migrationPath := filepath.Join(migrationsDir, file.Name())
+			if err := conn.RunMigrations(migrationPath); err != nil {
+				t.Logf("Migration warning (%s): %v", file.Name(), err)
+			}
+		}
 	}
 	migrationPath004 := "../internal/adapters/storage/sqlite/migrations/004_add_imap_fields.sql"
 	if err := conn.RunMigrations(migrationPath004); err != nil {

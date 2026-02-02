@@ -172,6 +172,7 @@ func NewServer(
 			r.Post("/users", adminUserHandler.CreateUser)
 			r.Delete("/users/{email}", adminUserHandler.DeleteUser)
 			r.Put("/users/{email}/role", adminUserHandler.UpdateRole)
+			r.Put("/users/{email}/quota", adminUserHandler.UpdateQuota)
 
 			// Domain Management
 			r.Get("/domains", adminDomainHandler.ListDomains)

@@ -25,9 +25,10 @@ func NewAdminUserHandler(userRepo ports.UserRepository, domainRepo ports.DomainR
 }
 
 type CreateUserRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Role     string `json:"role"` // optional, default "user"
+	Email        string `json:"email"`
+	Password     string `json:"password"`
+	Role         string `json:"role"`          // optional, default "user"
+	StorageQuota int64  `json:"storage_quota"` // optional
 }
 
 // ListUsers GET /api/v1/admin/users
@@ -114,6 +115,7 @@ func (h *AdminUserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		Email:        req.Email,
 		PasswordHash: string(hashed),
 		Role:         role,
+		StorageQuota: req.StorageQuota,
 		CreatedAt:    time.Now(),
 		LastLoginAt:  time.Unix(0, 0),
 	}
@@ -174,6 +176,34 @@ func (h *AdminUserHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "User not found", http.StatusNotFound)
 			return
 		}
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+// UpdateQuota PUT /api/v1/admin/users/{email}/quota
+func (h *AdminUserHandler) UpdateQuota(w http.ResponseWriter, r *http.Request) {
+	email := chi.URLParam(r, "email")
+	var req struct {
+		Quota int64 `json:"quota"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if req.Quota < 0 {
+		http.Error(w, "Quota must be non-negative", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.userRepo.UpdateQuota(r.Context(), email, req.Quota); err != nil {
+		if err == ports.ErrNotFound {
+			http.Error(w, "User not found", http.StatusNotFound)
+			return
+		}
+		h.logger.Error("Failed to update quota", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}

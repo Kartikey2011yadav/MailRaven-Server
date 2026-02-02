@@ -1,39 +1,56 @@
 # Mobile Agent Context
 
-**Purpose**: This document serves as the Source of Truth for the Mobile App AI Agent.
-**Updated**: 2026-02-02
+## Overview
 
-## 1. API & Authentication
+This document serves as the "Source of Truth" for the AI Agent building the MailRaven Mobile Client.
+It abstracts the internal complexity of the server and exposes only the public API contracts,
+authentication mechanism, and data models required for the client functioning.
 
-### Base URL
--   Development: `http://localhost:1080/api` (WebAPI) or `http://localhost:8080` (Mox Web)
--   Production: `https://mail.yourdomain.com/api`
+## 1. Authentication
 
-### Authentication
--   **Type**: Cookie-based or Token-based (TBD during implementation).
--   **Endpoint**: `POST /auth/login` (Standard) or `POST /api/v1/session`
--   **Credentials**: Email and Password.
+MailRaven uses JWT-based authentication.
 
-## 2. Protocol Interactions
+### Login
+`POST /api/v1/auth/login`
 
-### IMAP (Primary Data Sync)
--   **Port**: 993 (SSL), 143 (StartTLS)
--   **Library Recommendation**: `go-imap` (if Go), or platform native.
--   **Optimization**: Use `CONDSTORE` (RFC 7162) for delta sync.
--   **Push**: Use `IDLE` (RFC 2177) for real-time updates.
+**Request**:
+```json
+{
+  "email": "user@example.com",
+  "password": "secret_password"
+}
+```
 
-### SMTP (Sending)
--   **Port**: 587 (Submission) or 465 (SSL).
--   **Auth**: PLAIN or LOGIN.
+**Response**:
+```json
+{
+  "token": "ey...",
+  "expires_in": 3600
+}
+```
 
-## 3. Data Models (Client Side)
+The returned token must be sent in the `Authorization` header as `Bearer <token>` for all subsequent requests.
 
--   **Account**: Email, Host, Port, Credentials (secure storage).
--   **Mailbox**: Name, UnseenCount, UIDValidity, HighestModSeq.
--   **Message**: UID, Flags, InternalDate, Envelope, BodyStructure.
+## 2. Mailbox Synchronization
 
-## 4. Key Constraints
+### Sync Strategy
+MailRaven supports a "delta sync" mechanism using cursors/modification sequences (modseq).
+(TODO: Verify implementation details in Phase 4)
 
--   **Certificates**: Must allow "Accept Invalid Certs" in Dev mode.
--   **Background**: Sync must handle OS background execution limits.
--   **Offline**: All actions (read, move, delete) must correspond to an offline-queue.
+### Endpoints
+- `GET /api/v1/mailboxes`: List all mailboxes
+- `GET /api/v1/mailboxes/{id}/messages`: Fetch messages (supports cursor-based pagination)
+
+## 3. Sending Email
+
+### Submit
+`POST /api/v1/submission`
+
+**Payload**:
+MIME or JSON structured email.
+(TODO: Define exact payload in Phase 4)
+
+## 4. Constraints
+
+- **TLS**: Use TLS 1.2+ for all connections in production.
+- **Offline**: The client MUST cache data locally (SQLite/Realm) and queue actions when offline.

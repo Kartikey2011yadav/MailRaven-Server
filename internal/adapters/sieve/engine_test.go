@@ -186,6 +186,10 @@ func (m *MockMailboxRepo) AssignUID(ctx context.Context, messageID string, mailb
 	return 0, nil
 }
 
+func (m *MockMailboxRepo) SetACL(ctx context.Context, userID, mailboxName, identifier, rights string) error {
+	return nil
+}
+
 type MockVacationRepo struct {
 	mock.Mock
 }

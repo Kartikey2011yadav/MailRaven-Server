@@ -212,3 +212,13 @@ func (r *UserRepository) Count(ctx context.Context) (map[string]int64, error) {
 
 	return stats, nil
 }
+
+// UpdateQuota sets the max storage in bytes for a user (0 = unlimited)
+func (r *UserRepository) UpdateQuota(ctx context.Context, email string, bytes int64) error {
+	return ports.ErrStorageFailure // Not implemented
+}
+
+// IncrementStorageUsed updates storage usage by delta (can be negative)
+func (r *UserRepository) IncrementStorageUsed(ctx context.Context, email string, delta int64) error {
+	return ports.ErrStorageFailure // Not implemented
+}

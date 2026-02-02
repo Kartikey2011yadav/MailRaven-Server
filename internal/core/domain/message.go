@@ -17,6 +17,7 @@ type Message struct {
 	// IMAP Support
 	UID     uint32 // IMAP UID (Unique, Monotonic per Mailbox)
 	Mailbox string // Mailbox name (default "INBOX")
+	Size    int64  // Message size in bytes
 	Flags   string // Space-separated list of flags (e.g., "\Seen \Flagged")
 	ModSeq  uint64 // Modification Sequence (for CONDSTORE)
 

@@ -4,10 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
+	"time"
+
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/domain"
+	"github.com/google/uuid"
 )
 
 // handleCommand dispatches to specific command handlers
@@ -41,6 +45,24 @@ func (s *Session) handleCommand(cmd *Command) {
 		s.handleCopy(cmd)
 	case "IDLE":
 		s.handleIdle(cmd)
+	case "GETQUOTA":
+		s.handleGetQuota(cmd)
+	case "GETQUOTAROOT":
+		s.handleGetQuotaRoot(cmd)
+	case "APPEND":
+		s.handleAppend(cmd)
+	case "SETQUOTA":
+		s.handleSetQuota(cmd)
+	case "SETACL":
+		s.handleSetACL(cmd)
+	case "DELETEACL":
+		s.handleDeleteACL(cmd)
+	case "GETACL":
+		s.handleGetACL(cmd)
+	case "LISTRIGHTS":
+		s.handleListRights(cmd)
+	case "MYRIGHTS":
+		s.handleMyRights(cmd)
 	default:
 		s.send(fmt.Sprintf("%s NO Unknown command", cmd.Tag))
 	}
@@ -48,8 +70,7 @@ func (s *Session) handleCommand(cmd *Command) {
 
 func (s *Session) handleCapability(cmd *Command) {
 	// RFC 3501 6.1.1
-	caps := "IMAP4rev1 STARTTLS AUTH=PLAIN"
-	// If already authenticated, maybe add other capabilities?
+	caps := "IMAP4rev1 STARTTLS AUTH=PLAIN ACL QUOTA IDLE"
 	s.send("* CAPABILITY " + caps)
 	s.send(fmt.Sprintf("%s OK CAPABILITY completed", cmd.Tag))
 }
@@ -365,6 +386,23 @@ func (s *Session) handleUidCopy(tag string, rangeSpec string, destName string) {
 		return
 	}
 
+	// Check Quota
+	var totalSize int64
+	for _, msg := range msgs {
+		totalSize += msg.Size
+	}
+
+	ctx := context.Background()
+	user, err := s.userRepo.FindByEmail(ctx, s.user.Email)
+	if err != nil {
+		s.send(fmt.Sprintf("%s NO Storage check failed", tag))
+		return
+	}
+	if user.StorageQuota > 0 && (user.StorageUsed+totalSize > user.StorageQuota) {
+		s.send(fmt.Sprintf("%s NO [OVERQUOTA] Storage limit exceeded", tag))
+		return
+	}
+
 	// Perform Copy
 	var ids []string
 	for _, m := range msgs {
@@ -377,6 +415,10 @@ func (s *Session) handleUidCopy(tag string, rangeSpec string, destName string) {
 		s.send(fmt.Sprintf("%s NO Copy failed", tag))
 		return
 	}
+
+	// Update Usage
+	//nolint:errcheck // Best effort storage usage update
+	_ = s.userRepo.IncrementStorageUsed(ctx, s.user.Email, totalSize)
 
 	// Spam Training Hook
 	srcJunk := strings.EqualFold(s.selectedMailbox.Name, "Junk")
@@ -416,4 +458,85 @@ func (s *Session) handleUidCopy(tag string, rangeSpec string, destName string) {
 
 func (s *Session) handleCopy(cmd *Command) {
 	s.send(fmt.Sprintf("%s NO Use UID COPY", cmd.Tag))
+}
+
+func (s *Session) handleAppend(cmd *Command) {
+	if s.state != StateAuthenticated && s.state != StateSelected {
+		s.send(fmt.Sprintf("%s NO [AUTH] Must be authenticated", cmd.Tag))
+		return
+	}
+	if len(cmd.Args) < 2 {
+		s.send(fmt.Sprintf("%s BAD Missing arguments", cmd.Tag))
+		return
+	}
+
+	mailboxName := cmd.Args[0]
+	// Check for literal size in last argument
+	literalArg := cmd.Args[len(cmd.Args)-1]
+	if !strings.HasPrefix(literalArg, "{") || !strings.HasSuffix(literalArg, "}") {
+		s.send(fmt.Sprintf("%s BAD Missing literal size", cmd.Tag))
+		return
+	}
+
+	sizeStr := strings.Trim(literalArg, "{}")
+	size, err := strconv.ParseInt(sizeStr, 10, 64)
+	if err != nil {
+		s.send(fmt.Sprintf("%s BAD Invalid size", cmd.Tag))
+		return
+	}
+
+	// Quota Check
+	ctx := context.Background()
+	user, err := s.userRepo.FindByEmail(ctx, s.user.Email)
+	if err != nil {
+		s.send(fmt.Sprintf("%s NO Storage check failed", cmd.Tag))
+		return
+	}
+
+	if user.StorageQuota > 0 && (user.StorageUsed+size > user.StorageQuota) {
+		s.send(fmt.Sprintf("%s NO [OVERQUOTA] Storage limit exceeded", cmd.Tag))
+		return
+	}
+
+	// Send continuation
+	s.send("+ Ready for literal data")
+
+	// Read data
+	data := make([]byte, size)
+	_, err = io.ReadFull(s.reader, data)
+	if err != nil {
+		return
+	}
+
+	// Write to BlobStore
+	messageID := uuid.New().String()
+	path, err := s.blobStore.Write(ctx, messageID, data)
+	if err != nil {
+		s.logger.Error("Blob write failed", "error", err)
+		s.send(fmt.Sprintf("%s NO Storage failed", cmd.Tag))
+		return
+	}
+
+	msg := &domain.Message{
+		ID:         messageID,
+		Recipient:  user.Email,
+		Mailbox:    mailboxName,
+		BodyPath:   path,
+		Size:       size,
+		ReceivedAt: time.Now(),
+		// TODO: Parse Flags and Date from cmd.Args if present
+		// TODO: Parse MIME to get Subject, Sender, MessageID
+	}
+
+	if err := s.emailRepo.Save(ctx, msg); err != nil {
+		s.send(fmt.Sprintf("%s NO Save failed", cmd.Tag))
+		return
+	}
+
+	//nolint:errcheck // Best effort storage usage update
+	if err := s.userRepo.IncrementStorageUsed(ctx, s.user.Email, size); err != nil {
+		s.logger.Error("Failed to update storage usage", "error", err)
+	}
+
+	s.send(fmt.Sprintf("%s OK APPEND completed", cmd.Tag))
 }

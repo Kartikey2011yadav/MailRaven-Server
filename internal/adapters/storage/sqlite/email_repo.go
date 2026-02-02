@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -56,8 +57,8 @@ func (r *EmailRepository) Save(ctx context.Context, msg *domain.Message) error {
 		INSERT INTO messages (
 			id, message_id, sender, recipient, subject, snippet, body_path,
 			read_state, received_at, spf_result, dkim_result, dmarc_result, dmarc_policy,
-			uid, mailbox, flags, mod_seq
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			uid, mailbox, flags, mod_seq, size
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	readStateInt := 0
@@ -69,7 +70,7 @@ func (r *EmailRepository) Save(ctx context.Context, msg *domain.Message) error {
 		msg.ID, msg.MessageID, msg.Sender, msg.Recipient, msg.Subject, msg.Snippet,
 		msg.BodyPath, readStateInt, msg.ReceivedAt.Unix(), msg.SPFResult, msg.DKIMResult,
 		msg.DMARCResult, msg.DMARCPolicy,
-		msg.UID, msg.Mailbox, msg.Flags, msg.ModSeq,
+		msg.UID, msg.Mailbox, msg.Flags, msg.ModSeq, msg.Size,
 	)
 	if err != nil {
 		return ports.ErrStorageFailure
@@ -94,7 +95,7 @@ func (r *EmailRepository) Save(ctx context.Context, msg *domain.Message) error {
 func (r *EmailRepository) FindByID(ctx context.Context, id string) (*domain.Message, error) {
 	query := `
 		SELECT id, message_id, sender, recipient, subject, snippet, body_path,
-		       read_state, received_at, spf_result, dkim_result, dmarc_result, dmarc_policy
+		       read_state, received_at, spf_result, dkim_result, dmarc_result, dmarc_policy, size
 		FROM messages
 		WHERE id = ?
 	`
@@ -106,7 +107,7 @@ func (r *EmailRepository) FindByID(ctx context.Context, id string) (*domain.Mess
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&msg.ID, &msg.MessageID, &msg.Sender, &msg.Recipient, &msg.Subject, &msg.Snippet,
 		&msg.BodyPath, &readStateInt, &receivedAtUnix, &msg.SPFResult, &msg.DKIMResult,
-		&msg.DMARCResult, &msg.DMARCPolicy,
+		&msg.DMARCResult, &msg.DMARCPolicy, &msg.Size,
 	)
 
 	if err == sql.ErrNoRows {
@@ -126,7 +127,7 @@ func (r *EmailRepository) FindByID(ctx context.Context, id string) (*domain.Mess
 func (r *EmailRepository) FindByUser(ctx context.Context, email string, limit, offset int) ([]*domain.Message, error) {
 	query := `
 		SELECT id, message_id, sender, recipient, subject, snippet, body_path,
-		       read_state, received_at, spf_result, dkim_result, dmarc_result, dmarc_policy
+		       read_state, received_at, spf_result, dkim_result, dmarc_result, dmarc_policy, size
 		FROM messages
 		WHERE recipient = ?
 		ORDER BY received_at DESC
@@ -148,7 +149,7 @@ func (r *EmailRepository) FindByUser(ctx context.Context, email string, limit, o
 		err := rows.Scan(
 			&msg.ID, &msg.MessageID, &msg.Sender, &msg.Recipient, &msg.Subject, &msg.Snippet,
 			&msg.BodyPath, &readStateInt, &receivedAtUnix, &msg.SPFResult, &msg.DKIMResult,
-			&msg.DMARCResult, &msg.DMARCPolicy,
+			&msg.DMARCResult, &msg.DMARCPolicy, &msg.Size,
 		)
 		if err != nil {
 			return nil, ports.ErrStorageFailure
@@ -252,14 +253,23 @@ func (r *EmailRepository) CountTotal(ctx context.Context) (int64, error) {
 
 // GetMailbox retrieves a mailbox by name for a user
 func (r *EmailRepository) GetMailbox(ctx context.Context, userID, name string) (*domain.Mailbox, error) {
-	query := `SELECT name, user_id, uid_validity, uid_next, message_count FROM mailboxes WHERE user_id = ? AND name = ?`
+	query := `SELECT name, user_id, uid_validity, uid_next, message_count, acl FROM mailboxes WHERE user_id = ? AND name = ?`
 	mb := &domain.Mailbox{}
-	err := r.db.QueryRowContext(ctx, query, userID, name).Scan(&mb.Name, &mb.UserID, &mb.UIDValidity, &mb.UIDNext, &mb.MessageCount)
+	var aclStr string
+	err := r.db.QueryRowContext(ctx, query, userID, name).Scan(&mb.Name, &mb.UserID, &mb.UIDValidity, &mb.UIDNext, &mb.MessageCount, &aclStr)
 	if err == sql.ErrNoRows {
 		return nil, ports.ErrNotFound
 	}
 	if err != nil {
 		return nil, ports.ErrStorageFailure
+	}
+	if aclStr != "" {
+		if err := json.Unmarshal([]byte(aclStr), &mb.ACL); err != nil {
+			mb.ACL = make(map[string]string)
+		}
+	}
+	if mb.ACL == nil {
+		mb.ACL = make(map[string]string)
 	}
 	return mb, nil
 }
@@ -281,7 +291,7 @@ func (r *EmailRepository) CreateMailbox(ctx context.Context, userID, name string
 
 // ListMailboxes retrieves all mailboxes for a user
 func (r *EmailRepository) ListMailboxes(ctx context.Context, userID string) ([]*domain.Mailbox, error) {
-	query := `SELECT name, user_id, uid_validity, uid_next, message_count FROM mailboxes WHERE user_id = ?`
+	query := `SELECT name, user_id, uid_validity, uid_next, message_count, acl FROM mailboxes WHERE user_id = ?`
 	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
 		return nil, ports.ErrStorageFailure
@@ -291,8 +301,16 @@ func (r *EmailRepository) ListMailboxes(ctx context.Context, userID string) ([]*
 	var mailboxes []*domain.Mailbox
 	for rows.Next() {
 		mb := &domain.Mailbox{}
-		if err := rows.Scan(&mb.Name, &mb.UserID, &mb.UIDValidity, &mb.UIDNext, &mb.MessageCount); err != nil {
+		var aclStr string
+		if err := rows.Scan(&mb.Name, &mb.UserID, &mb.UIDValidity, &mb.UIDNext, &mb.MessageCount, &aclStr); err != nil {
 			return nil, ports.ErrStorageFailure
+		}
+		if aclStr != "" {
+			//nolint:errcheck // Best effort unmarshal
+			_ = json.Unmarshal([]byte(aclStr), &mb.ACL)
+		}
+		if mb.ACL == nil {
+			mb.ACL = make(map[string]string)
 		}
 		mailboxes = append(mailboxes, mb)
 	}
@@ -304,7 +322,7 @@ func (r *EmailRepository) FindByUIDRange(ctx context.Context, userID, mailbox st
 	query := `
 		SELECT id, message_id, sender, recipient, subject, snippet, body_path,
 		       read_state, received_at, uid, mailbox, flags, mod_seq,
-		       spf_result, dkim_result, dmarc_result, dmarc_policy
+		       spf_result, dkim_result, dmarc_result, dmarc_policy, size
 		FROM messages
 		WHERE recipient = ? AND mailbox = ? AND uid >= ? AND uid <= ?
 		ORDER BY uid ASC
@@ -327,7 +345,7 @@ func (r *EmailRepository) FindByUIDRange(ctx context.Context, userID, mailbox st
 		err := rows.Scan(
 			&msg.ID, &msg.MessageID, &msg.Sender, &msg.Recipient, &msg.Subject, &msg.Snippet,
 			&msg.BodyPath, &readStateInt, &receivedAtUnix, &msg.UID, &msg.Mailbox, &msg.Flags, &msg.ModSeq,
-			&msg.SPFResult, &msg.DKIMResult, &msg.DMARCResult, &msg.DMARCPolicy,
+			&msg.SPFResult, &msg.DKIMResult, &msg.DMARCResult, &msg.DMARCPolicy, &msg.Size,
 		)
 		if err != nil {
 			return nil, ports.ErrStorageFailure
@@ -495,6 +513,40 @@ func (r *EmailRepository) AssignUID(ctx context.Context, messageID string, mailb
 		return 0, err
 	}
 	return assignedUID, nil
+}
+
+// SetACL updates the access rights for an identifier on a mailbox
+func (r *EmailRepository) SetACL(ctx context.Context, userID, mailboxName, identifier, rights string) error {
+	// 1. Get current ACL
+	mb, err := r.GetMailbox(ctx, userID, mailboxName)
+	if err != nil {
+		return err
+	}
+	if mb.ACL == nil {
+		mb.ACL = make(map[string]string)
+	}
+
+	// 2. Update map
+
+	if rights == "" {
+		delete(mb.ACL, identifier)
+	} else {
+		mb.ACL[identifier] = rights
+	}
+
+	// 3. Serialize
+	data, err := json.Marshal(mb.ACL)
+	if err != nil {
+		return ports.ErrStorageFailure // internal error
+	}
+
+	// 4. Update DB
+	query := `UPDATE mailboxes SET acl = ? WHERE user_id = ? AND name = ?`
+	_, err = r.db.ExecContext(ctx, query, string(data), userID, mailboxName)
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+	return nil
 }
 
 // CopyMessages copies messages to a destination mailbox
