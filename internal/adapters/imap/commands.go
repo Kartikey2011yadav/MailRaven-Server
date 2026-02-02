@@ -153,6 +153,11 @@ func (s *Session) handleList(cmd *Command) {
 
 	foundInbox := false
 	for _, mb := range mailboxes {
+		// ACL check: requires 'l' (lookup) right
+		if err := s.emailService.CheckAccess(context.Background(), mb.UserID, mb.Name, s.user.Email, "l"); err != nil {
+			continue
+		}
+
 		if strings.ToUpper(mb.Name) == "INBOX" {
 			foundInbox = true
 		}
@@ -219,6 +224,13 @@ func (s *Session) handleSelect(cmd *Command) {
 		return
 	}
 
+	// ACL check: requires 'r' (read) right
+	// Note: Owner always has full access via CheckAccess logic
+	if err := s.emailService.CheckAccess(context.Background(), mb.UserID, mb.Name, s.user.Email, "r"); err != nil {
+		s.send(fmt.Sprintf("%s NO [PERMISSION DENIED] Access denied", cmd.Tag))
+		return
+	}
+
 	s.selectedMailbox = mb
 	s.state = StateSelected
 
@@ -236,6 +248,13 @@ func (s *Session) handleFetch(cmd *Command) {
 		s.send(fmt.Sprintf("%s NO Select mailbox first", cmd.Tag))
 		return
 	}
+
+	// ACL check: requires 'r' (read) right
+	if err := s.emailService.CheckAccess(context.Background(), s.selectedMailbox.UserID, s.selectedMailbox.Name, s.user.Email, "r"); err != nil {
+		s.send(fmt.Sprintf("%s NO [PERMISSION DENIED] Access denied", cmd.Tag))
+		return
+	}
+
 	// Syntax: FETCH <sequence-set> <items>
 	s.logger.Warn("Partial FETCH implementation: assuming UID FETCH for simplicity or returning NO")
 	s.send(fmt.Sprintf("%s NO Use UID FETCH please", cmd.Tag))

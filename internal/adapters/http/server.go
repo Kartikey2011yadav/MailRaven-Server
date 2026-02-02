@@ -76,6 +76,11 @@ func NewServer(
 	tlsRptHandler := handlers.NewTLSRptHandler(tlsRptRepo, logger)
 	sieveHandler := handlers.NewSieveHandler(sieveRepo, logger)
 	userSelfHandler := handlers.NewUserSelfHandler(userRepo, logger)
+
+	// Create EmailService
+	emailService := services.NewEmailService(emailRepo)
+	mailboxHandler := handlers.NewMailboxHandler(emailService, logger)
+
 	sendHandler, err := handlers.NewSendHandler(
 		queueRepo,
 		blobStore,
@@ -173,6 +178,8 @@ func NewServer(
 			r.Delete("/users/{email}", adminUserHandler.DeleteUser)
 			r.Put("/users/{email}/role", adminUserHandler.UpdateRole)
 			r.Put("/users/{email}/quota", adminUserHandler.UpdateQuota)
+			// ACL Management
+			r.Put("/users/{userID}/mailboxes/{mailboxName}/acl", mailboxHandler.UpdateACL)
 
 			// Domain Management
 			r.Get("/domains", adminDomainHandler.ListDomains)

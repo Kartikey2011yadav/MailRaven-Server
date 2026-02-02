@@ -10,6 +10,7 @@ import (
 	"github.com/Kartikey2011yadav/mailraven-server/internal/config"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/domain"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/ports"
+	"github.com/Kartikey2011yadav/mailraven-server/internal/core/services"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/observability"
 )
 
@@ -29,6 +30,7 @@ type Session struct {
 	logger          *observability.Logger
 	userRepo        ports.UserRepository
 	emailRepo       ports.EmailRepository
+	emailService    *services.EmailService
 	spamService     ports.SpamFilter
 	blobStore       ports.BlobStore
 	reader          *bufio.Reader
@@ -40,16 +42,17 @@ type Session struct {
 
 func NewSession(conn net.Conn, cfg config.IMAPConfig, logger *observability.Logger, userRepo ports.UserRepository, emailRepo ports.EmailRepository, spamService ports.SpamFilter, blobStore ports.BlobStore) *Session {
 	return &Session{
-		conn:        conn,
-		state:       StateNotAuthenticated,
-		config:      cfg,
-		logger:      logger,
-		userRepo:    userRepo,
-		emailRepo:   emailRepo,
-		spamService: spamService,
-		blobStore:   blobStore,
-		reader:      bufio.NewReader(conn),
-		writer:      bufio.NewWriter(conn),
+		conn:         conn,
+		state:        StateNotAuthenticated,
+		config:       cfg,
+		logger:       logger,
+		userRepo:     userRepo,
+		emailRepo:    emailRepo,
+		emailService: services.NewEmailService(emailRepo),
+		spamService:  spamService,
+		blobStore:    blobStore,
+		reader:       bufio.NewReader(conn),
+		writer:       bufio.NewWriter(conn),
 	}
 }
 
@@ -58,7 +61,7 @@ func (s *Session) Serve() {
 
 	// Greeting
 	// RFC 3501 Section 2.2.1
-	s.send("* OK [CAPABILITY IMAP4rev1 STARTTLS AUTH=PLAIN] MailRaven Ready")
+	s.send("* OK [CAPABILITY IMAP4rev1 STARTTLS AUTH=PLAIN ACL QUOTA IDLE] MailRaven Ready")
 
 	for {
 		line, err := s.reader.ReadString('\n')

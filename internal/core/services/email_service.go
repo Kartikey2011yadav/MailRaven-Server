@@ -22,14 +22,31 @@ func NewEmailService(emailRepo ports.EmailRepository) *EmailService {
 
 // UpdateACL updates the Access Control List for a mailbox
 func (s *EmailService) UpdateACL(ctx context.Context, ownerID, mailboxName, identifier, rights string) error {
-	// 1. Verify mailbox exists
+	// 1. Verify rights format
+	if err := s.validateRights(rights); err != nil {
+		return err
+	}
+
+	// 2. Verify mailbox exists
 	_, err := s.emailRepo.GetMailbox(ctx, ownerID, mailboxName)
 	if err != nil {
 		return err
 	}
 
-	// 2. Delegate to repository
+	// 3. Delegate to repository
 	return s.emailRepo.SetACL(ctx, ownerID, mailboxName, identifier, rights)
+}
+
+func (s *EmailService) validateRights(rights string) error {
+	// RFC 4314 standard rights + 'a' (admin)
+	// l: lookup, r: read, s: seen, w: write, i: insert, p: post, k: create, x: delete, t: delete msgs, e: expunge, a: admin
+	allowed := "lrswipkxtea"
+	for _, char := range rights {
+		if !strings.ContainsRune(allowed, char) {
+			return errors.New("invalid right: " + string(char))
+		}
+	}
+	return nil
 }
 
 // CheckAccess verifies if a user has the required rights on a mailbox

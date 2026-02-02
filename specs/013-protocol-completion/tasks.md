@@ -65,18 +65,18 @@ We will adopt a "backend-first" strategy. We will first extend the database and 
 *Goal: Allow users to share folders with specific permissions.*
 *Independent Test: User B cannot access User A's folder until `SETACL` is called.*
 
-- [ ] T022 [US2] Implement `UpdateACL` service method logic in `internal/core/services/email_service.go` [internal/core/services/email_service.go](internal/core/services/email_service.go)
-- [ ] T023 [US2] Add ACL enforcement checks (Lookup, Read, Write) to `internal/core/services/email_service.go` [internal/core/services/email_service.go](internal/core/services/email_service.go)
-- [ ] T024 [P] [US2] Create unit tests for ACL enforcement logic in `internal/core/services/email_service_test.go` [internal/core/services/email_service_test.go](internal/core/services/email_service_test.go)
+- [x] T022 [US2] Implement `UpdateACL` service method logic in `internal/core/services/email_service.go` [internal/core/services/email_service.go](internal/core/services/email_service.go)
+- [x] T023 [US2] Add ACL enforcement checks (Lookup, Read, Write) to `internal/core/services/email_service.go` [internal/core/services/email_service.go](internal/core/services/email_service.go)
+- [x] T024 [P] [US2] Create unit tests for ACL enforcement logic in `internal/core/services/email_service_test.go` [internal/core/services/email_service_test.go](internal/core/services/email_service_test.go)
 - [x] T025 [P] [US2] Implement `SETACL`, `DELETEACL`, `GETACL` handlers in `internal/adapters/imap/acl.go` [internal/adapters/imap/acl.go](internal/adapters/imap/acl.go)
 - [x] T026 [P] [US2] Implement `LISTRIGHTS`, `MYRIGHTS` handlers in `internal/adapters/imap/acl.go` [internal/adapters/imap/acl.go](internal/adapters/imap/acl.go)
 - [x] T027 [US2] Register ACL handlers in `internal/adapters/imap/server.go` [internal/adapters/imap/server.go](internal/adapters/imap/server.go)
-- [ ] T028 [US2] Integrate ACL checks into IMAP `SELECT`, `LIST`, `FETCH` handlers in `internal/adapters/imap/session.go` [internal/adapters/imap/session.go](internal/adapters/imap/session.go)
-- [ ] T029 [US2] Implement HTTP Admin Endpoint `PUT /mailboxes/{id}/acl` in `internal/adapters/http/mailbox_handler.go` [internal/adapters/http/mailbox_handler.go](internal/adapters/http/mailbox_handler.go)
+- [x] T028 [US2] Integrate ACL checks into IMAP `SELECT`, `LIST`, `FETCH` handlers in `internal/adapters/imap/session.go` [internal/adapters/imap/session.go](internal/adapters/imap/session.go)
+- [x] T029 [US2] Implement HTTP Admin Endpoint `PUT /mailboxes/{id}/acl` in `internal/adapters/http/mailbox_handler.go` [internal/adapters/http/mailbox_handler.go](internal/adapters/http/handlers/mailbox_handler.go)
 
 ## Phase 6: Polish
 
 *Goal: Final verification and cleanup.*
 
-- [ ] T030 Ensure all new IMAP extensions are advertised in `CAPABILITY` response in `internal/adapters/imap/server.go` [internal/adapters/imap/server.go](internal/adapters/imap/server.go)
-- [ ] T031 Run full integration test suite ensuring no regression in existing features in `tests/integration/protocol_test.go` [tests/integration/protocol_test.go](tests/integration/protocol_test.go)
+- [x] T030 Ensure all new IMAP extensions are advertised in `CAPABILITY` response in `internal/adapters/imap/server.go` [internal/adapters/imap/server.go](internal/adapters/imap/server.go)
+- [x] T031 Run full integration test suite ensuring no regression in existing features in `tests/integration/protocol_test.go` [tests/integration/protocol_test.go](tests/integration/protocol_test.go)
