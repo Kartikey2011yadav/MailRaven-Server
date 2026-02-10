@@ -46,6 +46,22 @@ func (m *MockEmailRepository) FindSince(ctx context.Context, email string, since
 	args := m.Called(ctx, email, since, limit)
 	return args.Get(0).([]*domain.Message), args.Error(1)
 }
+
+func (m *MockEmailRepository) List(ctx context.Context, email string, filter domain.MessageFilter) ([]*domain.Message, error) {
+	args := m.Called(ctx, email, filter)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Message), args.Error(1)
+}
+
+func (m *MockEmailRepository) UpdateStarred(ctx context.Context, id string, starred bool) error {
+	return m.Called(ctx, id, starred).Error(0)
+}
+
+func (m *MockEmailRepository) UpdateMailbox(ctx context.Context, id string, mailbox string) error {
+	return m.Called(ctx, id, mailbox).Error(0)
+}
 func (m *MockEmailRepository) GetMailbox(ctx context.Context, userID, name string) (*domain.Mailbox, error) {
 	args := m.Called(ctx, userID, name)
 	if args.Get(0) == nil {

@@ -20,11 +20,21 @@ type EmailRepository interface {
 	// FindByUser retrieves paginated messages for a user
 	// Results ordered by ReceivedAt DESC (newest first)
 	// Returns empty slice if no messages match
+	// Deprecated: Use List instead
 	FindByUser(ctx context.Context, email string, limit, offset int) ([]*domain.Message, error)
+
+	// List retrieves messages matching the filter criteria
+	List(ctx context.Context, email string, filter domain.MessageFilter) ([]*domain.Message, error)
 
 	// UpdateReadState marks a message as read or unread
 	// Returns ErrNotFound if message doesn't exist
 	UpdateReadState(ctx context.Context, id string, read bool) error
+
+	// UpdateStarred marks a message as starred (important) or not
+	UpdateStarred(ctx context.Context, id string, starred bool) error
+
+	// UpdateMailbox moves a message to a new mailbox/folder
+	UpdateMailbox(ctx context.Context, id string, mailbox string) error
 
 	// CountByUser returns total message count for a user
 	CountByUser(ctx context.Context, email string) (int, error)

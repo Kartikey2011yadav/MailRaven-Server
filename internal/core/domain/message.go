@@ -12,6 +12,7 @@ type Message struct {
 	Snippet    string    // First 200 chars of body for list view
 	BodyPath   string    // Path to compressed body file in blob store
 	ReadState  bool      // Has user read this message?
+	IsStarred  bool      // Is message marked as important/starred?
 	ReceivedAt time.Time // When server accepted the message
 
 	// IMAP Support

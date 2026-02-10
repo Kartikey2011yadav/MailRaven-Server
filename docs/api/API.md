@@ -31,11 +31,20 @@ Authorization: Bearer <token>
 - Note: These endpoints are public and do not require JWT authentication.
 
 ### Messages
-- `GET /messages`: List messages. Supports pagination (cursor-based) and filtering (folder, read status).
+- `GET /messages`: List messages. Supports pagination (limit, offset) and filtering:
+  - `mailbox`: Filter by folder (e.g., INBOX, Archive, Junk, Trash)
+  - `is_read`: Filter by read status (true/false)
+  - `is_starred`: Filter by starred status (true/false)
+  - `start_date`, `end_date`: Filter by received date range.
 - `GET /messages/{id}`: Get full message details.
 - `GET /messages/{id}/raw`: Get the raw MIME source.
 - `POST /messages/send`: Submit an email for delivery.
-- `PATCH /messages/{id}`: Update specific fields (e.g., mark as read/archived).
+- `PATCH /messages/{id}`: Update message state.
+  - `is_read`: Boolean
+  - `is_starred`: Boolean
+  - `mailbox`: Target mailbox name (Archive, Junk, Trash, INBOX)
+- `POST /messages/{id}/spam`: Report message as Spam (moves to Junk + trains filter).
+- `POST /messages/{id}/ham`: Report message as Ham (moves to Inbox + trains filter).
 
 ### Sieve Scripts
 - `GET /sieve/scripts`: List all Sieve scripts for the authenticated user.

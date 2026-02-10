@@ -209,7 +209,7 @@ func RunServe() error {
 	githubUpdater := updater.NewGitHubUpdater("Kartikey2011yadav", "mailraven-server")
 
 	// Initialize HTTP server
-	httpServer := httpAdapter.NewServer(cfg, emailRepo, userRepo, queueRepo, domainRepo, blobStore, searchIdx, acmeService, backupService, tlsRptRepo, scriptRepo, githubUpdater, logger, metrics)
+	httpServer := httpAdapter.NewServer(cfg, emailRepo, userRepo, queueRepo, domainRepo, blobStore, searchIdx, acmeService, backupService, tlsRptRepo, scriptRepo, githubUpdater, spamService, logger, metrics)
 
 	// Create context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())

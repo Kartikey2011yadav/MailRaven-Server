@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/http/dto"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/http/middleware"
+	"github.com/Kartikey2011yadav/mailraven-server/internal/core/domain"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/ports"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/observability"
 	"github.com/go-chi/chi/v5"
@@ -15,11 +17,12 @@ import (
 
 // MessageHandler handles message-related HTTP requests
 type MessageHandler struct {
-	emailRepo ports.EmailRepository
-	blobStore ports.BlobStore
-	searchIdx ports.SearchIndex
-	logger    *observability.Logger
-	metrics   *observability.Metrics
+	emailRepo  ports.EmailRepository
+	blobStore  ports.BlobStore
+	searchIdx  ports.SearchIndex
+	spamFilter ports.SpamFilter
+	logger     *observability.Logger
+	metrics    *observability.Metrics
 }
 
 // NewMessageHandler creates a new message handler
@@ -27,15 +30,17 @@ func NewMessageHandler(
 	emailRepo ports.EmailRepository,
 	blobStore ports.BlobStore,
 	searchIdx ports.SearchIndex,
+	spamFilter ports.SpamFilter,
 	logger *observability.Logger,
 	metrics *observability.Metrics,
 ) *MessageHandler {
 	return &MessageHandler{
-		emailRepo: emailRepo,
-		blobStore: blobStore,
-		searchIdx: searchIdx,
-		logger:    logger,
-		metrics:   metrics,
+		emailRepo:  emailRepo,
+		blobStore:  blobStore,
+		searchIdx:  searchIdx,
+		spamFilter: spamFilter,
+		logger:     logger,
+		metrics:    metrics,
 	}
 }
 
@@ -53,7 +58,28 @@ func (h *MessageHandler) ListMessages(w http.ResponseWriter, r *http.Request) {
 	// Parse query parameters
 	limit := h.parseIntParam(r, "limit", 20)
 	offset := h.parseIntParam(r, "offset", 0)
-	unreadOnly := r.URL.Query().Get("unread_only") == "true"
+
+	// Build filter
+	filter := domain.MessageFilter{
+		Limit:   limit,
+		Offset:  offset,
+		Mailbox: r.URL.Query().Get("mailbox"),
+	}
+
+	// Handle read status filter (support both is_read and legacy unread_only)
+	if s := r.URL.Query().Get("is_read"); s != "" {
+		val := s == "true"
+		filter.IsRead = &val
+	} else if r.URL.Query().Get("unread_only") == "true" {
+		val := false
+		filter.IsRead = &val
+	}
+
+	// Handle starred status filter
+	if s := r.URL.Query().Get("is_starred"); s != "" {
+		val := s == "true"
+		filter.IsStarred = &val
+	}
 
 	// Validate parameters
 	if limit < 1 || limit > 1000 {
@@ -66,10 +92,16 @@ func (h *MessageHandler) ListMessages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.logger.Info("Listing messages",
-		"method", "GET", "path", "/v1/messages", "user", email, "limit", limit, "offset", offset, "unread_only", unreadOnly)
+		"method", "GET", "path", "/v1/messages",
+		"user", email,
+		"limit", limit,
+		"offset", offset,
+		"mailbox", filter.Mailbox,
+		"is_read", filter.IsRead,
+		"is_starred", filter.IsStarred)
 
-	// Get messages from repository (ignoring unread_only filter for MVP - filter client-side)
-	messages, err := h.emailRepo.FindByUser(ctx, email, limit, offset)
+	// Get messages from repository using new List method
+	messages, err := h.emailRepo.List(ctx, email, filter)
 	if err != nil {
 		h.logger.Error("Failed to retrieve messages", "error", err)
 		h.metrics.IncrementAPIErrors()
@@ -78,6 +110,8 @@ func (h *MessageHandler) ListMessages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get total count
+	// Note: Currently CountByUser returns total messages regardless of filter
+	// TODO: Implement Count(filter) for accurate pagination in filtered views
 	total, err := h.emailRepo.CountByUser(ctx, email)
 	if err != nil {
 		h.logger.Error("Failed to count messages", "error", err)
@@ -96,7 +130,14 @@ func (h *MessageHandler) ListMessages(w http.ResponseWriter, r *http.Request) {
 		Total:    total,
 		Limit:    limit,
 		Offset:   offset,
-		HasMore:  offset+len(messages) < total,
+		HasMore:  offset+len(messages) < total, // This check is approximate if we are filtering
+	}
+
+	if filter.Mailbox != "" || filter.IsRead != nil || filter.IsStarred != nil {
+		// If filtering, HasMore logic using global total is flawed.
+		// Fallback to checking if we got a full page?
+		// If we got 'limit' messages, assume there might be more.
+		response.HasMore = len(messages) == limit
 	}
 
 	h.sendJSON(w, http.StatusOK, response)
@@ -189,13 +230,18 @@ func (h *MessageHandler) UpdateMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.ReadState == nil {
-		h.sendError(w, http.StatusBadRequest, "Missing read_state field")
+	if req.ReadState == nil && req.IsStarred == nil && req.Mailbox == nil {
+		h.sendError(w, http.StatusBadRequest, "No update fields provided")
 		return
 	}
 
 	h.logger.Info("Updating message",
-		"method", "PATCH", "path", "/v1/messages/{id}", "user", email, "message_id", messageID, "read_state", *req.ReadState)
+		"method", "PATCH", "path", "/v1/messages/{id}",
+		"user", email,
+		"message_id", messageID,
+		"read_state", req.ReadState,
+		"is_starred", req.IsStarred,
+		"mailbox", req.Mailbox)
 
 	// Verify message exists and belongs to user
 	message, err := h.emailRepo.FindByID(ctx, messageID)
@@ -216,17 +262,44 @@ func (h *MessageHandler) UpdateMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update read state
-	if err := h.emailRepo.UpdateReadState(ctx, messageID, *req.ReadState); err != nil {
-		h.logger.Error("Failed to update message", "error", err)
-		h.metrics.IncrementAPIErrors()
-		h.sendError(w, http.StatusInternalServerError, "Failed to update message")
-		return
+	if req.ReadState != nil {
+		if err := h.emailRepo.UpdateReadState(ctx, messageID, *req.ReadState); err != nil {
+			h.logger.Error("Failed to update read state", "error", err)
+			h.metrics.IncrementAPIErrors()
+			h.sendError(w, http.StatusInternalServerError, "Failed to update message")
+			return
+		}
+	}
+
+	// Update starred status
+	if req.IsStarred != nil {
+		if err := h.emailRepo.UpdateStarred(ctx, messageID, *req.IsStarred); err != nil {
+			h.logger.Error("Failed to update starred status", "error", err)
+			h.metrics.IncrementAPIErrors()
+			h.sendError(w, http.StatusInternalServerError, "Failed to update message")
+			return
+		}
+	}
+
+	// Update mailbox
+	if req.Mailbox != nil {
+		if err := h.emailRepo.UpdateMailbox(ctx, messageID, *req.Mailbox); err != nil {
+			h.logger.Error("Failed to update mailbox", "error", err)
+			h.metrics.IncrementAPIErrors()
+			h.sendError(w, http.StatusInternalServerError, "Failed to update message")
+			return
+		}
 	}
 
 	// Fetch updated message
-	message.ReadState = *req.ReadState
-	response := dto.ToMessageSummary(message)
+	updatedMessage, err := h.emailRepo.FindByID(ctx, messageID)
+	if err != nil {
+		h.logger.Error("Failed to retrieve updated message", "error", err)
+		h.sendError(w, http.StatusInternalServerError, "Failed to retrieve updated message")
+		return
+	}
 
+	response := dto.ToMessageSummary(updatedMessage)
 	h.sendJSON(w, http.StatusOK, response)
 }
 
@@ -287,6 +360,120 @@ func (h *MessageHandler) GetMessagesSince(w http.ResponseWriter, r *http.Request
 	}
 
 	h.sendJSON(w, http.StatusOK, response)
+}
+
+// ReportSpam handles POST /v1/messages/{id}/spam
+func (h *MessageHandler) ReportSpam(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	email, ok := middleware.GetUserEmail(r)
+	if !ok {
+		h.sendError(w, http.StatusUnauthorized, "Missing user email in context")
+		return
+	}
+
+	messageID := chi.URLParam(r, "id")
+	if messageID == "" {
+		h.sendError(w, http.StatusBadRequest, "Missing message ID")
+		return
+	}
+
+	h.logger.Info("Reporting message as spam", "user", email, "message_id", messageID)
+
+	message, err := h.emailRepo.FindByID(ctx, messageID)
+	if err != nil {
+		if err == ports.ErrNotFound {
+			h.sendError(w, http.StatusNotFound, "Message not found")
+			return
+		}
+		h.logger.Error("Failed to retrieve message", "error", err)
+		h.sendError(w, http.StatusInternalServerError, "Failed to retrieve message")
+		return
+	}
+
+	if message.Recipient != email {
+		h.sendError(w, http.StatusNotFound, "Message not found")
+		return
+	}
+
+	// Train spam filter
+	if h.spamFilter != nil {
+		bodyBytes, err := h.blobStore.Read(ctx, message.BodyPath)
+		if err == nil {
+			if err := h.spamFilter.TrainSpam(ctx, bytes.NewReader(bodyBytes)); err != nil {
+				h.logger.Warn("Failed to train spam filter", "error", err)
+			}
+		} else {
+			h.logger.Warn("Failed to read message body for spam training", "error", err)
+		}
+	}
+
+	// Move to Junk
+	if err := h.emailRepo.UpdateMailbox(ctx, messageID, "Junk"); err != nil {
+		h.logger.Error("Failed to move message to Junk", "error", err)
+		h.sendError(w, http.StatusInternalServerError, "Failed to update message")
+		return
+	}
+
+	// Return updated message
+	message.Mailbox = "Junk"
+	h.sendJSON(w, http.StatusOK, dto.ToMessageSummary(message))
+}
+
+// ReportHam handles POST /v1/messages/{id}/ham
+func (h *MessageHandler) ReportHam(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	email, ok := middleware.GetUserEmail(r)
+	if !ok {
+		h.sendError(w, http.StatusUnauthorized, "Missing user email in context")
+		return
+	}
+
+	messageID := chi.URLParam(r, "id")
+	if messageID == "" {
+		h.sendError(w, http.StatusBadRequest, "Missing message ID")
+		return
+	}
+
+	h.logger.Info("Reporting message as ham", "user", email, "message_id", messageID)
+
+	message, err := h.emailRepo.FindByID(ctx, messageID)
+	if err != nil {
+		if err == ports.ErrNotFound {
+			h.sendError(w, http.StatusNotFound, "Message not found")
+			return
+		}
+		h.logger.Error("Failed to retrieve message", "error", err)
+		h.sendError(w, http.StatusInternalServerError, "Failed to retrieve message")
+		return
+	}
+
+	if message.Recipient != email {
+		h.sendError(w, http.StatusNotFound, "Message not found")
+		return
+	}
+
+	// Train ham filter
+	if h.spamFilter != nil {
+		bodyBytes, err := h.blobStore.Read(ctx, message.BodyPath)
+		if err == nil {
+			if err := h.spamFilter.TrainHam(ctx, bytes.NewReader(bodyBytes)); err != nil {
+				h.logger.Warn("Failed to train ham filter", "error", err)
+			}
+		} else {
+			h.logger.Warn("Failed to read message body for ham training", "error", err)
+		}
+	}
+
+	// Move to INBOX
+	if err := h.emailRepo.UpdateMailbox(ctx, messageID, "INBOX"); err != nil {
+		h.logger.Error("Failed to move message to Inbox", "error", err)
+		h.sendError(w, http.StatusInternalServerError, "Failed to update message")
+		return
+	}
+
+	// Return updated message
+	message.Mailbox = "INBOX"
+	h.sendJSON(w, http.StatusOK, dto.ToMessageSummary(message))
 }
 
 // parseIntParam parses an integer query parameter with a default value
