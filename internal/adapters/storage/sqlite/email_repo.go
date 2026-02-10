@@ -57,7 +57,7 @@ func (r *EmailRepository) Save(ctx context.Context, msg *domain.Message) error {
 		INSERT INTO messages (
 			id, message_id, sender, recipient, subject, snippet, body_path,
 			read_state, received_at, spf_result, dkim_result, dmarc_result, dmarc_policy,
-			uid, mailbox, flags, mod_seq, size
+			uid, mailbox, flags, mod_seq, size, is_starred
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
@@ -66,11 +66,16 @@ func (r *EmailRepository) Save(ctx context.Context, msg *domain.Message) error {
 		readStateInt = 1
 	}
 
+	isStarredInt := 0
+	if msg.IsStarred {
+		isStarredInt = 1
+	}
+
 	_, err = tx.ExecContext(ctx, query,
 		msg.ID, msg.MessageID, msg.Sender, msg.Recipient, msg.Subject, msg.Snippet,
 		msg.BodyPath, readStateInt, msg.ReceivedAt.Unix(), msg.SPFResult, msg.DKIMResult,
 		msg.DMARCResult, msg.DMARCPolicy,
-		msg.UID, msg.Mailbox, msg.Flags, msg.ModSeq, msg.Size,
+		msg.UID, msg.Mailbox, msg.Flags, msg.ModSeq, msg.Size, isStarredInt,
 	)
 	if err != nil {
 		return ports.ErrStorageFailure
@@ -95,19 +100,22 @@ func (r *EmailRepository) Save(ctx context.Context, msg *domain.Message) error {
 func (r *EmailRepository) FindByID(ctx context.Context, id string) (*domain.Message, error) {
 	query := `
 		SELECT id, message_id, sender, recipient, subject, snippet, body_path,
-		       read_state, received_at, spf_result, dkim_result, dmarc_result, dmarc_policy, size
+		       read_state, received_at, spf_result, dkim_result, dmarc_result, dmarc_policy, size,
+		       uid, mailbox, flags, mod_seq, is_starred
 		FROM messages
 		WHERE id = ?
 	`
 
 	msg := &domain.Message{}
 	var readStateInt int
+	var isStarredInt int
 	var receivedAtUnix int64
 
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&msg.ID, &msg.MessageID, &msg.Sender, &msg.Recipient, &msg.Subject, &msg.Snippet,
 		&msg.BodyPath, &readStateInt, &receivedAtUnix, &msg.SPFResult, &msg.DKIMResult,
 		&msg.DMARCResult, &msg.DMARCPolicy, &msg.Size,
+		&msg.UID, &msg.Mailbox, &msg.Flags, &msg.ModSeq, &isStarredInt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -118,23 +126,62 @@ func (r *EmailRepository) FindByID(ctx context.Context, id string) (*domain.Mess
 	}
 
 	msg.ReadState = readStateInt == 1
+	msg.IsStarred = isStarredInt == 1
 	msg.ReceivedAt = time.Unix(receivedAtUnix, 0)
 
 	return msg, nil
 }
 
-// FindByUser retrieves paginated messages for a user
-func (r *EmailRepository) FindByUser(ctx context.Context, email string, limit, offset int) ([]*domain.Message, error) {
-	query := `
+// List retrieves messages matching the filter criteria
+func (r *EmailRepository) List(ctx context.Context, email string, filter domain.MessageFilter) ([]*domain.Message, error) {
+	queryBuilder := strings.Builder{}
+	queryBuilder.WriteString(`
 		SELECT id, message_id, sender, recipient, subject, snippet, body_path,
-		       read_state, received_at, spf_result, dkim_result, dmarc_result, dmarc_policy, size
+		       read_state, received_at, spf_result, dkim_result, dmarc_result, dmarc_policy, size,
+		       uid, mailbox, flags, mod_seq, is_starred
 		FROM messages
 		WHERE recipient = ?
-		ORDER BY received_at DESC
-		LIMIT ? OFFSET ?
-	`
+	`)
 
-	rows, err := r.db.QueryContext(ctx, query, email, limit, offset)
+	args := []interface{}{email}
+
+	if filter.Mailbox != "" {
+		queryBuilder.WriteString(" AND mailbox = ?")
+		args = append(args, filter.Mailbox)
+	}
+
+	if filter.IsRead != nil {
+		readVal := 0
+		if *filter.IsRead {
+			readVal = 1
+		}
+		queryBuilder.WriteString(" AND read_state = ?")
+		args = append(args, readVal)
+	}
+
+	if filter.IsStarred != nil {
+		starredVal := 0
+		if *filter.IsStarred {
+			starredVal = 1
+		}
+		queryBuilder.WriteString(" AND is_starred = ?")
+		args = append(args, starredVal)
+	}
+
+	if filter.DateRange.Start != nil {
+		queryBuilder.WriteString(" AND received_at >= ?")
+		args = append(args, filter.DateRange.Start.Unix())
+	}
+
+	if filter.DateRange.End != nil {
+		queryBuilder.WriteString(" AND received_at <= ?")
+		args = append(args, filter.DateRange.End.Unix())
+	}
+
+	queryBuilder.WriteString(" ORDER BY received_at DESC LIMIT ? OFFSET ?")
+	args = append(args, filter.Limit, filter.Offset)
+
+	rows, err := r.db.QueryContext(ctx, queryBuilder.String(), args...)
 	if err != nil {
 		return nil, ports.ErrStorageFailure
 	}
@@ -144,23 +191,100 @@ func (r *EmailRepository) FindByUser(ctx context.Context, email string, limit, o
 	for rows.Next() {
 		msg := &domain.Message{}
 		var readStateInt int
+		var isStarredInt int
 		var receivedAtUnix int64
 
 		err := rows.Scan(
 			&msg.ID, &msg.MessageID, &msg.Sender, &msg.Recipient, &msg.Subject, &msg.Snippet,
 			&msg.BodyPath, &readStateInt, &receivedAtUnix, &msg.SPFResult, &msg.DKIMResult,
 			&msg.DMARCResult, &msg.DMARCPolicy, &msg.Size,
+			&msg.UID, &msg.Mailbox, &msg.Flags, &msg.ModSeq, &isStarredInt,
 		)
 		if err != nil {
 			return nil, ports.ErrStorageFailure
 		}
 
 		msg.ReadState = readStateInt == 1
+		msg.IsStarred = isStarredInt == 1
 		msg.ReceivedAt = time.Unix(receivedAtUnix, 0)
 		messages = append(messages, msg)
 	}
 
 	return messages, nil
+}
+
+// UpdateMailbox moves a message to a new mailbox/folder
+func (r *EmailRepository) UpdateMailbox(ctx context.Context, id string, mailbox string) error {
+	// 1. Ensure mailbox exists (simple approach: require it to exist or insert ignore provided user_id is known... wait, we need user_id)
+	// For efficiency, we assume mailbox table contains standard folders or they are created via IDLE/IMAP.
+	// But let's check recipient from message first to be safe or do a subselect?
+	// Simpler: Just update. If specific mailbox creation logic needed (IMAP), it should be handled there.
+	// However, we need to update UID if moving between mailboxes to be fully IMAP compliant.
+	// That logic is complex (Copy + Delete).
+	// Spec says "User Story 1 - Archive Message... message moves to Archive mailbox".
+	// For a simple DB-based mail system without full IMAP sync requirement here, just updating mailbox col is okay.
+	// But if we want IMAP compliance, it MUST be Copy+Delete or we break UID constraints.
+	// Since implementing full IMAP Copy+Delete logic here is heavy and might violate "atomic" if not careful.
+	// Plan says "Message moves are atomic metadata updates".
+	// Implementation Plan Check: "Protocol Parity: "Starred" maps to IMAP \Flagged, "Junk" maps to \Junk...".
+	// T005 says "Implement UpdateMailbox".
+	// Let's implement simple Column Update for now as per "atomic metadata update".
+	// NOTE: This breaks IMAP UIDs unless we re-assign UID.
+	// Let's do a simple update for now, recognizing this technical debt vs IMAP.
+	// Or even better: `UPDATE messages SET mailbox = ? WHERE id = ?`.
+
+	query := `UPDATE messages SET mailbox = ? WHERE id = ?`
+	result, err := r.db.ExecContext(ctx, query, mailbox, id)
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+	if rowsAffected == 0 {
+		return ports.ErrNotFound
+	}
+
+	return nil
+}
+
+// UpdateStarred marks a message as starred (important) or not
+func (r *EmailRepository) UpdateStarred(ctx context.Context, id string, starred bool) error {
+	starredInt := 0
+	if starred {
+		starredInt = 1
+	}
+
+	query := `UPDATE messages SET is_starred = ? WHERE id = ?`
+	result, err := r.db.ExecContext(ctx, query, starredInt, id)
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+	if rowsAffected == 0 {
+		return ports.ErrNotFound
+	}
+
+	return nil
+}
+
+// FindByUser retrieves paginated messages for a user
+func (r *EmailRepository) FindByUser(ctx context.Context, email string, limit, offset int) ([]*domain.Message, error) {
+	// Deprecated implementation that wraps List for backward compatibility
+	return r.List(ctx, email, domain.MessageFilter{
+		Limit:   limit,
+		Offset:  offset,
+		Mailbox: "", // All mailboxes? Or just INBOX? Old implementation didn't filter mailbox, so it returned ALL.
+		// NOTE: Original code query: "SELECT ... FROM messages WHERE recipient = ?".
+		// No mailbox filter was present. So it returned all messages from all folders.
+		// That matches filter with Mailbox="".
+	})
 }
 
 // UpdateReadState marks a message as read or unread

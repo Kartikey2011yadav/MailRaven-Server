@@ -221,3 +221,18 @@ func (r *EmailRepository) CopyMessages(ctx context.Context, userID string, messa
 func (r *EmailRepository) SetACL(ctx context.Context, userID, mailboxName, identifier, rights string) error {
 	return ports.ErrStorageFailure // Not implemented
 }
+
+// List retrieves messages matching the filter criteria
+func (r *EmailRepository) List(ctx context.Context, email string, filter domain.MessageFilter) ([]*domain.Message, error) {
+	return nil, ports.ErrStorageFailure // Not implemented
+}
+
+// UpdateStarred marks a message as starred (important) or not
+func (r *EmailRepository) UpdateStarred(ctx context.Context, id string, starred bool) error {
+	return ports.ErrStorageFailure // Not implemented
+}
+
+// UpdateMailbox moves a message to a new mailbox/folder
+func (r *EmailRepository) UpdateMailbox(ctx context.Context, id string, mailbox string) error {
+	return ports.ErrStorageFailure // Not implemented
+}

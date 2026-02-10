@@ -59,6 +59,7 @@ func NewServer(
 	tlsRptRepo ports.TLSRptRepository,
 	sieveRepo ports.ScriptRepository,
 	updateManager ports.UpdateManager,
+	spamFilter ports.SpamFilter,
 	logger *observability.Logger,
 	metrics *observability.Metrics,
 ) *Server {
@@ -66,7 +67,7 @@ func NewServer(
 
 	// Create handlers
 	authHandler := handlers.NewAuthHandler(userRepo, cfg.API.JWTSecret, logger, metrics)
-	messageHandler := handlers.NewMessageHandler(emailRepo, blobStore, searchIdx, logger, metrics)
+	messageHandler := handlers.NewMessageHandler(emailRepo, blobStore, searchIdx, spamFilter, logger, metrics)
 	searchHandler := handlers.NewSearchHandler(emailRepo, searchIdx, logger, metrics)
 	adminBackupHandler := handlers.NewAdminHandler(backupService, logger, metrics)
 	adminUserHandler := handlers.NewAdminUserHandler(userRepo, domainRepo, logger)
@@ -143,6 +144,8 @@ func NewServer(
 		r.Get("/api/v1/messages/search", searchHandler.SearchMessages)
 		r.Get("/api/v1/messages/{id}", messageHandler.GetMessage)
 		r.Patch("/api/v1/messages/{id}", messageHandler.UpdateMessage)
+		r.Post("/api/v1/messages/{id}/spam", messageHandler.ReportSpam)
+		r.Post("/api/v1/messages/{id}/ham", messageHandler.ReportHam)
 		// Outbound
 		if sendHandler != nil {
 			r.Post("/api/v1/messages/send", sendHandler.Send)

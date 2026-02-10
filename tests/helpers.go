@@ -124,6 +124,10 @@ func setupTestEnvironment(t *testing.T) *testEnvironment {
 	if err := conn.RunMigrations(migrationPath010); err != nil {
 		t.Logf("Migration warning (010): %v", err)
 	}
+	migrationPath011 := "../internal/adapters/storage/sqlite/migrations/011_add_starred_column.sql"
+	if err := conn.RunMigrations(migrationPath011); err != nil {
+		t.Logf("Migration warning (011): %v", err)
+	}
 
 	// Initialize repositories
 	emailRepo := sqlite.NewEmailRepository(conn.DB)
@@ -212,7 +216,7 @@ func setupTestEnvironment(t *testing.T) *testEnvironment {
 	tlsRptRepo := sqlite.NewTLSRptRepository(conn.DB)
 
 	// Create HTTP server
-	httpServer := httpAdapter.NewServer(cfg, emailRepo, userRepo, queueRepo, domainRepo, blobStore, searchIdx, nil, nil, tlsRptRepo, nil, nil, logger, metrics)
+	httpServer := httpAdapter.NewServer(cfg, emailRepo, userRepo, queueRepo, domainRepo, blobStore, searchIdx, nil, nil, tlsRptRepo, nil, nil, &NoOpSpamFilter{}, logger, metrics)
 	testServer := httptest.NewServer(httpServer.Router())
 
 	return &testEnvironment{

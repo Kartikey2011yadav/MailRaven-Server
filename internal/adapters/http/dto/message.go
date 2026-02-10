@@ -14,6 +14,8 @@ type MessageSummary struct {
 	Subject     string    `json:"subject"`
 	Snippet     string    `json:"snippet"`
 	ReadState   bool      `json:"read_state"`
+	IsStarred   bool      `json:"is_starred"`
+	Mailbox     string    `json:"mailbox"`
 	ReceivedAt  time.Time `json:"received_at"`
 	SPFResult   string    `json:"spf_result"`
 	DKIMResult  string    `json:"dkim_result"`
@@ -60,7 +62,9 @@ type SearchResponse struct {
 
 // UpdateMessageRequest for PATCH /v1/messages/{id}
 type UpdateMessageRequest struct {
-	ReadState *bool `json:"read_state"`
+	ReadState *bool   `json:"read_state"`
+	IsStarred *bool   `json:"is_starred"`
+	Mailbox   *string `json:"mailbox"`
 }
 
 // ErrorResponse for 4xx/5xx responses
@@ -85,6 +89,8 @@ func ToMessageSummary(msg *domain.Message) MessageSummary {
 		Subject:     msg.Subject,
 		Snippet:     msg.Snippet,
 		ReadState:   msg.ReadState,
+		IsStarred:   msg.IsStarred,
+		Mailbox:     msg.Mailbox,
 		ReceivedAt:  msg.ReceivedAt,
 		SPFResult:   msg.SPFResult,
 		DKIMResult:  msg.DKIMResult,
