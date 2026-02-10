@@ -61,7 +61,14 @@ func (m *MockEmailRepo) FindByID(ctx context.Context, id string) (*domain.Messag
 func (m *MockEmailRepo) FindByUser(ctx context.Context, email string, limit, offset int) ([]*domain.Message, error) {
 	return nil, nil
 }
-func (m *MockEmailRepo) UpdateReadState(ctx context.Context, id string, read bool) error { return nil }
+func (m *MockEmailRepo) List(ctx context.Context, email string, filter domain.MessageFilter) ([]*domain.Message, error) {
+	return nil, nil
+}
+func (m *MockEmailRepo) UpdateReadState(ctx context.Context, id string, read bool) error  { return nil }
+func (m *MockEmailRepo) UpdateStarred(ctx context.Context, id string, starred bool) error { return nil }
+func (m *MockEmailRepo) UpdateMailbox(ctx context.Context, id string, mailbox string) error {
+	return nil
+}
 func (m *MockEmailRepo) CountByUser(ctx context.Context, email string) (int, error) {
 	return 0, nil
 }
