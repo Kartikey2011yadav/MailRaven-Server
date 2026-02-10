@@ -47,7 +47,7 @@
 
 ## Final Phase: Polish
 
-- [ ] T022 Update `contracts/openapi-partial.yaml` if any implementation details diverged
+- [x] T022 Update `contracts/openapi-partial.yaml` if any implementation details diverged
 - [x] T023 Run full integration tests to ensure no regression in existing message listing
 
 ## Dependencies

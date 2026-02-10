@@ -3,6 +3,8 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/domain"
@@ -24,14 +26,16 @@ func (r *EmailRepository) Save(ctx context.Context, msg *domain.Message) error {
 	query := `
 		INSERT INTO messages (
 			id, message_id, sender, recipient, subject, snippet, body_path,
-			read_state, received_at, spf_result, dkim_result, dmarc_result, dmarc_policy
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+			read_state, received_at, spf_result, dkim_result, dmarc_result, dmarc_policy,
+			mailbox, uid, flags, modseq, is_starred
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 	`
 
 	_, err := r.db.ExecContext(ctx, query,
 		msg.ID, msg.MessageID, msg.Sender, msg.Recipient, msg.Subject, msg.Snippet,
 		msg.BodyPath, msg.ReadState, msg.ReceivedAt, msg.SPFResult, msg.DKIMResult,
 		msg.DMARCResult, msg.DMARCPolicy,
+		msg.Mailbox, msg.UID, msg.Flags, msg.ModSeq, msg.IsStarred,
 	)
 	if err != nil {
 		return ports.ErrStorageFailure
@@ -44,7 +48,8 @@ func (r *EmailRepository) Save(ctx context.Context, msg *domain.Message) error {
 func (r *EmailRepository) FindByID(ctx context.Context, id string) (*domain.Message, error) {
 	query := `
 		SELECT id, message_id, sender, recipient, subject, snippet, body_path,
-		       read_state, received_at, spf_result, dkim_result, dmarc_result, dmarc_policy
+		       read_state, received_at, spf_result, dkim_result, dmarc_result, dmarc_policy,
+		       mailbox, uid, flags, modseq, is_starred
 		FROM messages
 		WHERE id = $1
 	`
@@ -55,6 +60,7 @@ func (r *EmailRepository) FindByID(ctx context.Context, id string) (*domain.Mess
 		&msg.ID, &msg.MessageID, &msg.Sender, &msg.Recipient, &msg.Subject, &msg.Snippet,
 		&msg.BodyPath, &msg.ReadState, &msg.ReceivedAt, &msg.SPFResult, &msg.DKIMResult,
 		&msg.DMARCResult, &msg.DMARCPolicy,
+		&msg.Mailbox, &msg.UID, &msg.Flags, &msg.ModSeq, &msg.IsStarred,
 	)
 
 	if err == sql.ErrNoRows {
@@ -69,37 +75,11 @@ func (r *EmailRepository) FindByID(ctx context.Context, id string) (*domain.Mess
 
 // FindByUser retrieves paginated messages for a user
 func (r *EmailRepository) FindByUser(ctx context.Context, email string, limit, offset int) ([]*domain.Message, error) {
-	query := `
-		SELECT id, message_id, sender, recipient, subject, snippet, body_path,
-		       read_state, received_at, spf_result, dkim_result, dmarc_result, dmarc_policy
-		FROM messages
-		WHERE recipient = $1
-		ORDER BY received_at DESC
-		LIMIT $2 OFFSET $3
-	`
-
-	rows, err := r.db.QueryContext(ctx, query, email, limit, offset)
-	if err != nil {
-		return nil, ports.ErrStorageFailure
-	}
-	defer rows.Close()
-
-	var messages []*domain.Message
-	for rows.Next() {
-		msg := &domain.Message{}
-
-		err := rows.Scan(
-			&msg.ID, &msg.MessageID, &msg.Sender, &msg.Recipient, &msg.Subject, &msg.Snippet,
-			&msg.BodyPath, &msg.ReadState, &msg.ReceivedAt, &msg.SPFResult, &msg.DKIMResult,
-			&msg.DMARCResult, &msg.DMARCPolicy,
-		)
-		if err != nil {
-			return nil, ports.ErrStorageFailure
-		}
-		messages = append(messages, msg)
-	}
-
-	return messages, nil
+	// Deprecated: wrapper around List
+	return r.List(ctx, email, domain.MessageFilter{
+		Limit:  limit,
+		Offset: offset,
+	})
 }
 
 // UpdateReadState marks a message as read or unread
@@ -147,7 +127,8 @@ func (r *EmailRepository) CountTotal(ctx context.Context) (int64, error) {
 func (r *EmailRepository) FindSince(ctx context.Context, email string, since time.Time, limit int) ([]*domain.Message, error) {
 	query := `
 		SELECT id, message_id, sender, recipient, subject, snippet, body_path,
-		       read_state, received_at, spf_result, dkim_result, dmarc_result, dmarc_policy
+		       read_state, received_at, spf_result, dkim_result, dmarc_result, dmarc_policy,
+		       mailbox, uid, flags, modseq, is_starred
 		FROM messages
 		WHERE recipient = $1 AND received_at > $2
 		ORDER BY received_at DESC
@@ -168,6 +149,7 @@ func (r *EmailRepository) FindSince(ctx context.Context, email string, since tim
 			&msg.ID, &msg.MessageID, &msg.Sender, &msg.Recipient, &msg.Subject, &msg.Snippet,
 			&msg.BodyPath, &msg.ReadState, &msg.ReceivedAt, &msg.SPFResult, &msg.DKIMResult,
 			&msg.DMARCResult, &msg.DMARCPolicy,
+			&msg.Mailbox, &msg.UID, &msg.Flags, &msg.ModSeq, &msg.IsStarred,
 		)
 		if err != nil {
 			return nil, ports.ErrStorageFailure
@@ -224,15 +206,109 @@ func (r *EmailRepository) SetACL(ctx context.Context, userID, mailboxName, ident
 
 // List retrieves messages matching the filter criteria
 func (r *EmailRepository) List(ctx context.Context, email string, filter domain.MessageFilter) ([]*domain.Message, error) {
-	return nil, ports.ErrStorageFailure // Not implemented
+	var queryBuilder strings.Builder
+	queryBuilder.WriteString(`
+		SELECT id, message_id, sender, recipient, subject, snippet, body_path,
+		       read_state, received_at, spf_result, dkim_result, dmarc_result, dmarc_policy,
+		       mailbox, uid, flags, modseq, is_starred
+		FROM messages
+		WHERE recipient = $1
+	`)
+
+	args := []interface{}{email}
+	argIdx := 2
+
+	if filter.Mailbox != "" {
+		queryBuilder.WriteString(fmt.Sprintf(" AND mailbox = $%d", argIdx))
+		args = append(args, filter.Mailbox)
+		argIdx++
+	}
+
+	if filter.IsRead != nil {
+		queryBuilder.WriteString(fmt.Sprintf(" AND read_state = $%d", argIdx))
+		args = append(args, *filter.IsRead)
+		argIdx++
+	}
+
+	if filter.IsStarred != nil {
+		queryBuilder.WriteString(fmt.Sprintf(" AND is_starred = $%d", argIdx))
+		args = append(args, *filter.IsStarred)
+		argIdx++
+	}
+
+	if filter.DateRange.Start != nil {
+		queryBuilder.WriteString(fmt.Sprintf(" AND received_at >= $%d", argIdx))
+		args = append(args, *filter.DateRange.Start)
+		argIdx++
+	}
+
+	if filter.DateRange.End != nil {
+		queryBuilder.WriteString(fmt.Sprintf(" AND received_at <= $%d", argIdx))
+		args = append(args, *filter.DateRange.End)
+		argIdx++
+	}
+
+	queryBuilder.WriteString(fmt.Sprintf(" ORDER BY received_at DESC LIMIT $%d OFFSET $%d", argIdx, argIdx+1))
+	args = append(args, filter.Limit, filter.Offset)
+
+	rows, err := r.db.QueryContext(ctx, queryBuilder.String(), args...)
+	if err != nil {
+		return nil, ports.ErrStorageFailure
+	}
+	defer rows.Close()
+
+	var messages []*domain.Message
+	for rows.Next() {
+		msg := &domain.Message{}
+		err := rows.Scan(
+			&msg.ID, &msg.MessageID, &msg.Sender, &msg.Recipient, &msg.Subject, &msg.Snippet,
+			&msg.BodyPath, &msg.ReadState, &msg.ReceivedAt, &msg.SPFResult, &msg.DKIMResult,
+			&msg.DMARCResult, &msg.DMARCPolicy,
+			&msg.Mailbox, &msg.UID, &msg.Flags, &msg.ModSeq, &msg.IsStarred,
+		)
+		if err != nil {
+			return nil, ports.ErrStorageFailure
+		}
+		messages = append(messages, msg)
+	}
+
+	return messages, nil
 }
 
 // UpdateStarred marks a message as starred (important) or not
 func (r *EmailRepository) UpdateStarred(ctx context.Context, id string, starred bool) error {
-	return ports.ErrStorageFailure // Not implemented
+	query := `UPDATE messages SET is_starred = $1 WHERE id = $2`
+	result, err := r.db.ExecContext(ctx, query, starred, id)
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+	if rows == 0 {
+		return ports.ErrNotFound
+	}
+
+	return nil
 }
 
 // UpdateMailbox moves a message to a new mailbox/folder
 func (r *EmailRepository) UpdateMailbox(ctx context.Context, id string, mailbox string) error {
-	return ports.ErrStorageFailure // Not implemented
+	query := `UPDATE messages SET mailbox = $1 WHERE id = $2`
+	result, err := r.db.ExecContext(ctx, query, mailbox, id)
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return ports.ErrStorageFailure
+	}
+	if rows == 0 {
+		return ports.ErrNotFound
+	}
+
+	return nil
 }
