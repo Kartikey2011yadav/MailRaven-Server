@@ -23,7 +23,7 @@
 
 - [x] T008 [US1] Update `PatchMessageRequest` DTO in `internal/adapters/http/dto/message.go` to support `mailbox` field
 - [x] T009 [US1] Update `UpdateMessage` in `internal/adapters/http/handlers/messages.go` to handle mailbox changes
-- [ ] T010 [US1] [P] Verify `Archive` action moves message logically (via API test or curl)
+- [x] T010 [US1] [P] Verify `Archive` action moves message logically (via API test or curl)
 
 ### User Story 2 & 3: Report Spam/Ham
 
@@ -43,12 +43,12 @@
 
 - [x] T019 [US5] Update `ListMessages` handler in `internal/adapters/http/handlers/messages.go` to parse query params (mailbox, is_read, is_starred, dates)
 - [x] T020 [US5] Connect `ListMessages` query params to `EmailRepository.FindByUser` filter
-- [ ] T021 [US5] [P] Verify filtering via API calls
+- [x] T021 [US5] [P] Verify filtering via API calls
 
 ## Final Phase: Polish
 
 - [ ] T022 Update `contracts/openapi-partial.yaml` if any implementation details diverged
-- [ ] T023 Run full integration tests to ensure no regression in existing message listing
+- [x] T023 Run full integration tests to ensure no regression in existing message listing
 
 ## Dependencies
 
