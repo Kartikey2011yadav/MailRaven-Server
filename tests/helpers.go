@@ -100,34 +100,6 @@ func setupTestEnvironment(t *testing.T) *testEnvironment {
 			}
 		}
 	}
-	migrationPath004 := "../internal/adapters/storage/sqlite/migrations/004_add_imap_fields.sql"
-	if err := conn.RunMigrations(migrationPath004); err != nil {
-		t.Logf("Migration warning (004): %v", err)
-	}
-	migrationPath005 := "../internal/adapters/storage/sqlite/migrations/005_add_tls_reports.sql"
-	if err := conn.RunMigrations(migrationPath005); err != nil {
-		t.Logf("Migration warning (005): %v", err)
-	}
-	migrationPath006 := "../internal/adapters/storage/sqlite/migrations/006_add_greylist.sql"
-	if err := conn.RunMigrations(migrationPath006); err != nil {
-		t.Logf("Migration warning (006): %v", err)
-	}
-	migrationPath007 := "../internal/adapters/storage/sqlite/migrations/007_add_bayes.sql"
-	if err := conn.RunMigrations(migrationPath007); err != nil {
-		t.Logf("Migration warning (007): %v", err)
-	}
-	migrationPath008 := "../internal/adapters/storage/sqlite/migrations/008_remove_unique_message_id.sql"
-	if err := conn.RunMigrations(migrationPath008); err != nil {
-		t.Logf("Migration warning (008): %v", err)
-	}
-	migrationPath010 := "../internal/adapters/storage/sqlite/migrations/010_sieve.sql"
-	if err := conn.RunMigrations(migrationPath010); err != nil {
-		t.Logf("Migration warning (010): %v", err)
-	}
-	migrationPath011 := "../internal/adapters/storage/sqlite/migrations/011_add_starred_column.sql"
-	if err := conn.RunMigrations(migrationPath011); err != nil {
-		t.Logf("Migration warning (011): %v", err)
-	}
 
 	// Initialize repositories
 	emailRepo := sqlite.NewEmailRepository(conn.DB)

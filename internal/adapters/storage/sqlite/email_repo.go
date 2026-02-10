@@ -58,7 +58,7 @@ func (r *EmailRepository) Save(ctx context.Context, msg *domain.Message) error {
 			id, message_id, sender, recipient, subject, snippet, body_path,
 			read_state, received_at, spf_result, dkim_result, dmarc_result, dmarc_policy,
 			uid, mailbox, flags, mod_seq, size, is_starred
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	readStateInt := 0
