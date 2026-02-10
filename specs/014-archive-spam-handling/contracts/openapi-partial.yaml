@@ -1,0 +1,151 @@
+openapi: 3.0.0
+paths:
+  /api/v1/messages:
+    get:
+      summary: List messages with filters
+      parameters:
+        - in: query
+          name: mailbox
+          schema:
+            type: string
+            default: "INBOX"
+          description: Mailbox to list messages from (e.g., INBOX, Archive, Junk)
+        - in: query
+          name: is_read
+          schema:
+            type: boolean
+          description: Filter by read status (true=read, false=unread)
+        - in: query
+          name: is_starred
+          schema:
+            type: boolean
+          description: Filter by starred importance (true=important)
+        - in: query
+          name: start_date
+          schema:
+            type: string
+            format: date-time
+          description: Filter messages received after this date (RFC3339)
+        - in: query
+          name: end_date
+          schema:
+            type: string
+            format: date-time
+          description: Filter messages received before this date (RFC3339)
+      responses:
+        '200':
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageListResponse'
+
+  /api/v1/messages/{id}:
+    patch:
+      summary: Update message state (Move, Star, Read)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mailbox:
+                  type: string
+                  enum: [INBOX, Archive, Junk, Trash]
+                  description: Move message to this mailbox
+                is_starred:
+                  type: boolean
+                  description: Update starred status
+                is_read:
+                  type: boolean
+                  description: Update read status
+      responses:
+        '200':
+          description: Updated message
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageSummary'
+
+  /api/v1/messages/{id}/spam:
+    post:
+      summary: Report message as Spam (Move to Junk + Train)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Message marked as spam
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageSummary'
+
+  /api/v1/messages/{id}/ham:
+    post:
+      summary: Report message as Not Spam/Ham (Move to Inbox + Train)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Message marked as ham
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageSummary'
+
+components:
+  schemas:
+    MessageSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        subject:
+          type: string
+        snippet:
+          type: string
+        sender:
+          type: string
+        recipient:
+          type: string
+        received_at:
+          type: string
+          format: date-time
+        is_read:
+          type: boolean
+        is_starred:
+          type: boolean
+        mailbox:
+          type: string
+        has_attachments:
+          type: boolean
+    
+    MessageListResponse:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/MessageSummary'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        has_more:
+          type: boolean

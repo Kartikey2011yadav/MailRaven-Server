@@ -53,6 +53,19 @@ Users find a legitimate message incorrectly filed in Junk/Spam folder.
 
 ---
 
+### User Story 4 - Mark as Important (Star) (Priority: P2)
+
+Users want to highlight specific messages to find them easily later.
+
+**Why this priority**: Standard email feature for organization. 
+
+**Independent Test**: Star a message, filter by "Starred", verify message appears.
+
+**Acceptance Scenarios**:
+
+1. **Given** a message, **When** user clicks "Star", **Then** message is marked as important.
+2. **Given** a list of messages, **When** user filters by "Starred", **Then** only starred messages appear.
+
 ### Edge Cases
 
 - **Already trained**: What if user toggles spam/ham multiple times? (System should ideally handle Re-training or Un-training, but for MVP re-training is acceptable).
@@ -67,6 +80,8 @@ Users find a legitimate message incorrectly filed in Junk/Spam folder.
 - **FR-003**: Users MUST be able to "Report Not Spam" (Ham), which moves the message to Inbox and marks it for ham filter training.
 - **FR-004**: Users MUST be able to view messages filtered by their folder/mailbox location.
 - **FR-005**: Moving a message to "Archive" MUST simply change its folder location without triggering spam training.
+- **FR-006**: Users MUST be able to filter messages by: Read/Unread status, Starred status, and Date Range.
+- **FR-007**: Users MUST be able to toggle a "Starred" (Important) flag on any message.
 
 ### Success Criteria
 
@@ -76,7 +91,7 @@ Users find a legitimate message incorrectly filed in Junk/Spam folder.
 
 ### Key Entities
 
-- **Message**: Represents the email, now with a modifiable folder/mailbox location.
+- **Message**: Represents the email, now with `Mailbox` (Folder) and `IsStarred` properties.
 - **Folder/Mailbox**: Represents a container for messages (e.g., "Inbox", "Archive", "Junk").
 
 ## Assumptions
