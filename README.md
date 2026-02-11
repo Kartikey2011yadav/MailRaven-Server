@@ -50,15 +50,15 @@ MailRaven follows the Ports and Adapters (Hexagonal) pattern with 5 distinct lay
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  Listener Layer (SMTP Protocol)                │
+│  Listener Layer (SMTP Protocol)                 │
 ├─────────────────────────────────────────────────┤
-│  Logic Layer (SPF/DKIM/DMARC, Routing)         │
+│  Logic Layer (SPF/DKIM/DMARC, Routing)          │
 ├─────────────────────────────────────────────────┤
 │  Storage Layer (Repository Interfaces)          │
 ├─────────────────────────────────────────────────┤
 │  Search Layer (FTS5 / TSVECTOR)                 │
 ├─────────────────────────────────────────────────┤
-│  API Layer (REST/JSON for Mobile Clients)      │
+│  API Layer (REST/JSON for Mobile Clients)       │
 └─────────────────────────────────────────────────┘
 ```
 
