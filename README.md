@@ -1,5 +1,6 @@
 # MailRaven Server
 
+
 A modern, modular email server built with mobile-first architecture. MailRaven implements clean architecture (Ports and Adapters) with a layered design optimized for mobile email clients.
 
 ## Features
