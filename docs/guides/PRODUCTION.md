@@ -37,22 +37,41 @@ To use PostgreSQL, set `storage.driver: postgres` in `config.yaml`.
 
 #### 2. Docker Compose
 
-1. **Edit Config**:
-   Update `docker-compose.yml` environment variables or mount a config file.
+1. **Create `.env` file** (copy from `.env.example`):
+   ```bash
+   cp .env.example .env
+   # Edit .env with real values:
+   # - POSTGRES_PASSWORD (strong random password)
+   # - MAILRAVEN_JWT_SECRET (32+ char random string)
+   # - MAILRAVEN_DOMAIN
+   # - MAILRAVEN_CORS_ORIGINS
+   ```
 2. **Run**:
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
 ## Configuration
 
-See `config.example.yaml` for full options.
+See `config.example.yaml` for full options. All config values can be overridden via environment variables:
+
+| Env Variable | Config Key | Description |
+|---|---|---|
+| `MAILRAVEN_DOMAIN` | `domain` | Primary mail domain |
+| `MAILRAVEN_SMTP_HOSTNAME` | `smtp.hostname` | SMTP EHLO hostname |
+| `MAILRAVEN_JWT_SECRET` | `api.jwt_secret` | JWT signing secret |
+| `MAILRAVEN_STORAGE_DSN` | `storage.dsn` | PostgreSQL connection string |
+| `MAILRAVEN_STORAGE_DB_PATH` | `storage.db_path` | SQLite file path |
+| `MAILRAVEN_STORAGE_BLOB_PATH` | `storage.blob_path` | Blob storage dir |
+| `MAILRAVEN_CORS_ORIGINS` | `api.cors_origins` | Comma-separated allowed origins |
+| `MAILRAVEN_DKIM_KEY_PATH` | `dkim.private_key_path` | DKIM private key path |
 
 ### Key Production Settings
 
 - **TLS**: Enable `tls.acme` for automatic Let's Encrypt certificates.
 - **DKIM**: Generate keys using `mailraven-cli gen-dkim` and publish the DNS record.
 - **Spam**: Configure `spam.dnsbls` to reject known spammers (e.g., `zen.spamhaus.org`).
+- **CORS**: Set `api.cors_origins` to your frontend domain(s).
 
 ## DNS Configuration (Crucial)
 
@@ -67,14 +86,162 @@ See `config.example.yaml` for full options.
 | TXT  | _mta-sts | "v=STSv1; id=2024010101;" | MTA-STS (Version ID) |
 | TXT  | _smtp._tls | "v=TLSRPTv1; rua=mailto:tls-reports@example.com" | TLS Reporting |
 
+### Verify DNS Setup
+
+```bash
+dig MX example.com +short
+dig TXT example.com +short
+dig TXT default._domainkey.example.com +short
+dig TXT _dmarc.example.com +short
+```
+
+## Security Hardening
+
+### Firewall
+
+Only expose required ports:
+```bash
+# UFW example
+ufw default deny incoming
+ufw allow 22/tcp    # SSH
+ufw allow 25/tcp    # SMTP
+ufw allow 80/tcp    # HTTP (ACME challenges)
+ufw allow 443/tcp   # HTTPS
+ufw allow 143/tcp   # IMAP (if enabled)
+ufw allow 993/tcp   # IMAPS (if enabled)
+ufw allow 4190/tcp  # ManageSieve (if enabled)
+ufw enable
+```
+
+### Fail2Ban
+
+Create `/etc/fail2ban/jail.d/mailraven.conf`:
+```ini
+[mailraven-smtp]
+enabled = true
+port = smtp
+filter = mailraven-smtp
+logpath = /var/log/journal
+maxretry = 5
+bantime = 3600
+```
+
+### JWT Secret
+
+Generate a strong random secret:
+```bash
+openssl rand -base64 32
+```
+
+Set via environment variable (`MAILRAVEN_JWT_SECRET`) rather than committing to config files.
+
+### TLS Certificate Verification
+
+```bash
+openssl s_client -connect mail.example.com:25 -starttls smtp < /dev/null 2>/dev/null | openssl x509 -noout -dates
+```
+
 ## Monitoring
 
-- **Logs**: JSON formatted logs available (set `logging.format: json`).
-- **Metrics**: HTTP endpoint available at `/api/v1/admin/stats`.
+- **Logs**: JSON formatted logs (set `logging.format: json`). Use `journalctl -u mailraven -f` for systemd.
+- **Health Check**: `GET /health` returns 200 when the server is operational.
+- **Metrics**: `GET /metrics` returns Prometheus-format metrics (requires auth).
+- **Stats**: `GET /api/v1/admin/stats` returns delivery statistics (requires admin JWT).
 
-## Backup
+### Prometheus Integration
 
-- **SQLite**: Automatic `VACUUM INTO` backups if configured.
-- **PostgreSQL**: Use standard `pg_dump` or the built-in backup service.
-- **Blobs**: Backup the `data/blobs` directory regularly.
+Add to `prometheus.yml`:
+```yaml
+scrape_configs:
+  - job_name: 'mailraven'
+    static_configs:
+      - targets: ['localhost:8080']
+    metrics_path: /metrics
+```
 
+## Backup & Restore
+
+### Backup
+
+- **SQLite**: Automatic `VACUUM INTO` backups if `backup.enabled: true` in config.
+- **PostgreSQL**: Use standard `pg_dump`:
+  ```bash
+  pg_dump -U mailraven mailraven > backup_$(date +%Y%m%d).sql
+  ```
+- **Blobs**: Backup the `data/blobs` directory:
+  ```bash
+  tar -czf blobs_$(date +%Y%m%d).tar.gz /data/blobs
+  ```
+
+### Restore
+
+1. **Stop the server**:
+   ```bash
+   systemctl stop mailraven
+   ```
+2. **Restore database**:
+   ```bash
+   # SQLite
+   cp backup.db /var/lib/mailraven/mailraven.db
+
+   # PostgreSQL
+   psql -U mailraven mailraven < backup_20240101.sql
+   ```
+3. **Restore blobs**:
+   ```bash
+   tar -xzf blobs_20240101.tar.gz -C /
+   ```
+4. **Start the server**:
+   ```bash
+   systemctl start mailraven
+   ```
+
+## Upgrade Procedure
+
+1. **Backup first** (see above).
+2. **Stop the server**:
+   ```bash
+   systemctl stop mailraven
+   # or: docker compose down
+   ```
+3. **Update binary/image**:
+   ```bash
+   # Binary: download new release and replace /usr/local/bin/mailraven
+   # Docker: docker compose pull
+   ```
+4. **Start the server** (migrations run automatically on startup):
+   ```bash
+   systemctl start mailraven
+   # or: docker compose up -d
+   ```
+5. **Verify**:
+   ```bash
+   curl http://localhost:8080/health
+   ```
+
+## Troubleshooting
+
+### Mail not being delivered outbound
+
+- Check delivery worker logs: `journalctl -u mailraven | grep "delivery"`
+- Verify DNS MX records for destination domain: `dig MX target.com +short`
+- Check if port 25 outbound is blocked by your hosting provider
+- Verify DKIM key is published: `dig TXT default._domainkey.yourdomain.com +short`
+
+### TLS certificate renewal failing
+
+- Ensure port 80 is open for ACME HTTP-01 challenges
+- Check ACME logs for error details
+- Verify the domain resolves to your server's IP
+
+### IMAP clients can't connect
+
+- Verify IMAP is enabled in config (`imap.enabled: true`)
+- Check firewall allows port 143/993
+- Verify TLS certificates are valid for the IMAP hostname
+
+### High memory usage
+
+- Check for idle IMAP connections (30-min timeout enforced)
+- Review `MemoryMax` in systemd or Docker resource limits
+- Consider reducing `MaxOpenConns` in storage config for SQLite

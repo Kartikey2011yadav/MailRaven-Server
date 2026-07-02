@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/Kartikey2011yadav/mailraven-server/internal/config"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/domain"
@@ -58,12 +59,18 @@ func NewSession(conn net.Conn, cfg config.IMAPConfig, logger *observability.Logg
 
 func (s *Session) Serve() {
 	defer s.conn.Close()
+	defer func() {
+		if r := recover(); r != nil {
+			s.logger.Error("panic in IMAP session", "error", r, "remote", s.conn.RemoteAddr())
+		}
+	}()
 
 	// Greeting
 	// RFC 3501 Section 2.2.1
 	s.send("* OK [CAPABILITY IMAP4rev1 STARTTLS AUTH=PLAIN ACL QUOTA IDLE] MailRaven Ready")
 
 	for {
+		_ = s.conn.SetReadDeadline(time.Now().Add(30 * time.Minute))
 		line, err := s.reader.ReadString('\n')
 		if err != nil {
 			return

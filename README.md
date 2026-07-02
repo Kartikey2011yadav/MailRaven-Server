@@ -147,7 +147,7 @@ This interactive command will:
 2. Create configuration file with crypto-secure JWT secret
 3. Display DNS records to configure (MX, SPF, DKIM, DMARC)
 4. Create initial admin user account
-```
+ 
 
 For detailed setup instructions, see [Production Guide](docs/guides/PRODUCTION.md).
 

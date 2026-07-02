@@ -23,7 +23,11 @@ export function MessageDisplay({ message }: MessageDisplayProps) {
     )
   }
 
-  const cleanHTML = DOMPurify.sanitize(message.body)
+  const cleanHTML = DOMPurify.sanitize(message.body, {
+    FORBID_TAGS: ['style', 'form', 'input', 'textarea', 'select', 'button'],
+    FORBID_ATTR: ['style', 'onerror', 'onload', 'onclick'],
+    ALLOW_DATA_ATTR: false,
+  })
 
   return (
     <div className="flex flex-col h-full">

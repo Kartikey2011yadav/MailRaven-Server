@@ -36,7 +36,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <p className="text-muted-foreground">
               An unexpected error occurred in the application.
             </p>
-            {this.state.error && (
+            {import.meta.env.DEV && this.state.error && (
               <pre className="p-4 bg-muted rounded text-xs text-left overflow-auto max-h-40">
                 {this.state.error.message}
               </pre>

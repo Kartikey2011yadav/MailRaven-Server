@@ -11,8 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	"database/sql"
-
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/backup"
 	httpAdapter "github.com/Kartikey2011yadav/mailraven-server/internal/adapters/http"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/adapters/imap"
@@ -62,7 +60,6 @@ func RunServe() error {
 
 	// Initialize repositories
 	var (
-		dbConn       *sql.DB
 		emailRepo    ports.EmailRepository
 		userRepo     ports.UserRepository
 		domainRepo   ports.DomainRepository
@@ -86,7 +83,6 @@ func RunServe() error {
 			return fmt.Errorf("failed to connect to postgres: %w", err)
 		}
 		defer conn.Close()
-		dbConn = conn.DB
 
 		logger.Info("running postgres migrations")
 		if err := conn.RunMigrations(); err != nil {
@@ -148,7 +144,6 @@ func RunServe() error {
 			}
 		}
 
-		dbConn = conn.DB
 		logger.Info("initializing storage adapters")
 		emailRepo = sqlite.NewEmailRepository(conn.DB)
 		userRepo = sqlite.NewUserRepository(conn.DB)
@@ -173,7 +168,7 @@ func RunServe() error {
 	sieveEngine := sieve.NewSieveEngine(scriptRepo, emailRepo, vacationRepo, queueRepo, blobStore)
 
 	// Initialize SMTP handler
-	smtpHandler := smtp.NewHandler(emailRepo, userRepo, blobStore, searchIdx, sieveEngine, dbConn, logger, metrics)
+	smtpHandler := smtp.NewHandler(emailRepo, userRepo, blobStore, searchIdx, sieveEngine, logger, metrics)
 	messageHandler := smtpHandler.BuildMiddlewarePipeline()
 
 	// Initialize Spam Protection
@@ -189,7 +184,7 @@ func RunServe() error {
 	}
 
 	// Initialize SMTP server
-	smtpServer := smtp.NewServer(cfg, logger, metrics, messageHandler, spamService)
+	smtpServer := smtp.NewServer(cfg, logger, metrics, messageHandler, spamService, userRepo)
 
 	// Initialize Outbound Delivery
 	smtpClient := smtp.NewClient(cfg.SMTP.DANE, logger)
@@ -223,14 +218,17 @@ func RunServe() error {
 		<-sigChan
 		logger.Info("received shutdown signal")
 
-		// Stop HTTP server first
+		// Stop delivery worker (finish in-flight deliveries)
+		deliveryWorker.Stop()
+
+		// Stop HTTP server
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer shutdownCancel()
 		if err := httpServer.Stop(shutdownCtx); err != nil {
 			logger.Error("HTTP server shutdown error", "error", err)
 		}
 
-		cancel() // Stop SMTP server
+		cancel() // Stop SMTP/IMAP servers via context cancellation
 	}()
 
 	// Start HTTP server in background

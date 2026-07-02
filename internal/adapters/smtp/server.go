@@ -24,18 +24,20 @@ type Server struct {
 	metrics    *observability.Metrics
 	handler    MessageHandler
 	spamFilter ports.SpamFilter
+	userRepo   ports.UserRepository
 	listener   net.Listener
 	mu         sync.RWMutex
 }
 
 // NewServer creates a new SMTP server
-func NewServer(cfg *config.Config, logger *observability.Logger, metrics *observability.Metrics, handler MessageHandler, spamFilter ports.SpamFilter) *Server {
+func NewServer(cfg *config.Config, logger *observability.Logger, metrics *observability.Metrics, handler MessageHandler, spamFilter ports.SpamFilter, userRepo ports.UserRepository) *Server {
 	return &Server{
 		config:     cfg,
 		logger:     logger,
 		metrics:    metrics,
 		handler:    handler,
 		spamFilter: spamFilter,
+		userRepo:   userRepo,
 	}
 }
 
@@ -84,6 +86,11 @@ func (s *Server) Start(ctx context.Context) error {
 // handleConnection processes a single SMTP connection
 func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
+	defer func() {
+		if r := recover(); r != nil {
+			s.logger.Error("panic in SMTP connection handler", "error", r, "remote", conn.RemoteAddr())
+		}
+	}()
 
 	remoteAddr := conn.RemoteAddr().String()
 	remoteIP, _, err := net.SplitHostPort(remoteAddr)
@@ -170,12 +177,19 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 			}
 			recipient := extractEmailAddress(strings.TrimPrefix(strings.ToUpper(args), "TO:"))
 
+			// Validate recipient exists locally
+			if s.userRepo != nil {
+				if _, err := s.userRepo.FindByEmail(ctx, recipient); err != nil {
+					sessionLogger.Warn("recipient not found", "recipient", recipient)
+					s.send(writer, "550 No such user - %s", recipient)
+					continue
+				}
+			}
+
 			// Check Greylisting/Spam for this recipient
 			if s.spamFilter != nil {
 				if err := s.spamFilter.CheckRecipient(ctx, session.RemoteIP, session.Sender, recipient); err != nil {
 					sessionLogger.Warn("recipient blocked by spam filter", "recipient", recipient, "reason", err)
-					// 451 Requested action aborted: local error in processing (used for greylisting)
-					// We pass the error text which contains "scheduled retry" info
 					s.send(writer, "451 %v", err)
 					continue
 				}

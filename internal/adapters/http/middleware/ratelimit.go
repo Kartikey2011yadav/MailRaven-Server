@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -111,7 +112,7 @@ func RateLimit(requestsPerMinute int) func(http.Handler) http.Handler {
 			allowed, retryAfter := limiter.Allow(ip)
 			if !allowed {
 				w.Header().Set("Content-Type", "application/json")
-				w.Header().Set("Retry-After", string(rune(retryAfter)))
+				w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
 				w.WriteHeader(http.StatusTooManyRequests)
 
 				resp := dto.RateLimitResponse{

@@ -198,33 +198,20 @@ func (c *Client) deliverToHost(ctx context.Context, host string, from string, to
 
 		// If DANE is enforced, and we have a validator, we must check for presence of TLSA records.
 		if c.daneMode == "enforce" && c.daneValidator != nil {
-			// Quick check for existence.
-			// Ideally CheckTLSA does DNS query. We can inspect if records exist.
-			// Since we don't have peer certs (no TLS), CheckTLSA would fail/error usually or we need "CheckExistence".
-
-			// For MVP: We assume if mode=enforce, we fail any connection not offering STARTTLS IF DANE records exist.
-			// Implementing a lightweight "HasTLSA" check here is ideal.
-			// Calling CheckTLSA with nil certs returns error "no certificates" usually, but let's use a helper if we had one.
-
-			// Reuse CheckTLSA but with nil certs to trigger lookups? No, that returns error.
-			// Current implementation of CheckTLSA fetches records first.
-			// We'll proceed with clear text but log heavily. Strict enforcement here requires extra DNS call.
-
-			// Let's rely on standard fallback for now but log error.
 			c.logger.Warn("Remote server does not support STARTTLS -> DANE enforcement impossible", "host", host)
 		} else {
 			c.logger.Debug("STARTTLS not supported by remote, skipping DANE check (downgrade risk)", "host", host)
 		}
+	}
 
-		// Mail Command
-		if err := client.Mail(from); err != nil {
-			return fmt.Errorf("MAIL FROM failed: %w", err)
-		}
+	// Mail Command
+	if err := client.Mail(from); err != nil {
+		return fmt.Errorf("MAIL FROM failed: %w", err)
+	}
 
-		// Rcpt Command
-		if err := client.Rcpt(to); err != nil {
-			return fmt.Errorf("RCPT TO failed: %w", err)
-		}
+	// Rcpt Command
+	if err := client.Rcpt(to); err != nil {
+		return fmt.Errorf("RCPT TO failed: %w", err)
 	}
 
 	// Data Command

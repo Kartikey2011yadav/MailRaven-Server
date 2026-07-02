@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -38,12 +39,13 @@ type DANEConfig struct {
 
 // APIConfig contains REST API settings
 type APIConfig struct {
-	Host      string `yaml:"host"`       // HTTP listen host (default: "0.0.0.0")
-	Port      int    `yaml:"port"`       // HTTP listen port (default: 8443)
-	TLS       bool   `yaml:"tls"`        // Enable TLS (default: false for dev)
-	TLSCert   string `yaml:"tls_cert"`   // TLS certificate path (required if TLS=true)
-	TLSKey    string `yaml:"tls_key"`    // TLS key path (required if TLS=true)
-	JWTSecret string `yaml:"jwt_secret"` // JWT signing secret (required)
+	Host        string   `yaml:"host"`         // HTTP listen host (default: "0.0.0.0")
+	Port        int      `yaml:"port"`         // HTTP listen port (default: 8443)
+	TLS         bool     `yaml:"tls"`          // Enable TLS (default: false for dev)
+	TLSCert     string   `yaml:"tls_cert"`     // TLS certificate path (required if TLS=true)
+	TLSKey      string   `yaml:"tls_key"`      // TLS key path (required if TLS=true)
+	JWTSecret   string   `yaml:"jwt_secret"`   // JWT signing secret (required)
+	CORSOrigins []string `yaml:"cors_origins"` // Allowed CORS origins (default: ["*"])
 }
 
 // StorageConfig contains database and blob storage settings
@@ -192,7 +194,44 @@ func LoadFromFile(path string) (*Config, error) {
 	if cfg.ManageSieve.Port == 0 {
 		cfg.ManageSieve.Port = 4190
 	}
+	if len(cfg.API.CORSOrigins) == 0 {
+		cfg.API.CORSOrigins = []string{"*"}
+	}
+
+	// Apply environment variable overrides
+	cfg.applyEnvOverrides()
+
 	return &cfg, nil
+}
+
+// applyEnvOverrides allows environment variables to override YAML config values.
+// This enables Docker/cloud deployments without mounting config files.
+func (c *Config) applyEnvOverrides() {
+	if v := os.Getenv("MAILRAVEN_DOMAIN"); v != "" {
+		c.Domain = v
+	}
+	if v := os.Getenv("MAILRAVEN_SMTP_HOSTNAME"); v != "" {
+		c.SMTP.Hostname = v
+	}
+	if v := os.Getenv("MAILRAVEN_JWT_SECRET"); v != "" {
+		c.API.JWTSecret = v
+	}
+	if v := os.Getenv("MAILRAVEN_STORAGE_DSN"); v != "" {
+		c.Storage.DSN = v
+		c.Storage.Driver = "postgres"
+	}
+	if v := os.Getenv("MAILRAVEN_STORAGE_DB_PATH"); v != "" {
+		c.Storage.DBPath = v
+	}
+	if v := os.Getenv("MAILRAVEN_STORAGE_BLOB_PATH"); v != "" {
+		c.Storage.BlobPath = v
+	}
+	if v := os.Getenv("MAILRAVEN_CORS_ORIGINS"); v != "" {
+		c.API.CORSOrigins = strings.Split(v, ",")
+	}
+	if v := os.Getenv("MAILRAVEN_DKIM_KEY_PATH"); v != "" {
+		c.DKIM.PrivateKeyPath = v
+	}
 }
 
 // Validate checks if configuration is valid
@@ -206,8 +245,14 @@ func (c *Config) Validate() error {
 	if c.API.JWTSecret == "" {
 		return fmt.Errorf("api.jwt_secret is required")
 	}
-	if c.Storage.DBPath == "" {
-		return fmt.Errorf("storage.db_path is required")
+	if c.Storage.Driver == "postgres" {
+		if c.Storage.DSN == "" {
+			return fmt.Errorf("storage.dsn is required for postgres driver")
+		}
+	} else {
+		if c.Storage.DBPath == "" {
+			return fmt.Errorf("storage.db_path is required")
+		}
 	}
 	if c.Storage.BlobPath == "" {
 		return fmt.Errorf("storage.blob_path is required")

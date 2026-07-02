@@ -76,7 +76,7 @@ func TestGreylisting_SMTP_Interaction(t *testing.T) {
 		return nil
 	}
 
-	server := smtp.NewServer(smtpCfg, logger, metrics, handler, spamSvc)
+	server := smtp.NewServer(smtpCfg, logger, metrics, handler, spamSvc, nil)
 
 	// Context for server
 	ctx, cancel := context.WithCancel(context.Background())

@@ -61,6 +61,11 @@ func (w *DeliveryWorker) Stop() {
 
 func (w *DeliveryWorker) processLoop() {
 	defer w.wg.Done()
+	defer func() {
+		if r := recover(); r != nil {
+			w.logger.Error("panic in delivery worker", "error", r)
+		}
+	}()
 
 	for {
 		select {

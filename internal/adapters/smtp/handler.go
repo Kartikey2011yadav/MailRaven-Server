@@ -2,7 +2,6 @@ package smtp
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"time"
 
@@ -22,7 +21,6 @@ type Handler struct {
 	blobStore     ports.BlobStore
 	searchIdx     ports.SearchIndex
 	sieveExecutor ports.SieveExecutor
-	db            *sql.DB
 	logger        *observability.Logger
 	metrics       *observability.Metrics
 }
@@ -34,7 +32,6 @@ func NewHandler(
 	blobStore ports.BlobStore,
 	searchIdx ports.SearchIndex,
 	sieveExecutor ports.SieveExecutor,
-	db *sql.DB,
 	logger *observability.Logger,
 	metrics *observability.Metrics,
 ) *Handler {
@@ -44,7 +41,6 @@ func NewHandler(
 		blobStore:     blobStore,
 		searchIdx:     searchIdx,
 		sieveExecutor: sieveExecutor,
-		db:            db,
 		logger:        logger,
 		metrics:       metrics,
 	}
@@ -107,8 +103,8 @@ func (h *Handler) Handle(session *domain.SMTPSession, rawMessage []byte) error {
 	return nil
 }
 
-// storeMessageAtomic stores message with transactional guarantees
-// Implements constitution requirement: "250 OK" = fsync complete
+// storeMessageAtomic stores message with blob write + DB save and compensating cleanup on failure.
+// Blob storage is non-transactional, so we write blob first and delete it if DB save fails.
 func (h *Handler) storeMessageAtomic(
 	ctx context.Context,
 	session *domain.SMTPSession,
@@ -119,16 +115,6 @@ func (h *Handler) storeMessageAtomic(
 	dmarcResult validators.DMARCResult,
 	dmarcPolicy validators.DMARCPolicy,
 ) error {
-	// Begin database transaction
-	tx, err := h.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer func() {
-		//nolint:errcheck // Rollback if not committed, error safe to ignore
-		_ = tx.Rollback()
-	}()
-
 	// Generate message ID
 	messageID := uuid.New().String()
 
@@ -142,7 +128,6 @@ func (h *Handler) storeMessageAtomic(
 	// Determine Mailbox (Routing via Sieve)
 	targets, err := h.sieveExecutor.Execute(ctx, session.Recipients[0], rawMessage)
 	if err != nil {
-		// Log error but fallback to INBOX to prevent data loss (Fail Open)
 		h.logger.Error("sieve execution failed (fallback to INBOX)", "error", err)
 		targets = []string{"INBOX"}
 	}
@@ -153,7 +138,9 @@ func (h *Handler) storeMessageAtomic(
 		requiredSize := int64(len(rawMessage)) * int64(len(targets))
 		if user.StorageUsed+requiredSize > user.StorageQuota {
 			h.logger.Warn("delivery rejected: quota exceeded", "user", user.Email)
-			// Return string containing "quota" so server can map to 552
+			if delErr := h.blobStore.Delete(ctx, bodyPath); delErr != nil {
+				h.logger.Warn("failed to cleanup blob after quota reject", "error", delErr)
+			}
 			return fmt.Errorf("quota exceeded")
 		}
 	}
@@ -161,25 +148,15 @@ func (h *Handler) storeMessageAtomic(
 	// Handle Discard
 	if len(targets) == 0 {
 		h.logger.Info("message discarded by sieve", "message_id", messageID)
-		// Cleanup blob since we are not referencing it
 		if err := h.blobStore.Delete(ctx, bodyPath); err != nil {
 			h.logger.Warn("failed to cleanup discarded blob", "error", err)
 		}
-		// Nothing to save to DB, but we consider delivery "successful" (as in handled)
 		return nil
 	}
 
 	// Save to database for each target mailbox
 	for _, folder := range targets {
-		// Create domain message copy
 		msg := &domain.Message{
-			ID: messageID, // Same ID? Or should we generate unique IDs per copy? Generally IMAP messages have unique UIDs but Message-ID header is same.
-			// domain.Message.ID is the primary key in DB? If so, we need unique IDs for storage if we store multiple rows.
-			// Let's assume domain.Message.ID is the DB primary key string.
-			// If we save multiple times, we likely need different IDs or the Repo handles it.
-			// Usually `emailRepo.Save` inserts a row. If ID is provided, it might accept it.
-			// If I reuse `messageID` (UUID) for multiple rows, PK constraint violation?
-			// Let's check `emailRepo.Save`.
 			MessageID:   parsed.MessageID,
 			Sender:      session.Sender,
 			Recipient:   session.Recipients[0],
@@ -195,9 +172,6 @@ func (h *Handler) storeMessageAtomic(
 			DMARCPolicy: string(dmarcPolicy),
 		}
 
-		// If saving multiple copies, we need unique PKs for the DB entries.
-		// The original code generated `messageID := uuid.New().String()`.
-		// If len(targets) > 1, all but one will fail if ID is PK.
 		if len(targets) > 1 {
 			msg.ID = uuid.New().String()
 		} else {
@@ -207,30 +181,22 @@ func (h *Handler) storeMessageAtomic(
 		h.logger.Info("saving message to database", "message_id", msg.ID, "mailbox", folder)
 		h.metrics.IncrementStorageWrites()
 		if err := h.emailRepo.Save(ctx, msg); err != nil {
+			if delErr := h.blobStore.Delete(ctx, bodyPath); delErr != nil {
+				h.logger.Warn("failed to cleanup blob after DB error", "error", delErr)
+			}
 			return fmt.Errorf("failed to save message to %s: %w", folder, err)
 		}
 
-		// Index for search (optimize: index once? Search index usually by ID. If we have multiple IDs, we index multiple times)
 		if err := h.searchIdx.Index(ctx, msg, parsed.PlainText); err != nil {
 			h.logger.Warn("failed to index message", "error", err)
 		}
 	}
 
-	// Commit transaction (includes fsync via PRAGMA synchronous=FULL)
-	h.logger.Info("committing transaction", "message_id", messageID)
-	if err := tx.Commit(); err != nil {
-		// Cleanup blob on transaction failure
-		if delErr := h.blobStore.Delete(ctx, bodyPath); delErr != nil {
-			h.logger.Warn("failed to cleanup blob", "error", delErr)
-		}
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
+	h.logger.Info("message stored successfully", "message_id", messageID)
 
-	h.logger.Info("message stored atomically", "message_id", messageID)
-
-	// Increment storage usage
+	// Increment storage usage (best effort)
 	if user != nil {
-		//nolint:errcheck // Best effort storage usage update
+		//nolint:errcheck
 		_ = h.userRepo.IncrementStorageUsed(ctx, user.Email, int64(len(rawMessage))*int64(len(targets)))
 	}
 

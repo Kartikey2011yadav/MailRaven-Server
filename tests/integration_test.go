@@ -53,9 +53,9 @@ func TestEndToEnd_Loopback(t *testing.T) {
 		},
 	}
 
-	smtpHandler := smtp.NewHandler(env.emailRepo, env.userRepo, blobStore, searchIdx, sieveEngine, env.conn.DB, logger, metrics)
+	smtpHandler := smtp.NewHandler(env.emailRepo, env.userRepo, blobStore, searchIdx, sieveEngine, logger, metrics)
 	messageHandler := smtpHandler.BuildMiddlewarePipeline()
-	smtpServer := smtp.NewServer(smtpCfg, logger, metrics, messageHandler, nil)
+	smtpServer := smtp.NewServer(smtpCfg, logger, metrics, messageHandler, nil, env.userRepo)
 
 	// Start server in background
 	ctx, cancel := context.WithCancel(context.Background())
