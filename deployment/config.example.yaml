@@ -1,6 +1,12 @@
 # MailRaven Configuration Example
 # Copy this file to /etc/mailraven/config.yaml and customize for your deployment
 
+# Deployment mode: standalone, docker, kubernetes
+# - standalone: in-memory cache, local filesystem, SQLite (default)
+# - docker: connects to Redis, NATS, MinIO, PostgreSQL containers
+# - kubernetes: same as docker + optimized for K8s probes and scaling
+mode: standalone
+
 # Domain name for email server (must match your DNS records)
 domain: mail.example.com
 
@@ -134,6 +140,38 @@ security:
   rate_limit:
     enabled: true
     requests_per_minute: 100
+
+# ManageSieve (for mail filtering rules via standard clients)
+managesieve:
+  enabled: true
+  port: 4190
+
+# --- Distributed Infrastructure (for docker/kubernetes modes) ---
+
+# Redis: distributed caching, rate limiting, pub/sub notifications
+# Enable when running multiple backend instances
+redis:
+  enabled: false
+  addr: "redis:6379"
+  password: ""
+  db: 0
+
+# NATS: message broker for async task distribution
+# Enables competing consumers for delivery, spam training, indexing
+nats:
+  enabled: false
+  url: "nats://nats:4222"
+
+# Object Store: blob storage backend
+# "disk" = local filesystem (default), "minio" = S3-compatible storage
+object_store:
+  driver: "disk"
+  # MinIO settings (only used when driver=minio):
+  # endpoint: "minio:9000"
+  # bucket: "mailraven-blobs"
+  # access_key: "minioadmin"
+  # secret_key: "minioadmin"
+  # use_ssl: false
 
 # Example production configuration for Linux server:
 #

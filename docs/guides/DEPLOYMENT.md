@@ -89,9 +89,72 @@ Check metrics:
 curl http://localhost:8080/metrics
 ```
 
-## Future Deployment Options
+## Distributed Docker Deployment (High Availability)
 
-We plan to adopt the `mox` approach to containerization:
-- **Dockerfile**: A multi-stage build for a minimal image.
-- **Docker Compose**: Orchestration for external dependencies (though we currently use embedded SQLite, so specific DB containers aren't needed, but maybe for a separate monitoring stack like Prometheus/Grafana).
-- **Scripts**: Automated release scripts (`docker-release.sh`).
+For production workloads requiring multiple backend instances:
+
+```bash
+# Create .env from template
+cp .env.example .env
+# Edit .env with production secrets
+
+# Start the full distributed stack
+docker compose -f docker-compose.distributed.yml up -d
+```
+
+This starts:
+- **Backend** (2 replicas) — stateless Go instances
+- **PostgreSQL** — primary database
+- **Redis** — distributed cache, rate limiting, pub/sub
+- **NATS** — JetStream message broker for async work
+- **MinIO** — S3-compatible blob storage
+- **Frontend** — Nginx serving React SPA
+
+Scale backends as needed:
+```bash
+docker compose -f docker-compose.distributed.yml up -d --scale backend=4
+```
+
+## Kubernetes Deployment
+
+Full Kubernetes manifests are provided in `deployment/kubernetes/`.
+
+### Quick Start
+
+```bash
+# Edit secrets
+vim deployment/kubernetes/base/secret.yaml
+
+# Edit configmap with your domain
+vim deployment/kubernetes/base/configmap.yaml
+
+# Apply all resources
+kubectl apply -k deployment/kubernetes/
+```
+
+### Architecture
+
+- **Backend Deployment**: Stateless pods with readiness/liveness probes
+- **StatefulSets**: PostgreSQL, Redis, NATS, MinIO (each with PersistentVolumeClaims)
+- **Services**: LoadBalancer for SMTP (port 25), Ingress for HTTP
+- **KEDA ScaledObject**: Scale-to-zero when idle, wake on SMTP connections or queue depth
+
+### Scale-to-Zero
+
+Requires [KEDA](https://keda.sh/) installed in your cluster:
+```bash
+kubectl apply -f https://github.com/kedacore/keda/releases/latest/download/keda.yaml
+kubectl apply -f deployment/kubernetes/keda/scaledobject.yaml
+```
+
+Pods scale down to 0 after 5 minutes of inactivity and scale back up on:
+- Incoming SMTP connections
+- Queue depth > 0
+- HTTP request rate increase
+
+### Required Environment Variables
+
+Set these in `deployment/kubernetes/base/secret.yaml`:
+- `postgres.password` — database password
+- `jwt.secret` — JWT signing key (32+ chars)
+- `minio.access_key` / `minio.secret_key` — object storage credentials

@@ -1,12 +1,13 @@
 # Configuration Reference
 
-MailRaven is configured via a YAML file, typically located at `/etc/mailraven/config.yaml`.
+MailRaven is configured via a YAML file, typically located at `/etc/mailraven/config.yaml`. All values can be overridden via environment variables (see table below).
 
 ## Top Level
 
 | Key | Type | Description |
 |-----|------|-------------|
 | `domain` | string | The primary domain for the mail server (e.g., `example.com`). |
+| `mode` | string | Deployment mode: `standalone` (default), `docker`, or `kubernetes`. |
 | `smtp` | object | SMTP server settings. |
 | `api` | object | API server settings. |
 ## Storage
@@ -109,3 +110,54 @@ MailRaven is configured via a YAML file, typically located at `/etc/mailraven/co
 |-----|------|-------------|
 | `selector` | string | DKIM selector (e.g., `default`). |
 | `private_key_path` | string | Path to the RSA private key for DKIM signing. |
+
+## Redis (Distributed Mode)
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `redis.enabled` | bool | `false` | Enable Redis for distributed caching, rate limiting, and pub/sub. |
+| `redis.addr` | string | - | Redis server address (e.g., `redis:6379`). |
+| `redis.password` | string | `""` | Redis authentication password. |
+| `redis.db` | int | `0` | Redis database number. |
+
+## NATS (Message Broker)
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `nats.enabled` | bool | `false` | Enable NATS JetStream for async task distribution. |
+| `nats.url` | string | - | NATS server URL (e.g., `nats://nats:4222`). |
+
+## Object Store
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `object_store.driver` | string | `disk` | Blob storage backend: `disk` or `minio`. |
+| `object_store.endpoint` | string | - | MinIO server endpoint (e.g., `minio:9000`). |
+| `object_store.bucket` | string | `mailraven-blobs` | MinIO bucket name. |
+| `object_store.access_key` | string | - | MinIO access key. |
+| `object_store.secret_key` | string | - | MinIO secret key. |
+| `object_store.use_ssl` | bool | `false` | Use HTTPS for MinIO connection. |
+
+## Environment Variable Overrides
+
+All critical config values can be set via environment variables. Env vars take precedence over YAML.
+
+| Environment Variable | Config Key | Description |
+|---|---|---|
+| `MAILRAVEN_DOMAIN` | `domain` | Primary mail domain |
+| `MAILRAVEN_MODE` | `mode` | Deployment mode |
+| `MAILRAVEN_SMTP_HOSTNAME` | `smtp.hostname` | SMTP EHLO hostname |
+| `MAILRAVEN_JWT_SECRET` | `api.jwt_secret` | JWT signing secret |
+| `MAILRAVEN_CORS_ORIGINS` | `api.cors_origins` | Comma-separated allowed origins |
+| `MAILRAVEN_STORAGE_DSN` | `storage.dsn` | PostgreSQL connection string |
+| `MAILRAVEN_STORAGE_DB_PATH` | `storage.db_path` | SQLite file path |
+| `MAILRAVEN_STORAGE_BLOB_PATH` | `storage.blob_path` | Blob storage directory |
+| `MAILRAVEN_DKIM_KEY_PATH` | `dkim.private_key_path` | DKIM private key path |
+| `MAILRAVEN_REDIS_ADDR` | `redis.addr` | Redis address (also sets `redis.enabled=true`) |
+| `MAILRAVEN_REDIS_PASSWORD` | `redis.password` | Redis password |
+| `MAILRAVEN_NATS_URL` | `nats.url` | NATS URL (also sets `nats.enabled=true`) |
+| `MAILRAVEN_OBJECT_STORE_DRIVER` | `object_store.driver` | `disk` or `minio` |
+| `MAILRAVEN_OBJECT_STORE_ENDPOINT` | `object_store.endpoint` | MinIO endpoint |
+| `MAILRAVEN_OBJECT_STORE_BUCKET` | `object_store.bucket` | MinIO bucket |
+| `MAILRAVEN_OBJECT_STORE_ACCESS_KEY` | `object_store.access_key` | MinIO access key |
+| `MAILRAVEN_OBJECT_STORE_SECRET_KEY` | `object_store.secret_key` | MinIO secret key |
