@@ -10,14 +10,14 @@ This guide details how to deploy MailRaven in a production environment.
 
 ## Installation Options
 
-### Option A: Storage Backend (PostgreSQL vs SQLite)
+### Option A: Storage Backend
 
 MailRaven supports two storage backends:
 
-1. **SQLite (Default)**: Best for single-node, low-to-medium volume, simple backups.
-2. **PostgreSQL**: Best for high volume, horizontal scaling (future), and robust data integrity.
+1. **PostgreSQL (Default)**: Recommended for production. Supports concurrent access from multiple pods, robust ACID transactions, and full-text search via TSVECTOR.
+2. **SQLite**: For single-node development or low-volume personal deployments. Set `storage.driver: sqlite` in config.
 
-To use PostgreSQL, set `storage.driver: postgres` in `config.yaml`.
+To switch to SQLite, set `storage.driver: sqlite` and `storage.db_path` in `config.yaml`.
 
 ### Option B: Deployment Method
 

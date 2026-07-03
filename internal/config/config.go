@@ -87,7 +87,7 @@ type APIConfig struct {
 
 // StorageConfig contains database and blob storage settings
 type StorageConfig struct {
-	Driver   string `yaml:"driver"`    // "sqlite" or "postgres" (default: "sqlite")
+	Driver   string `yaml:"driver"`    // "postgres" (default) or "sqlite"
 	DBPath   string `yaml:"db_path"`   // SQLite: database file path
 	DSN      string `yaml:"dsn"`       // Postgres: connection string (e.g. "postgres://user:pass@localhost:5432/mailraven")
 	BlobPath string `yaml:"blob_path"` // Blob storage directory path
@@ -183,6 +183,9 @@ func LoadFromFile(path string) (*Config, error) {
 	}
 
 	// Apply defaults
+	if cfg.Storage.Driver == "" {
+		cfg.Storage.Driver = "postgres"
+	}
 	if cfg.SMTP.Port == 0 {
 		cfg.SMTP.Port = 25
 	}

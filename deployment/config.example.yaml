@@ -94,9 +94,15 @@ backup:
 
 # Storage configuration
 storage:
-  # Path to SQLite database file
-  db_path: /var/lib/mailraven/mailraven.db
-  
+  # Database driver: "postgres" (default, recommended) or "sqlite"
+  driver: postgres
+
+  # PostgreSQL connection string (required for postgres driver)
+  dsn: "postgres://mailraven:yourpassword@localhost:5432/mailraven?sslmode=disable"
+
+  # SQLite database path (only used if driver=sqlite)
+  # db_path: /var/lib/mailraven/mailraven.db
+
   # Path to blob storage directory (for message bodies)
   blob_path: /var/lib/mailraven/blobs
 
