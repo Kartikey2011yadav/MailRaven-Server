@@ -4,12 +4,7 @@ kind: Kustomization
 namespace: mailraven
 
 resources:
-  - ../base/namespace.yaml
-  - ../base/configmap.yaml
-  - ../base/secret.yaml
   - ../base/backend-deployment.yaml
-  - ../base/services.yaml
-  - ../base/statefulsets.yaml
 
 patches:
   - target:
@@ -19,29 +14,9 @@ patches:
       - op: replace
         path: /spec/template/spec/containers/0/image
         value: mailraven-server:local
-      - op: replace
+      - op: add
         path: /spec/template/spec/containers/0/imagePullPolicy
         value: Never
       - op: replace
         path: /spec/replicas
         value: 1
-  - target:
-      kind: Service
-      name: mailraven-smtp
-    patch: |
-      - op: replace
-        path: /spec/type
-        value: NodePort
-      - op: add
-        path: /spec/ports/0/nodePort
-        value: 30025
-  - target:
-      kind: Service
-      name: mailraven-http
-    patch: |
-      - op: replace
-        path: /spec/type
-        value: NodePort
-      - op: add
-        path: /spec/ports/0/nodePort
-        value: 30080

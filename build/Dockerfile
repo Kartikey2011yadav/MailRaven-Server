@@ -12,12 +12,12 @@ COPY client/ .
 RUN npm run build
 
 # Stage 2: Build the binary
-FROM golang:1.24 AS builder
+FROM golang:1.25 AS builder
 
 WORKDIR /app
 
 COPY go.mod go.sum ./
-RUN go mod download && go mod verify
+COPY vendor/ ./vendor/
 
 COPY . .
 
@@ -27,9 +27,9 @@ COPY . .
 COPY --from=frontend-builder /app/internal/adapters/http/static/dist ./internal/adapters/http/static/dist
 
 # Build the binary
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o mailraven ./cmd/mailraven
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -ldflags="-w -s" -o mailraven ./cmd/mailraven
 # Also build CLI
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o mailraven-cli ./cmd/mailraven-cli
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -ldflags="-w -s" -o mailraven-cli ./cmd/mailraven-cli
 
 # Stage 2: Create the final image
 FROM gcr.io/distroless/static-debian12 AS production
