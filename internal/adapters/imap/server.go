@@ -13,6 +13,7 @@ import (
 type Server struct {
 	config          config.IMAPConfig
 	logger          *observability.Logger
+	metrics         *observability.Metrics
 	userRepo        ports.UserRepository
 	emailRepo       ports.EmailRepository
 	spamService     ports.SpamFilter
@@ -21,10 +22,11 @@ type Server struct {
 	listener        net.Listener
 }
 
-func NewServer(cfg config.IMAPConfig, logger *observability.Logger, userRepo ports.UserRepository, emailRepo ports.EmailRepository, spamService ports.SpamFilter, blobStore ports.BlobStore, notificationBus ports.NotificationBus) *Server {
+func NewServer(cfg config.IMAPConfig, logger *observability.Logger, metrics *observability.Metrics, userRepo ports.UserRepository, emailRepo ports.EmailRepository, spamService ports.SpamFilter, blobStore ports.BlobStore, notificationBus ports.NotificationBus) *Server {
 	return &Server{
 		config:          cfg,
 		logger:          logger,
+		metrics:         metrics,
 		userRepo:        userRepo,
 		emailRepo:       emailRepo,
 		spamService:     spamService,
@@ -70,6 +72,10 @@ func (s *Server) Addr() net.Addr {
 }
 
 func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
+	if s.metrics != nil {
+		s.metrics.IncrementActiveIMAP()
+		defer s.metrics.DecrementActiveIMAP()
+	}
 	session := NewSession(conn, s.config, s.logger, s.userRepo, s.emailRepo, s.spamService, s.blobStore, s.notificationBus)
 	session.Serve()
 }

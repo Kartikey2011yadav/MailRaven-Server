@@ -91,6 +91,8 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 			s.logger.Error("panic in SMTP connection handler", "error", r, "remote", conn.RemoteAddr())
 		}
 	}()
+	s.metrics.IncrementActiveSMTP()
+	defer s.metrics.DecrementActiveSMTP()
 
 	remoteAddr := conn.RemoteAddr().String()
 	remoteIP, _, err := net.SplitHostPort(remoteAddr)

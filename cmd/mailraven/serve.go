@@ -250,7 +250,7 @@ func RunServe() error {
 	// Start IMAP server in background (if enabled)
 	if cfg.IMAP.Enabled {
 		go func() {
-			imapServer := imap.NewServer(cfg.IMAP, logger, userRepo, emailRepo, spamService, blobStore, infra.Notifications)
+			imapServer := imap.NewServer(cfg.IMAP, logger, metrics, userRepo, emailRepo, spamService, blobStore, infra.Notifications)
 			logger.Info("starting IMAP server", "port", cfg.IMAP.Port)
 			if err := imapServer.Start(ctx); err != nil {
 				logger.Error("IMAP server error", "error", err)

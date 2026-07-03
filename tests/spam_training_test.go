@@ -83,7 +83,7 @@ func TestSpamTrainingFeedback(t *testing.T) {
 	// I need to add `github.com/Kartikey2011yadav/mailraven-server/internal/adapters/storage/disk` to imports.
 	// And `github.com/Kartikey2011yadav/mailraven-server/internal/adapters/storage/sqlite` ok.
 
-	server := imap.NewServer(imapCfg, logger, env.userRepo, env.emailRepo, spamSvc, &MockBlobStore{content: msgBody}, nil)
+	server := imap.NewServer(imapCfg, logger, nil, env.userRepo, env.emailRepo, spamSvc, &MockBlobStore{content: msgBody}, nil)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

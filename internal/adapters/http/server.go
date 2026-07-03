@@ -134,6 +134,16 @@ func NewServer(
 		metrics.WritePrometheus(w)
 	})
 
+	// Health check endpoints (Kubernetes probes)
+	router.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	})
+	router.Get("/readyz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ready"))
+	})
+
 	// Protected routes (require JWT auth)
 	router.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(cfg.API.JWTSecret))

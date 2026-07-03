@@ -270,22 +270,40 @@ make coverage
 ## Project Structure
 
 ```
-cmd/mailraven/          # Binary entrypoint
+cmd/
+  mailraven/            # Server binary entrypoint
+  mailraven-cli/        # CLI tool for user/domain management
+client/                 # React frontend (Web Admin + Webmail)
 internal/
   core/
-    domain/             # Domain entities (Message, User)
-    ports/              # Interface definitions
+    domain/             # Domain entities (Message, User, Mailbox)
+    ports/              # Interface definitions (including distributed.go)
     services/           # Business logic
   adapters/
-    smtp/               # SMTP protocol handling
-    http/               # REST API server
+    smtp/               # SMTP protocol + delivery worker
+    imap/               # IMAP4rev1 server + IDLE support
+    http/               # REST API + middleware
     storage/
-      sqlite/           # SQLite repository implementation
-      disk/             # File system blob storage
+      sqlite/           # SQLite repository
+      postgres/         # PostgreSQL repository
+      disk/             # Filesystem blob storage
+      minio/            # MinIO (S3) blob storage
+    cache/
+      memory/           # In-memory cache adapter
+      redis/            # Redis cache, rate limiter, notifications
+    broker/
+      local/            # Local synchronous message broker
+      nats/             # NATS JetStream message broker
+    spam/               # Spam filtering (Rspamd, Bayesian, Greylisting)
+    sieve/              # Sieve mail filtering engine
+  infra/                # Infrastructure factory (wires adapters by mode)
   config/               # Configuration management
   observability/        # Logging and metrics
 tests/                  # Integration tests
-deployment/             # Deployment artifacts
+deployment/
+  kubernetes/           # K8s manifests (Deployment, StatefulSets, KEDA)
+  config.example.yaml   # Example configuration
+  mailraven.service     # systemd unit file
 ```
 
 ## Configuration

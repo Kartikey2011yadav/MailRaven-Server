@@ -8,7 +8,6 @@ import (
 )
 
 // Metrics holds Prometheus-style metrics for MailRaven
-// For MVP, using in-memory counters. In production, integrate with prometheus/client_golang
 type Metrics struct {
 	mu sync.RWMutex
 
@@ -17,6 +16,11 @@ type Metrics struct {
 	MessagesRejected int64
 	SMTPConnections  int64
 	SMTPErrors       int64
+
+	// Gauges (for KEDA/HPA scaling decisions)
+	ActiveSMTPConnections int64
+	ActiveIMAPConnections int64
+	QueueDepth            int64
 
 	// API metrics
 	APIRequests int64
@@ -161,6 +165,9 @@ func (m *Metrics) GetSnapshot() MetricsSnapshot {
 		MessagesRejected:        m.MessagesRejected,
 		SMTPConnections:         m.SMTPConnections,
 		SMTPErrors:              m.SMTPErrors,
+		ActiveSMTPConnections:   m.ActiveSMTPConnections,
+		ActiveIMAPConnections:   m.ActiveIMAPConnections,
+		QueueDepth:              m.QueueDepth,
 		APIRequests:             m.APIRequests,
 		APIErrors:               m.APIErrors,
 		StorageWrites:           m.StorageWrites,
@@ -205,6 +212,10 @@ func (m *Metrics) WritePrometheus(w io.Writer) {
 
 	writeMetric("mailraven_spam_detected_total", "Total messages classified as spam", "counter", snap.SpamDetected)
 	writeMetric("mailraven_greylist_blocked_total", "Total connections blocked by greylisting", "counter", snap.GreylistBlocked)
+
+	writeMetric("mailraven_active_smtp_connections", "Current active SMTP connections", "gauge", snap.ActiveSMTPConnections)
+	writeMetric("mailraven_active_imap_connections", "Current active IMAP connections", "gauge", snap.ActiveIMAPConnections)
+	writeMetric("mailraven_queue_depth", "Current outbound delivery queue depth", "gauge", snap.QueueDepth)
 }
 
 // IncrementSpamDetected increments the spam detected counter
@@ -221,12 +232,45 @@ func (m *Metrics) IncrementGreylistBlocked() {
 	m.GreylistBlocked++
 }
 
+func (m *Metrics) IncrementActiveSMTP() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.ActiveSMTPConnections++
+}
+
+func (m *Metrics) DecrementActiveSMTP() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.ActiveSMTPConnections--
+}
+
+func (m *Metrics) IncrementActiveIMAP() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.ActiveIMAPConnections++
+}
+
+func (m *Metrics) DecrementActiveIMAP() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.ActiveIMAPConnections--
+}
+
+func (m *Metrics) SetQueueDepth(depth int64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.QueueDepth = depth
+}
+
 // MetricsSnapshot is a read-only view of metrics at a point in time
 type MetricsSnapshot struct {
 	MessagesReceived        int64
 	MessagesRejected        int64
 	SMTPConnections         int64
 	SMTPErrors              int64
+	ActiveSMTPConnections   int64
+	ActiveIMAPConnections   int64
+	QueueDepth              int64
 	APIRequests             int64
 	APIErrors               int64
 	StorageWrites           int64
