@@ -13,12 +13,13 @@ import (
 
 // EmailRepository implements ports.EmailRepository using PostgreSQL
 type EmailRepository struct {
-	db *sql.DB
+	db              *sql.DB
+	notificationBus ports.NotificationBus
 }
 
 // NewEmailRepository creates a new PostgreSQL email repository
-func NewEmailRepository(db *sql.DB) *EmailRepository {
-	return &EmailRepository{db: db}
+func NewEmailRepository(db *sql.DB, notificationBus ports.NotificationBus) *EmailRepository {
+	return &EmailRepository{db: db, notificationBus: notificationBus}
 }
 
 // Save stores a new message (atomic with transaction)

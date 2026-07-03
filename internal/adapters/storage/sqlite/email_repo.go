@@ -10,18 +10,18 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/domain"
-	"github.com/Kartikey2011yadav/mailraven-server/internal/core/notifications"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/ports"
 )
 
 // EmailRepository implements ports.EmailRepository using SQLite
 type EmailRepository struct {
-	db *sql.DB
+	db              *sql.DB
+	notificationBus ports.NotificationBus
 }
 
 // NewEmailRepository creates a new SQLite email repository
-func NewEmailRepository(db *sql.DB) *EmailRepository {
-	return &EmailRepository{db: db}
+func NewEmailRepository(db *sql.DB, notificationBus ports.NotificationBus) *EmailRepository {
+	return &EmailRepository{db: db, notificationBus: notificationBus}
 }
 
 // Save stores a new message (atomic with transaction)
@@ -85,13 +85,15 @@ func (r *EmailRepository) Save(ctx context.Context, msg *domain.Message) error {
 		return ports.ErrStorageFailure
 	}
 
-	// Notify
-	notifications.GlobalHub.Broadcast(notifications.Event{
-		Type:    notifications.EventNewMessage,
-		UserID:  msg.Recipient,
-		Mailbox: msg.Mailbox,
-		Data:    msg,
-	})
+	// Notify (cross-instance via NotificationBus)
+	if r.notificationBus != nil {
+		_ = r.notificationBus.Notify(ctx, ports.NotificationEvent{
+			UserID:    msg.Recipient,
+			Mailbox:   msg.Mailbox,
+			EventType: "new_message",
+			MessageID: msg.ID,
+		})
+	}
 
 	return nil
 }

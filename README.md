@@ -70,16 +70,17 @@ MailRaven follows the Ports and Adapters (Hexagonal) pattern with 5 distinct lay
 - **API**: REST/JSON with JWT authentication
 - **Frontend**: React + Vite (Unified Portal serving Web Admin and Webmail)
 
-**Designed for Future Migration**:
-- Listener: IMAP/POP3 support
-- Storage: S3 (Object Storage)
-- Search: Elasticsearch (Optional for massive scale)
+**Distributed Mode** (for high availability):
+- Cache/PubSub: Redis (rate limiting, IMAP IDLE notifications across pods)
+- Message Broker: NATS JetStream (async delivery, spam training, indexing)
+- Object Storage: MinIO (S3-compatible, replaces filesystem blobs)
+- Orchestration: Kubernetes with KEDA scale-to-zero
 
 ## Quick Start
 
 ### Prerequisites
 
-- Go 1.22 or higher
+- Go 1.24 or higher
 - Linux server (Ubuntu 20.04+, Debian 11+, CentOS 8+, or Windows 10/11)
 - Domain with DNS access (for production email)
 

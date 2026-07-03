@@ -102,7 +102,7 @@ func setupTestEnvironment(t *testing.T) *testEnvironment {
 	}
 
 	// Initialize repositories
-	emailRepo := sqlite.NewEmailRepository(conn.DB)
+	emailRepo := sqlite.NewEmailRepository(conn.DB, nil)
 	userRepo := sqlite.NewUserRepository(conn.DB)
 	queueRepo := sqlite.NewQueueRepository(conn.DB)
 	domainRepo := sqlite.NewDomainRepository(conn.DB)

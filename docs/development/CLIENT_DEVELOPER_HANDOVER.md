@@ -65,13 +65,12 @@ Refer to: `specs/004-web-admin/contracts/openapi.yaml` (most up-to-date spec).
 data class Message(
     val id: String,
     val subject: String,
-    val from: String, // "Name <email@addr.com>"
-    val to: List<String>,
+    val sender: String,
+    val recipient: String,
     val snippet: String,
-    val date: String, // ISO8601
-    val hasAttachment: Boolean,
-    val read: Boolean,
-    val folder: String // "inbox", "sent", "trash"
+    val received_at: String, // ISO8601
+    val read_state: Boolean,
+    val mailbox: String // "INBOX", "Sent", "Trash", "Spam", "Archive"
 )
 ```
 

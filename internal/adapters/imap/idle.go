@@ -1,10 +1,9 @@
 package imap
 
 import (
+	"context"
 	"fmt"
 	"strings"
-
-	"github.com/Kartikey2011yadav/mailraven-server/internal/core/notifications"
 )
 
 func (s *Session) handleIdle(cmd *Command) {
@@ -15,14 +14,19 @@ func (s *Session) handleIdle(cmd *Command) {
 
 	s.send("+ idling")
 
-	// Subscribe to events
-	ch := notifications.GlobalHub.Subscribe(s.user.Email)
-	defer notifications.GlobalHub.Unsubscribe(s.user.Email, ch)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	// Channel for client input (DONE or error)
-	doneCh := make(chan error, 1) // Buffered to avoid leak if we return early
+	// Subscribe to notifications via the distributed bus
+	eventCh, unsubscribe, err := s.notificationBus.Listen(ctx, s.user.Email)
+	if err != nil {
+		s.send(fmt.Sprintf("%s NO IDLE failed: %v", cmd.Tag, err))
+		return
+	}
+	defer unsubscribe()
 
-	// Start goroutine to read ONE line (expecting DONE)
+	doneCh := make(chan error, 1)
+
 	go func() {
 		line, err := s.reader.ReadString('\n')
 		if err != nil {
@@ -37,31 +41,17 @@ func (s *Session) handleIdle(cmd *Command) {
 		doneCh <- nil
 	}()
 
-	// Event loop
 	for {
 		select {
 		case err := <-doneCh:
 			if err != nil {
-				// Connection died or bad command
-				// We can't really recover the session easily if read failed
-				// For bad command, we might be able to, but let's assume termination for simplicity on error
-				// or just log.
-				// If "DONE" received (err == nil), we preserve session.
-				if err.Error() == "expected DONE" {
-					// We consumed a line that wasn't DONE.
-					// In strict mode, maybe terminate. In loose, maybe treat as command?
-					// But we are in IDLE handle.
-					s.logger.Warn("IDLE received unexpected input", "error", err)
-				}
-				// If error is IO, loop will break in Serve anyway.
+				s.logger.Warn("IDLE received unexpected input", "error", err)
 			}
 			s.send(fmt.Sprintf("%s OK IDLE terminated", cmd.Tag))
 			return
 
-		case evt := <-ch:
-			// Handle event
-			if evt.Type == notifications.EventNewMessage && s.selectedMailbox != nil && evt.Mailbox == s.selectedMailbox.Name {
-				// In real impl, fetch exact counts. For now increment.
+		case evt := <-eventCh:
+			if evt.EventType == "new_message" && s.selectedMailbox != nil && evt.Mailbox == s.selectedMailbox.Name {
 				s.selectedMailbox.MessageCount++
 				s.send(fmt.Sprintf("* %d EXISTS", s.selectedMailbox.MessageCount))
 				s.send(fmt.Sprintf("* %d RECENT", 1))

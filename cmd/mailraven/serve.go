@@ -25,6 +25,7 @@ import (
 	"github.com/Kartikey2011yadav/mailraven-server/internal/config"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/ports"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/services"
+	"github.com/Kartikey2011yadav/mailraven-server/internal/infra"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/observability"
 )
 
@@ -58,6 +59,13 @@ func RunServe() error {
 	// Initialize metrics
 	metrics := observability.NewMetrics()
 
+	// Initialize distributed infrastructure (Redis, NATS, MinIO based on config)
+	infra, err := infra.Build(cfg, logger)
+	if err != nil {
+		return fmt.Errorf("failed to build infrastructure: %w", err)
+	}
+	defer infra.Close()
+
 	// Initialize repositories
 	var (
 		emailRepo    ports.EmailRepository
@@ -89,7 +97,7 @@ func RunServe() error {
 			logger.Warn("migration warning", "error", err)
 		}
 
-		emailRepo = postgres.NewEmailRepository(conn.DB)
+		emailRepo = postgres.NewEmailRepository(conn.DB, infra.Notifications)
 		userRepo = postgres.NewUserRepository(conn.DB)
 		domainRepo = postgres.NewDomainRepository(conn.DB)
 		queueRepo = postgres.NewQueueRepository(conn.DB)
@@ -145,7 +153,7 @@ func RunServe() error {
 		}
 
 		logger.Info("initializing storage adapters")
-		emailRepo = sqlite.NewEmailRepository(conn.DB)
+		emailRepo = sqlite.NewEmailRepository(conn.DB, infra.Notifications)
 		userRepo = sqlite.NewUserRepository(conn.DB)
 		domainRepo = sqlite.NewDomainRepository(conn.DB)
 		queueRepo = sqlite.NewQueueRepository(conn.DB)
@@ -242,7 +250,7 @@ func RunServe() error {
 	// Start IMAP server in background (if enabled)
 	if cfg.IMAP.Enabled {
 		go func() {
-			imapServer := imap.NewServer(cfg.IMAP, logger, userRepo, emailRepo, spamService, blobStore)
+			imapServer := imap.NewServer(cfg.IMAP, logger, userRepo, emailRepo, spamService, blobStore, infra.Notifications)
 			logger.Info("starting IMAP server", "port", cfg.IMAP.Port)
 			if err := imapServer.Start(ctx); err != nil {
 				logger.Error("IMAP server error", "error", err)
