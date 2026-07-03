@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mailraven-config
+  namespace: mailraven
+data:
+  mode: "kubernetes"
+  redis.addr: "redis:6379"
+  nats.url: "nats://nats:4222"
+  object_store.driver: "minio"
+  object_store.endpoint: "minio:9000"
+  object_store.bucket: "mailraven-blobs"
+  domain: "mail.example.com"
+  smtp.hostname: "mail.example.com"
+  cors.origins: "https://mail.example.com"

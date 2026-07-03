@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: mailraven
+
+resources:
+  - base/namespace.yaml
+  - base/configmap.yaml
+  - base/secret.yaml
+  - base/backend-deployment.yaml
+  - base/services.yaml
+  - base/statefulsets.yaml
+  - keda/scaledobject.yaml

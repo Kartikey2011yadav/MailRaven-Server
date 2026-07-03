@@ -1,0 +1,153 @@
+services:
+  # Backend (stateless, scalable)
+  backend:
+    build:
+      context: .
+      dockerfile: build/Dockerfile
+      target: production
+    restart: unless-stopped
+    ports:
+      - "25:25"
+      - "8080:8080"
+      - "143:143"
+    environment:
+      - MAILRAVEN_MODE=docker
+      - MAILRAVEN_STORAGE_DSN=postgres://${POSTGRES_USER:-mailraven}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-mailraven}?sslmode=disable
+      - MAILRAVEN_REDIS_ADDR=redis:6379
+      - MAILRAVEN_NATS_URL=nats://nats:4222
+      - MAILRAVEN_OBJECT_STORE_DRIVER=minio
+      - MAILRAVEN_OBJECT_STORE_ENDPOINT=minio:9000
+      - MAILRAVEN_OBJECT_STORE_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MAILRAVEN_OBJECT_STORE_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - MAILRAVEN_OBJECT_STORE_BUCKET=mailraven-blobs
+      - MAILRAVEN_JWT_SECRET=${MAILRAVEN_JWT_SECRET}
+      - MAILRAVEN_DOMAIN=${MAILRAVEN_DOMAIN:-mail.example.com}
+      - MAILRAVEN_SMTP_HOSTNAME=${MAILRAVEN_DOMAIN:-mail.example.com}
+      - MAILRAVEN_CORS_ORIGINS=${MAILRAVEN_CORS_ORIGINS:-*}
+      - MAILRAVEN_DKIM_KEY_PATH=/data/dkim/private.key
+      - MAILRAVEN_STORAGE_BLOB_PATH=/data/blobs
+    volumes:
+      - ./data:/data
+      - ./config.yaml:/etc/mailraven/config.yaml
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_started
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+
+  # PostgreSQL
+  db:
+    image: postgres:15-alpine
+    container_name: mailraven-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mailraven}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-mailraven}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mailraven}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  # Redis (cache, pub/sub, rate limiting, distributed locks)
+  redis:
+    image: redis:7-alpine
+    container_name: mailraven-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # NATS (message broker with JetStream)
+  nats:
+    image: nats:2-alpine
+    container_name: mailraven-nats
+    restart: unless-stopped
+    command: ["--jetstream", "--store_dir=/data", "--http_port=8222"]
+    ports:
+      - "127.0.0.1:8222:8222" # Monitoring (localhost only)
+    volumes:
+      - nats_data:/data
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # MinIO (S3-compatible object storage for email blobs)
+  minio:
+    image: minio/minio:latest
+    container_name: mailraven-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    ports:
+      - "127.0.0.1:9001:9001" # Console (localhost only)
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # Frontend (Nginx)
+  frontend:
+    build:
+      context: .
+      dockerfile: build/Dockerfile.frontend
+    container_name: mailraven-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      backend:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+volumes:
+  postgres_data:
+  redis_data:
+  nats_data:
+  minio_data:

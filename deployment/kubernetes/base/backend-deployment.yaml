@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mailraven-backend
+  namespace: mailraven
+  labels:
+    app: mailraven
+    component: backend
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: mailraven
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: mailraven
+        component: backend
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+      - name: mailraven
+        image: ghcr.io/kartikey2011yadav/mailraven-server:latest
+        ports:
+        - containerPort: 25
+          name: smtp
+        - containerPort: 8080
+          name: http
+        - containerPort: 143
+          name: imap
+        env:
+        - name: MAILRAVEN_MODE
+          valueFrom:
+            configMapKeyRef:
+              name: mailraven-config
+              key: mode
+        - name: MAILRAVEN_DOMAIN
+          valueFrom:
+            configMapKeyRef:
+              name: mailraven-config
+              key: domain
+        - name: MAILRAVEN_SMTP_HOSTNAME
+          valueFrom:
+            configMapKeyRef:
+              name: mailraven-config
+              key: smtp.hostname
+        - name: MAILRAVEN_REDIS_ADDR
+          valueFrom:
+            configMapKeyRef:
+              name: mailraven-config
+              key: redis.addr
+        - name: MAILRAVEN_NATS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: mailraven-config
+              key: nats.url
+        - name: MAILRAVEN_OBJECT_STORE_DRIVER
+          valueFrom:
+            configMapKeyRef:
+              name: mailraven-config
+              key: object_store.driver
+        - name: MAILRAVEN_OBJECT_STORE_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: mailraven-config
+              key: object_store.endpoint
+        - name: MAILRAVEN_OBJECT_STORE_BUCKET
+          valueFrom:
+            configMapKeyRef:
+              name: mailraven-config
+              key: object_store.bucket
+        - name: MAILRAVEN_CORS_ORIGINS
+          valueFrom:
+            configMapKeyRef:
+              name: mailraven-config
+              key: cors.origins
+        - name: MAILRAVEN_JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: mailraven-secrets
+              key: jwt.secret
+        - name: MAILRAVEN_STORAGE_DSN
+          value: "postgres://mailraven:$(POSTGRES_PASSWORD)@postgres:5432/mailraven?sslmode=disable"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mailraven-secrets
+              key: postgres.password
+        - name: MAILRAVEN_OBJECT_STORE_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: mailraven-secrets
+              key: minio.access_key
+        - name: MAILRAVEN_OBJECT_STORE_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: mailraven-secrets
+              key: minio.secret_key
+        - name: MAILRAVEN_STORAGE_BLOB_PATH
+          value: "/data/blobs"
+        - name: MAILRAVEN_DKIM_KEY_PATH
+          value: "/data/dkim/private.key"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 3
+          periodSeconds: 5
+          timeoutSeconds: 3
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "1000m"
+            memory: "512Mi"
+        volumeMounts:
+        - name: data
+          mountPath: /data
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: mailraven-data

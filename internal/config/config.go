@@ -9,9 +9,19 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// DeploymentMode determines which infrastructure adapters are wired
+type DeploymentMode string
+
+const (
+	ModeStandalone DeploymentMode = "standalone"
+	ModeDocker     DeploymentMode = "docker"
+	ModeKubernetes DeploymentMode = "kubernetes"
+)
+
 // Config represents the MailRaven server configuration
 type Config struct {
 	Domain      string            `yaml:"domain"` // Primary mail domain (e.g., mail.example.com)
+	Mode        DeploymentMode    `yaml:"mode"`   // standalone, docker, kubernetes (default: standalone)
 	SMTP        SMTPConfig        `yaml:"smtp"`
 	API         APIConfig         `yaml:"api"`
 	Storage     StorageConfig     `yaml:"storage"`
@@ -22,6 +32,33 @@ type Config struct {
 	IMAP        IMAPConfig        `yaml:"imap"`
 	Backup      BackupConfig      `yaml:"backup"`
 	ManageSieve ManageSieveConfig `yaml:"managesieve"`
+	Redis       RedisConfig       `yaml:"redis"`
+	NATS        NATSConfig        `yaml:"nats"`
+	ObjectStore ObjectStoreConfig `yaml:"object_store"`
+}
+
+// RedisConfig contains Redis connection settings for distributed caching and pub/sub
+type RedisConfig struct {
+	Enabled  bool   `yaml:"enabled"`
+	Addr     string `yaml:"addr"`     // e.g. "redis:6379"
+	Password string `yaml:"password"`
+	DB       int    `yaml:"db"`
+}
+
+// NATSConfig contains NATS connection settings for message brokering
+type NATSConfig struct {
+	Enabled bool   `yaml:"enabled"`
+	URL     string `yaml:"url"` // e.g. "nats://nats:4222"
+}
+
+// ObjectStoreConfig contains object storage settings (disk or MinIO)
+type ObjectStoreConfig struct {
+	Driver    string `yaml:"driver"`     // "disk" (default) or "minio"
+	Endpoint  string `yaml:"endpoint"`   // MinIO endpoint (e.g. "minio:9000")
+	Bucket    string `yaml:"bucket"`     // MinIO bucket name
+	AccessKey string `yaml:"access_key"`
+	SecretKey string `yaml:"secret_key"`
+	UseSSL    bool   `yaml:"use_ssl"`
 }
 
 // SMTPConfig contains SMTP server settings
@@ -197,6 +234,15 @@ func LoadFromFile(path string) (*Config, error) {
 	if len(cfg.API.CORSOrigins) == 0 {
 		cfg.API.CORSOrigins = []string{"*"}
 	}
+	if cfg.Mode == "" {
+		cfg.Mode = ModeStandalone
+	}
+	if cfg.ObjectStore.Driver == "" {
+		cfg.ObjectStore.Driver = "disk"
+	}
+	if cfg.ObjectStore.Bucket == "" {
+		cfg.ObjectStore.Bucket = "mailraven-blobs"
+	}
 
 	// Apply environment variable overrides
 	cfg.applyEnvOverrides()
@@ -231,6 +277,35 @@ func (c *Config) applyEnvOverrides() {
 	}
 	if v := os.Getenv("MAILRAVEN_DKIM_KEY_PATH"); v != "" {
 		c.DKIM.PrivateKeyPath = v
+	}
+	if v := os.Getenv("MAILRAVEN_MODE"); v != "" {
+		c.Mode = DeploymentMode(v)
+	}
+	if v := os.Getenv("MAILRAVEN_REDIS_ADDR"); v != "" {
+		c.Redis.Enabled = true
+		c.Redis.Addr = v
+	}
+	if v := os.Getenv("MAILRAVEN_REDIS_PASSWORD"); v != "" {
+		c.Redis.Password = v
+	}
+	if v := os.Getenv("MAILRAVEN_NATS_URL"); v != "" {
+		c.NATS.Enabled = true
+		c.NATS.URL = v
+	}
+	if v := os.Getenv("MAILRAVEN_OBJECT_STORE_DRIVER"); v != "" {
+		c.ObjectStore.Driver = v
+	}
+	if v := os.Getenv("MAILRAVEN_OBJECT_STORE_ENDPOINT"); v != "" {
+		c.ObjectStore.Endpoint = v
+	}
+	if v := os.Getenv("MAILRAVEN_OBJECT_STORE_BUCKET"); v != "" {
+		c.ObjectStore.Bucket = v
+	}
+	if v := os.Getenv("MAILRAVEN_OBJECT_STORE_ACCESS_KEY"); v != "" {
+		c.ObjectStore.AccessKey = v
+	}
+	if v := os.Getenv("MAILRAVEN_OBJECT_STORE_SECRET_KEY"); v != "" {
+		c.ObjectStore.SecretKey = v
 	}
 }
 

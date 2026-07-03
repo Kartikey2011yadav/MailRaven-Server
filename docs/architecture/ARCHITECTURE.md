@@ -74,13 +74,64 @@ graph TD
 - **Blob Storage Separation**:
   Keeping binary email content out of the database keeps the index small and fast. Atomic writes to the filesystem ensure data integrity.
 
+## Distributed Architecture (Scale Mode)
+
+MailRaven supports three deployment modes via the `mode` config:
+
+| Mode | Infrastructure | Use Case |
+|------|---------------|----------|
+| `standalone` | In-memory cache, local filesystem, SQLite | Development, single-user |
+| `docker` | Redis + NATS + MinIO + PostgreSQL | Multi-user, single host |
+| `kubernetes` | Same as docker + KEDA auto-scaling, scale-to-zero | Production, high availability |
+
+### Distributed Infrastructure Stack
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Load Balancer                            │
+│              (SMTP:25, HTTP:443, IMAP:143)                   │
+└──────────────┬──────────────────────────────┬───────────────┘
+               │                              │
+    ┌──────────▼──────────┐       ┌──────────▼──────────┐
+    │  MailRaven Pod #1   │       │  MailRaven Pod #N   │
+    │  (stateless)        │       │  (stateless)        │
+    └──────┬──────────────┘       └──────┬──────────────┘
+           │                              │
+    ┌──────▼──────────────────────────────▼───────────────┐
+    │                Shared Services                        │
+    │  ┌─────────┐  ┌──────┐  ┌───────┐  ┌────────────┐  │
+    │  │  Redis  │  │ NATS │  │ MinIO │  │ PostgreSQL │  │
+    │  │ (cache  │  │(queue│  │(blobs)│  │  (data)    │  │
+    │  │ pubsub) │  │ jobs)│  │       │  │            │  │
+    │  └─────────┘  └──────┘  └───────┘  └────────────┘  │
+    └─────────────────────────────────────────────────────┘
+```
+
+### How Each Component Scales
+
+- **Redis**: Handles rate limiting (sliding window), IMAP IDLE notifications (pub/sub), session cache, and distributed locks. Enables global state awareness across pods.
+- **NATS JetStream**: Distributes work (outbound delivery, spam training, search indexing) across pods using competing consumer pattern.
+- **MinIO**: Self-hosted S3-compatible storage for email blobs. Decouples storage from compute pods.
+- **PostgreSQL**: Single source of truth for all metadata. Connection pooling handles concurrent access.
+- **KEDA**: Scales pods to zero when idle (5-min cooldown), wakes on SMTP connection or queue depth.
+
+### Graceful Degradation
+
+If Redis or NATS become unavailable, each pod falls back to in-memory operation:
+- Rate limiting falls back to per-pod in-memory tracking
+- Notifications fall back to local-only channel delivery
+- Queue processing falls back to DB polling
+
+This ensures the system remains operational (degraded but not dead) during infrastructure issues.
+
 ## Directory Structure
 
 - `client/`: React Frontend (Web Admin & Webmail).
 - `cmd/`: Entry points (main application).
 - `internal/`: Private application code.
-  - `core/`: Domain logic and interfaces.
-  - `adapters/`: Implementations (HTTP, SMTP, SQLite).
-- `deployment/`: Configuration and systemd files.
+  - `core/`: Domain logic and interfaces (ports).
+  - `adapters/`: Implementations (HTTP, SMTP, IMAP, storage, cache, broker).
+  - `infra/`: Infrastructure factory (wires adapters based on deployment mode).
+- `deployment/`: Systemd, Docker, and Kubernetes manifests.
+  - `kubernetes/`: Full K8s manifests with KEDA scale-to-zero.
 - `specs/`: Planning and design documents.
-- `mox/`: (Reference) The Mox codebase used for comparison and inspiration.

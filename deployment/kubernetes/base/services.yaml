@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mailraven-http
+  namespace: mailraven
+spec:
+  selector:
+    app: mailraven
+    component: backend
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mailraven-smtp
+  namespace: mailraven
+spec:
+  selector:
+    app: mailraven
+    component: backend
+  ports:
+  - port: 25
+    targetPort: 25
+    name: smtp
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mailraven-imap
+  namespace: mailraven
+spec:
+  selector:
+    app: mailraven
+    component: backend
+  ports:
+  - port: 143
+    targetPort: 143
+    name: imap
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: mailraven
+spec:
+  selector:
+    app: redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nats
+  namespace: mailraven
+spec:
+  selector:
+    app: nats
+  ports:
+  - port: 4222
+    targetPort: 4222
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: mailraven
+spec:
+  selector:
+    app: minio
+  ports:
+  - port: 9000
+    targetPort: 9000
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: mailraven
+spec:
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+    targetPort: 5432
+  type: ClusterIP
