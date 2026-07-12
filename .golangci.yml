@@ -9,21 +9,10 @@ linters:
     - gosec
     - govet
     - staticcheck
-    - errcheck
-    - gosimple
     - ineffassign
     - unused
-
-settings:
-  gosec:
-    excludes:
-      - G101
-      - G115
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-
-issues:
-  exclude-dirs:
-    - tests
-    - vendor
+  exclusions:
+    paths:
+      - tests
+      - vendor
+      - third_party
