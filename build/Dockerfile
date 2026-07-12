@@ -1,13 +1,11 @@
 # Stage 1: Build the frontend
-FROM node:20-alpine AS frontend-builder
+FROM node:22-alpine AS frontend-builder
 
 WORKDIR /app/client
 
-# Copy dependencies first for caching
 COPY client/package.json client/package-lock.json ./
 RUN npm ci
 
-# Copy source and build
 COPY client/ .
 RUN npm run build
 
@@ -17,36 +15,27 @@ FROM golang:1.25 AS builder
 WORKDIR /app
 
 COPY go.mod go.sum ./
-COPY vendor/ ./vendor/
+RUN go mod download
 
 COPY . .
 
 # Copy built frontend assets
-# Note: vite output is directed to ../internal/adapters/http/static/dist relative to project root,
-# but in docker context we are in /app/client, so output goes to /app/internal/adapters/http/static/dist
 COPY --from=frontend-builder /app/internal/adapters/http/static/dist ./internal/adapters/http/static/dist
 
-# Build the binary
-RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -ldflags="-w -s" -o mailraven ./cmd/mailraven
-# Also build CLI
-RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -ldflags="-w -s" -o mailraven-cli ./cmd/mailraven-cli
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o mailraven ./cmd/mailraven
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o mailraven-cli ./cmd/mailraven-cli
 
-# Stage 2: Create the final image
+# Stage 3: Production image
 FROM gcr.io/distroless/static-debian12 AS production
 
 WORKDIR /app
 
-# Copy the binary from the builder stage
 COPY --from=builder /app/mailraven /app/mailraven
 COPY --from=builder /app/mailraven-cli /app/mailraven-cli
-
-# Copy config example (though usually mounted)
 COPY --from=builder /app/deployment/config.example.yaml /etc/mailraven/config.yaml
 
-# Expose ports (SMTP, API)
 EXPOSE 25 8080
 
-# Volume for persistent data
 VOLUME ["/data"]
 
 ENTRYPOINT ["/app/mailraven", "serve", "--config", "/etc/mailraven/config.yaml"]
