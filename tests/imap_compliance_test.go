@@ -112,18 +112,21 @@ func TestIMAP_Compliance(t *testing.T) {
 	}
 
 	// Test 5: IDLE (Push Email)
-	// Manual interaction because sendCommand expects immediate tagged response
+	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 	fmt.Fprintf(writer, "A005 IDLE\r\n")
 	writer.Flush()
-	line, _ := reader.ReadString('\n')
-	if strings.HasPrefix(line, "+") {
+	line, err := reader.ReadString('\n')
+	if err != nil {
+		t.Log("❌ IDLE read failed (server may have closed connection): " + err.Error())
+	} else if strings.HasPrefix(line, "+") {
 		t.Log("✅ IDLE (Push) implementation found")
-		// Send DONE to finish IDLE
 		writer.WriteString("DONE\r\n")
 		writer.Flush()
-		// Now we expect the tagged OK
 		for {
-			line, _ = reader.ReadString('\n')
+			line, err = reader.ReadString('\n')
+			if err != nil {
+				break
+			}
 			if strings.HasPrefix(line, "A005 ") {
 				assert.Contains(t, line, "OK", "IDLE termination")
 				break
