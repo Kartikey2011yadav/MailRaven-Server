@@ -3,12 +3,19 @@ package sieve
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"log"
 	"net/mail"
 	"strings"
+	"time"
 
 	"git.sr.ht/~emersion/go-sieve"
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/ports"
+)
+
+const (
+	maxScriptSize      = 100 * 1024 // 100KB
+	sieveExecTimeout   = 5 * time.Second
 )
 
 type SieveEngine struct {
@@ -31,9 +38,8 @@ func NewSieveEngine(
 	}
 }
 
-// Execute runs the Sieve interpreter.
+// Execute runs the Sieve interpreter with resource limits.
 func (e *SieveEngine) Execute(ctx context.Context, userID string, rawMsg []byte) ([]string, error) {
-	// 1. Get active script
 	script, err := e.scriptRepo.GetActive(ctx, userID)
 	if err != nil {
 		log.Printf("failed to get active script for user %s: %v", userID, err)
@@ -43,35 +49,38 @@ func (e *SieveEngine) Execute(ctx context.Context, userID string, rawMsg []byte)
 		return []string{"INBOX"}, nil
 	}
 
-	// 2. Parse script used emersion/go-sieve parser
+	if len(script.Content) > maxScriptSize {
+		log.Printf("sieve script too large for user %s: %d bytes", userID, len(script.Content))
+		return []string{"INBOX"}, fmt.Errorf("script exceeds maximum size of %d bytes", maxScriptSize)
+	}
+
 	cmds, err := sieve.Parse(strings.NewReader(script.Content))
 	if err != nil {
 		log.Printf("failed to parse script %s: %v", script.Name, err)
-		return []string{"INBOX"}, nil // Fail open
+		return []string{"INBOX"}, nil
 	}
 
-	// 3. Parse Message Header
 	msg, err := mail.ReadMessage(bytes.NewReader(rawMsg))
 	if err != nil {
 		log.Printf("failed to parse email header for user %s: %v", userID, err)
 		return []string{"INBOX"}, nil
 	}
 
-	// 4. Run Interpreter
-	interp := NewInterpreter(ctx, msg, e.vacationManager, userID)
+	execCtx, cancel := context.WithTimeout(ctx, sieveExecTimeout)
+	defer cancel()
+
+	interp := NewInterpreter(execCtx, msg, e.vacationManager, userID)
 	targets, err := interp.Run(cmds)
 	if err != nil {
 		log.Printf("sieve runtime error for user %s: %v", userID, err)
 		return []string{"INBOX"}, nil
 	}
 
-	// 5. Ensure mailboxes exist (Side Effect)
 	for _, folder := range targets {
 		if folder == "INBOX" {
 			continue
 		}
 		if err := e.mailboxRepo.CreateMailbox(ctx, userID, folder); err != nil {
-			// Log but proceed
 			log.Printf("sieve: failed to create mailbox %s: %v", folder, err)
 		}
 	}

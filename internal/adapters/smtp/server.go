@@ -92,8 +92,8 @@ func (s *Server) Start(ctx context.Context) error {
 			}()
 		default:
 			s.logger.Warn("SMTP connection limit reached, rejecting", "remote", conn.RemoteAddr())
-			fmt.Fprintf(conn, "421 Service temporarily unavailable, too many connections\r\n")
-			conn.Close()
+			_, _ = fmt.Fprintf(conn, "421 Service temporarily unavailable, too many connections\r\n")
+			_ = conn.Close()
 		}
 	}
 }

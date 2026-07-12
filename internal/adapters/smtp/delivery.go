@@ -2,6 +2,8 @@ package smtp
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/binary"
 	"fmt"
 	"math"
 	"sync"
@@ -159,25 +161,31 @@ func (w *DeliveryWorker) handlePermanentFailure(ctx context.Context, msg *domain
 }
 
 func (w *DeliveryWorker) calculateBackoff(attempt int) time.Duration {
-	// Exponential backoff: 1m * 2^(n-1), capped or specific steps
+	var base time.Duration
 	switch attempt {
 	case 1:
-		return 1 * time.Minute
+		base = 1 * time.Minute
 	case 2:
-		return 5 * time.Minute
+		base = 5 * time.Minute
 	case 3:
-		return 15 * time.Minute
+		base = 15 * time.Minute
 	case 4:
-		return 1 * time.Hour
+		base = 1 * time.Hour
 	case 5:
-		return 6 * time.Hour
+		base = 6 * time.Hour
 	default:
-		// Exponential for further attempts, capped at 24h
 		pow := float64(attempt - 5)
-		delay := 6 * time.Hour * time.Duration(math.Pow(2, pow))
-		if delay > 24*time.Hour {
-			return 24 * time.Hour
+		base = 6 * time.Hour * time.Duration(math.Pow(2, pow))
+		if base > 24*time.Hour {
+			base = 24 * time.Hour
 		}
-		return delay
 	}
+	var buf [8]byte
+	_, _ = rand.Read(buf[:])
+	maxJitter := uint64(base / 5)
+	if maxJitter == 0 {
+		return base
+	}
+	jitter := int64(binary.LittleEndian.Uint64(buf[:]) % maxJitter) //nolint:gosec // bounded by maxJitter which fits in int64
+	return base + time.Duration(jitter)
 }

@@ -10,6 +10,8 @@ import (
 	"github.com/Kartikey2011yadav/mailraven-server/internal/observability"
 )
 
+const maxIMAPConnections = 500
+
 type Server struct {
 	config          config.IMAPConfig
 	logger          *observability.Logger
@@ -20,6 +22,7 @@ type Server struct {
 	blobStore       ports.BlobStore
 	notificationBus ports.NotificationBus
 	listener        net.Listener
+	connSem         chan struct{}
 }
 
 func NewServer(cfg config.IMAPConfig, logger *observability.Logger, metrics *observability.Metrics, userRepo ports.UserRepository, emailRepo ports.EmailRepository, spamService ports.SpamFilter, blobStore ports.BlobStore, notificationBus ports.NotificationBus) *Server {
@@ -32,6 +35,7 @@ func NewServer(cfg config.IMAPConfig, logger *observability.Logger, metrics *obs
 		spamService:     spamService,
 		blobStore:       blobStore,
 		notificationBus: notificationBus,
+		connSem:         make(chan struct{}, maxIMAPConnections),
 	}
 }
 
@@ -59,7 +63,17 @@ func (s *Server) Start(ctx context.Context) error {
 			continue
 		}
 
-		go s.handleConnection(ctx, conn)
+		select {
+		case s.connSem <- struct{}{}:
+			go func() {
+				defer func() { <-s.connSem }()
+				s.handleConnection(ctx, conn)
+			}()
+		default:
+			s.logger.Warn("IMAP connection limit reached", "remote", conn.RemoteAddr())
+			_, _ = fmt.Fprintf(conn, "* BYE Too many connections\r\n")
+			_ = conn.Close()
+		}
 	}
 }
 
