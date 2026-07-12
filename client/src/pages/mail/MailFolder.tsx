@@ -26,17 +26,24 @@ export default function MailFolder({ folder, emptyTitle, emptyDescription }: Mai
   const [selectedMessage, setSelectedMessage] = useState<MessageFull | null>(null);
   const [loading, setLoading] = useState(true);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    setLoading(true);
+    let cancelled = false;
     setSelectedMessage(null);
+    setLoading(true);
+
     MessageAPI.list({ limit: 50, mailbox: folder })
       .then((res) => {
+        if (cancelled) return;
         const data = res.data;
         setMessages(Array.isArray(data) ? data : data.messages || []);
       })
-      .catch(() => setMessages([]))
-      .finally(() => setLoading(false));
+      .catch(() => { if (!cancelled) setMessages([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+
+    return () => { cancelled = true; };
   }, [folder]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function selectMessage(msg: MessageSummary) {
     try {

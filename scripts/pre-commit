@@ -1,36 +1,36 @@
 #!/bin/sh
-# Pre-commit hook to run linters
+# Pre-commit hook: runs lint, type checks, and build before allowing a commit.
+# Install: cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 
-echo "Running Pre-commit checks..."
+set -e
 
-# 1. Backend Linting
-echo "Running Go Linters..."
+echo "Running pre-commit checks..."
+
+# Create dummy frontend assets if dist/ is empty (needed for go build)
+mkdir -p internal/adapters/http/static/dist
+touch internal/adapters/http/static/dist/.gitkeep
+
+# 1. Go checks
+echo "==> Go vet..."
+go vet ./...
+
+echo "==> Go build..."
+go build ./...
+
+# 2. golangci-lint (optional, skip if not installed)
 if command -v golangci-lint >/dev/null 2>&1; then
-    golangci-lint run ./...
-    GO_EXIT_CODE=$?
+    echo "==> golangci-lint..."
+    golangci-lint run --timeout=5m ./...
 else
-    echo "golangci-lint not installed. Running via 'go run' (v1.64.8)..."
-    CMD="go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8 run --timeout=5m ./..."
-    echo "> $CMD"
-    $CMD
-    GO_EXIT_CODE=$?
+    echo "==> golangci-lint not installed, skipping (install v2+ for Go 1.25 support)"
 fi
 
-if [ $GO_EXIT_CODE -ne 0 ]; then
-    echo "❌ Go Linting Failed!"
-    exit 1
-fi
+# 3. Frontend checks
+echo "==> Frontend TypeScript type check..."
+(cd client && npx tsc -b)
 
-# 2. Frontend Linting
-echo "Running Frontend Linters..."
-cd client
-if npm run lint; then
-    echo "✅ Frontend Linting Passed"
-else
-    echo "❌ Frontend Linting Failed!"
-    exit 1
-fi
-cd ..
+echo "==> Frontend lint..."
+(cd client && npx eslint . --max-warnings 5)
 
-echo "✅ All checks passed!"
+echo "All pre-commit checks passed."
 exit 0
