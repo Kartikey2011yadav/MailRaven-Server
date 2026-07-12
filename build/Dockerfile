@@ -12,7 +12,7 @@ COPY client/ .
 RUN npm run build
 
 # Stage 2: Build the binary
-FROM golang:1.25 AS builder
+FROM golang:1.26 AS builder
 
 WORKDIR /app
 
