@@ -1,28 +1,19 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
-interface ProtectedRouteProps {
-  allowedRoles?: string[];
-}
-
-export const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
-  const { isAuthenticated, isLoading, user } = useAuth();
+export const ProtectedRoute = () => {
+  const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div>Loading...</div>; // Or a proper spinner
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
-  }
-
-  if (allowedRoles && user?.role && !allowedRoles.includes(user.role)) {
-     // Simplistic Redirect Strategy:
-     // If user is trying to access Admin routes (allowedRoles=['admin']) but is 'user', send to /mail
-     if (user.role === 'user') {
-       return <Navigate to="/mail" replace />;
-     }
-     return <Navigate to="/" replace />;
   }
 
   return <Outlet />;

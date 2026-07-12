@@ -20,8 +20,7 @@ Authorization: Bearer <token>
 *(Note: Implemented routes can be found in `internal/adapters/http/server.go`)*
 
 ### Authentication
-- `POST /auth/login`: Exchange credentials for a JWT.
-- `POST /auth/refresh`: Refresh an expiring token.
+- `POST /auth/login`: Exchange credentials for a JWT (7-day expiry).
 
 ### Autodiscover & Public Well-Known
 - `POST /autodiscover/autodiscover.xml`: Microsoft Outlook autoconfig protocol.
@@ -37,7 +36,6 @@ Authorization: Bearer <token>
   - `is_starred`: Filter by starred status (true/false)
   - `start_date`, `end_date`: Filter by received date range.
 - `GET /messages/{id}`: Get full message details.
-- `GET /messages/{id}/raw`: Get the raw MIME source.
 - `POST /messages/send`: Submit an email for delivery.
 - `PATCH /messages/{id}`: Update message state.
   - `is_read`: Boolean
@@ -54,15 +52,25 @@ Authorization: Bearer <token>
 - `PUT /sieve/scripts/{name}/active`: Activate a script (deactivates others).
 
 ### Search
-- `GET /search`: dedicated full-text search endpoint utilizing FTS5 or Postgres TSVECTOR.
-  - Query parameters: `q` (search term), `from`, `has_attachment`.
+- `GET /messages/search`: Full-text search utilizing FTS5 or PostgreSQL TSVECTOR with BM25 ranking.
+  - Query parameters: `q` (search term, max 1000 chars), `limit`, `offset`.
 
-### Management (Web Admin)
-- `GET /admin/users`: List users.
-- `POST /admin/users`: Create user.
+### Management (Web Admin — requires admin role)
+- `GET /admin/users`: List users (supports pagination).
+- `POST /admin/users`: Create user (validates domain exists).
+- `DELETE /admin/users/{email}`: Delete user.
+- `PUT /admin/users/{email}/role`: Update user role (admin/user).
+- `PUT /admin/users/{email}/quota`: Update storage quota.
 - `GET /admin/domains`: List domains.
-- `POST /admin/domains`: Add domain.
-- `GET /admin/stats/overview`: Get system statistics.
+- `POST /admin/domains`: Add domain (auto-generates DKIM keys).
+- `DELETE /admin/domains/{domain}`: Delete domain.
+- `GET /admin/stats`: Get system statistics (users, emails, queue).
+- `POST /admin/backup`: Trigger system backup.
+- `GET /admin/system/update`: Check for updates.
+- `POST /admin/system/update`: Apply update.
+
+### User Self-Management
+- `PUT /users/self/password`: Change password (requires current password).
 
 ### Monitoring
 - `GET /metrics`: Prometheus formatted metrics (System health, Queue depth, Inbound/Outbound counts).

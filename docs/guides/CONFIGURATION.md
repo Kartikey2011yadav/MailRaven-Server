@@ -14,7 +14,7 @@ MailRaven is configured via a YAML file, typically located at `/etc/mailraven/co
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `driver` | string | `sqlite` | Database driver. Options: `sqlite`, `postgres`. |
+| `driver` | string | `postgres` | Database driver. Options: `postgres` (recommended), `sqlite`. |
 | `db_path` | string | - | Path to SQLite DB file (required if driver is `sqlite`). |
 | `dsn` | string | - | Postgres connection string (required if driver is `postgres`). |
 | `blob_path` | string | - | Directory to store email bodies (blobs). |
@@ -73,9 +73,8 @@ MailRaven is configured via a YAML file, typically located at `/etc/mailraven/co
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| `enabled` | bool | `true` | Enable or disable ManageSieve server. |
 | `port` | int | `4190` | Port to listen for ManageSieve connections. |
-| `max_script_size` | int | `32768` | Maximum size of a Sieve script in bytes (default 32KB). |
-| `vacation_min_days` | int | `1` | Minimum days between vacation replies to the same sender. |
 
 ## IMAP
 

@@ -118,7 +118,12 @@ func NewServer(
 	}
 	mtaStsHandler := handlers.NewMTASTSHandler(mtaStsPolicy)
 
+	// Setup handler (public, guarded internally)
+	setupHandler := handlers.NewSetupHandler(userRepo, domainRepo, logger)
+
 	// Public routes (no auth required)
+	router.Get("/api/v1/setup/status", setupHandler.GetStatus)
+	router.Post("/api/v1/setup/complete", setupHandler.Complete)
 	router.Post("/api/v1/auth/login", authHandler.Login)
 
 	// Autodiscover endpoints

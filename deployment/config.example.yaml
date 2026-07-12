@@ -2,7 +2,7 @@
 # Copy this file to /etc/mailraven/config.yaml and customize for your deployment
 
 # Deployment mode: standalone, docker, kubernetes
-# - standalone: in-memory cache, local filesystem, SQLite (default)
+# - standalone: in-memory cache, local filesystem, PostgreSQL (default)
 # - docker: connects to Redis, NATS, MinIO, PostgreSQL containers
 # - kubernetes: same as docker + optimized for K8s probes and scaling
 mode: standalone
@@ -19,18 +19,12 @@ smtp:
   hostname: mail.example.com
   
   # Maximum message size in bytes (25 MB)
-  max_message_size: 26214400
-  
-  # TLS configuration
-  tls:
-    # Enable TLS (STARTTLS)
-    enabled: true
-    
-    # Path to TLS certificate file
-    cert_file: /etc/mailraven/certs/tls.crt
-    
-    # Path to TLS private key file
-    key_file: /etc/mailraven/certs/tls.key
+  max_size: 26214400
+
+  # DANE verification for outbound mail
+  dane:
+    # Mode: "off", "advisory" (log only), "enforce" (fail delivery on mismatch)
+    mode: advisory
 
 # API server configuration (for mobile/web clients)
 api:
@@ -185,10 +179,9 @@ object_store:
 # smtp:
 #   port: 25
 #   hostname: mail.mycompany.com
-#   tls:
-#     enabled: true
-#     cert_file: /etc/letsencrypt/live/mail.mycompany.com/fullchain.pem
-#     key_file: /etc/letsencrypt/live/mail.mycompany.com/privkey.pem
+#   max_size: 26214400
+#   dane:
+#     mode: advisory
 # api:
 #   host: 0.0.0.0
 #   port: 8443
@@ -197,8 +190,16 @@ object_store:
 #   tls_key: /etc/letsencrypt/live/mail.mycompany.com/privkey.pem
 #   jwt_secret: "generated-from-openssl-rand-base64-32"
 # storage:
-#   db_path: /var/lib/mailraven/mailraven.db
+#   driver: postgres
+#   dsn: "postgres://mailraven:password@localhost:5432/mailraven?sslmode=disable"
 #   blob_path: /var/lib/mailraven/blobs
+# tls:
+#   enabled: true
+#   acme:
+#     enabled: true
+#     email: "admin@mycompany.com"
+#     domains: ["mail.mycompany.com"]
+#     cache_dir: "/data/certs"
 # dkim:
 #   domain: mycompany.com
 #   selector: mail

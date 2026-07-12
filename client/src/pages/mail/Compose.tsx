@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -18,13 +18,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from "@/components/ui/glass-card"
 
 const formSchema = z.object({
   to: z.string().email("Invalid email address"),
@@ -34,7 +28,12 @@ const formSchema = z.object({
 
 export default function Compose() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [isSending, setIsSending] = useState(false)
+  const [loadingContext, setLoadingContext] = useState(false)
+
+  const replyTo = searchParams.get("replyTo")
+  const forward = searchParams.get("forward")
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -45,97 +44,132 @@ export default function Compose() {
     },
   })
 
+  useEffect(() => {
+    const messageId = replyTo || forward
+    if (!messageId) return
+
+    setLoadingContext(true)
+    MessageAPI.get(messageId)
+      .then((res) => {
+        const msg = res.data
+        if (replyTo) {
+          form.setValue("to", msg.sender)
+          form.setValue("subject", msg.subject.startsWith("Re:") ? msg.subject : `Re: ${msg.subject}`)
+          form.setValue("body", `\n\n---\nOn ${new Date(msg.received_at).toLocaleString()}, ${msg.sender} wrote:\n> ${(msg.body || "").replace(/<[^>]*>/g, "").split("\n").join("\n> ")}`)
+        } else if (forward) {
+          form.setValue("subject", msg.subject.startsWith("Fwd:") ? msg.subject : `Fwd: ${msg.subject}`)
+          form.setValue("body", `\n\n---\nForwarded message from ${msg.sender} on ${new Date(msg.received_at).toLocaleString()}:\n\n${(msg.body || "").replace(/<[^>]*>/g, "")}`)
+        }
+      })
+      .catch(() => {
+        toast.error("Failed to load original message")
+      })
+      .finally(() => setLoadingContext(false))
+  }, [replyTo, forward, form])
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSending(true)
     try {
-        await MessageAPI.send(values)
-        toast.success("Message sent successfully")
-        navigate("/mail/inbox")
-    } catch (error) {
-        console.error(error)
-        toast.error("Failed to send message")
+      await MessageAPI.send(values)
+      toast.success("Message sent")
+      navigate("/mail/inbox")
+    } catch {
+      toast.error("Failed to send message")
     } finally {
-        setIsSending(false)
+      setIsSending(false)
     }
   }
 
+  const title = replyTo ? "Reply" : forward ? "Forward" : "Compose"
+
   return (
-    <div className="container max-w-2xl py-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Compose Message</CardTitle>
-          <CardDescription>
-            Send a new email message.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="to"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>To</FormLabel>
-                    <FormControl>
-                      <Input placeholder="recipient@example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="subject"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Subject</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter subject" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="body"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Message</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Type your message here..."
-                        className="min-h-[300px]"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="flex justify-end space-x-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate("/mail/inbox")}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isSending}>
-                  {isSending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isSending ? "Sending..." : (
-                    <>
-                      <Send className="mr-2 h-4 w-4" />
-                      Send Message
-                    </>
+    <div className="max-w-2xl mx-auto">
+      <GlassCard>
+        <GlassCardHeader>
+          <GlassCardTitle>{title}</GlassCardTitle>
+        </GlassCardHeader>
+        <GlassCardContent>
+          {loadingContext ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
+          ) : (
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="to"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs text-muted-foreground">To</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="recipient@example.com"
+                          className="bg-secondary/50 border-border/50"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+                />
+                <FormField
+                  control={form.control}
+                  name="subject"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs text-muted-foreground">Subject</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter subject"
+                          className="bg-secondary/50 border-border/50"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="body"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs text-muted-foreground">Message</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Type your message..."
+                          className="min-h-[250px] bg-secondary/50 border-border/50 font-mono text-sm"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate(-1)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" size="sm" disabled={isSending}>
+                    {isSending ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    ) : (
+                      <Send className="h-4 w-4 mr-1" />
+                    )}
+                    {isSending ? "Sending..." : "Send"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          )}
+        </GlassCardContent>
+      </GlassCard>
     </div>
   )
 }

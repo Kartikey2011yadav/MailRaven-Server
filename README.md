@@ -22,7 +22,7 @@ A modern, modular email server built with mobile-first architecture. MailRaven i
 ## Development
 
 ### Prerequisites
-- Go 1.22+
+- Go 1.25+
 - Node.js 20+
 - Docker & Docker Compose
 - Make (optional)
@@ -65,7 +65,7 @@ MailRaven follows the Ports and Adapters (Hexagonal) pattern with 5 distinct lay
 
 **Current Implementation**:
 - **Listener**: SMTP (RFC 5321), IMAP4rev1 (RFC 3501)
-- **Storage**: SQLite (default) or PostgreSQL
+- **Storage**: PostgreSQL (default, recommended) or SQLite
 - **Search**: SQLite FTS5 or Postgres TSVECTOR with BM25 ranking
 - **API**: REST/JSON with JWT authentication
 - **Frontend**: React + Vite (Unified Portal serving Web Admin and Webmail)
@@ -125,12 +125,20 @@ docker-compose up -d
 
 ### Configuration
 
-MailRaven uses a `config.yaml` file. By default, it uses SQLite. To switch to PostgreSQL:
+MailRaven uses a `config.yaml` file. By default, it uses PostgreSQL:
 
 ```yaml
 storage:
   driver: "postgres"
   dsn: "postgres://user:pass@localhost:5432/mailraven?sslmode=disable"
+```
+
+To use SQLite instead (for development or single-user setups):
+
+```yaml
+storage:
+  driver: "sqlite"
+  db_path: /var/lib/mailraven/mailraven.db
 ```
 
 ### Run Quickstart Setup
@@ -316,14 +324,15 @@ smtp:
   port: 25
   hostname: mail.example.com
 api:
-  port: 8080
+  port: 8443
   jwt_secret: "generate_random_secret"
 storage:
-  db_path: /var/lib/mailraven/mailraven.db
+  driver: postgres
+  dsn: "postgres://mailraven:password@localhost:5432/mailraven?sslmode=disable"
   blob_path: /var/lib/mailraven/blobs
 dkim:
   selector: default
-  private_key_path: /etc/mailraven/dkim.key
+  private_key_path: /etc/mailraven/dkim/private.key
 ```
 
 ## Documentation

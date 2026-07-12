@@ -36,6 +36,19 @@ api.interceptors.response.use(
   }
 );
 
+// Setup API (public, no auth required)
+export interface DNSRecord {
+  type: string;
+  name: string;
+  value: string;
+}
+
+export const SetupAPI = {
+  status: () => api.get<{ setup_required: boolean }>('/setup/status'),
+  complete: (data: { domain: string; admin_email: string; admin_password: string; smtp_hostname: string }) =>
+    api.post<{ success: boolean; dns_records: DNSRecord[] }>('/setup/complete', data),
+};
+
 // Auth API
 export const AuthAPI = {
   login: (data: { email: string; password: string }) =>
@@ -130,7 +143,7 @@ export interface MessageFull extends MessageSummary {
 }
 
 export const MessageAPI = {
-  list: (params?: { page?: number; limit?: number; offset?: number }) => 
+  list: (params?: { page?: number; limit?: number; offset?: number; mailbox?: string }) =>
     api.get<{ messages: MessageSummary[]; total: number; has_more: boolean }>('/messages', { params }),
   
   get: (id: string) => 
