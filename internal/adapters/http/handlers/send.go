@@ -102,6 +102,11 @@ func (h *SendHandler) Send(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if strings.ContainsAny(req.To, "\r\n") || strings.ContainsAny(req.Subject, "\r\n") {
+		http.Error(w, "Header fields must not contain newlines", http.StatusBadRequest)
+		return
+	}
+
 	// Construct raw MIME message
 	messageID := fmt.Sprintf("<%s@%s>", uuid.New().String(), h.domain)
 	date := time.Now().UTC().Format(time.RFC1123Z)

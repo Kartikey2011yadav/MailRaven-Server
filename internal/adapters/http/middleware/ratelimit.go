@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -96,17 +97,35 @@ func (rl *RateLimiter) Allow(ip string) (allowed bool, retryAfter int) {
 	return true, 0
 }
 
+// clientIP extracts the real client IP, respecting proxy headers
+func clientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if parts := strings.SplitN(xff, ",", 2); len(parts) > 0 {
+			ip := strings.TrimSpace(parts[0])
+			if net.ParseIP(ip) != nil {
+				return ip
+			}
+		}
+	}
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		if net.ParseIP(xri) != nil {
+			return xri
+		}
+	}
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return ip
+}
+
 // RateLimit creates middleware that enforces rate limiting per IP
 func RateLimit(requestsPerMinute int) func(http.Handler) http.Handler {
 	limiter := NewRateLimiter(requestsPerMinute)
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Extract IP from request
-			ip, _, err := net.SplitHostPort(r.RemoteAddr)
-			if err != nil {
-				ip = r.RemoteAddr // Fallback if no port
-			}
+			ip := clientIP(r)
 
 			// Check rate limit
 			allowed, retryAfter := limiter.Allow(ip)

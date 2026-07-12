@@ -323,6 +323,9 @@ func (c *Config) Validate() error {
 	if c.API.JWTSecret == "" {
 		return fmt.Errorf("api.jwt_secret is required")
 	}
+	if len(c.API.JWTSecret) < 32 {
+		return fmt.Errorf("api.jwt_secret must be at least 32 characters for security")
+	}
 	if c.Storage.Driver == "postgres" {
 		if c.Storage.DSN == "" {
 			return fmt.Errorf("storage.dsn is required for postgres driver")

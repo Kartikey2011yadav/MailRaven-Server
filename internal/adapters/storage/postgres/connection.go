@@ -3,6 +3,7 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -12,12 +13,17 @@ type Connection struct {
 	DB *sql.DB
 }
 
-// NewConnection creates a new PostgreSQL connection
+// NewConnection creates a new PostgreSQL connection with production-safe pool settings
 func NewConnection(dsn string) (*Connection, error) {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open postgres connection: %w", err)
 	}
+
+	db.SetMaxOpenConns(50)
+	db.SetMaxIdleConns(10)
+	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetConnMaxIdleTime(2 * time.Minute)
 
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping postgres: %w", err)
@@ -35,13 +41,11 @@ func (c *Connection) RunMigrations() error {
 
 	query := string(content)
 
-	// Create transaction
 	tx, err := c.DB.Begin()
 	if err != nil {
 		return err
 	}
 	defer func() {
-		//nolint:errcheck // Rollback safe to ignore
 		_ = tx.Rollback()
 	}()
 
@@ -52,7 +56,7 @@ func (c *Connection) RunMigrations() error {
 	return tx.Commit()
 }
 
-// CheckIntegrity is a placeholder for interface satisfaction if needed
+// CheckIntegrity verifies the connection is healthy
 func (c *Connection) CheckIntegrity() error {
 	return c.DB.Ping()
 }

@@ -17,6 +17,8 @@ import (
 	"github.com/Kartikey2011yadav/mailraven-server/internal/observability"
 )
 
+const maxConcurrentConnections = 500
+
 // Server represents an SMTP server
 type Server struct {
 	config     *config.Config
@@ -27,6 +29,7 @@ type Server struct {
 	userRepo   ports.UserRepository
 	listener   net.Listener
 	mu         sync.RWMutex
+	connSem    chan struct{}
 }
 
 // NewServer creates a new SMTP server
@@ -38,6 +41,7 @@ func NewServer(cfg *config.Config, logger *observability.Logger, metrics *observ
 		handler:    handler,
 		spamFilter: spamFilter,
 		userRepo:   userRepo,
+		connSem:    make(chan struct{}, maxConcurrentConnections),
 	}
 }
 
@@ -79,7 +83,18 @@ func (s *Server) Start(ctx context.Context) error {
 		}
 
 		s.metrics.IncrementSMTPConnections()
-		go s.handleConnection(ctx, conn)
+
+		select {
+		case s.connSem <- struct{}{}:
+			go func() {
+				defer func() { <-s.connSem }()
+				s.handleConnection(ctx, conn)
+			}()
+		default:
+			s.logger.Warn("SMTP connection limit reached, rejecting", "remote", conn.RemoteAddr())
+			fmt.Fprintf(conn, "421 Service temporarily unavailable, too many connections\r\n")
+			conn.Close()
+		}
 	}
 }
 

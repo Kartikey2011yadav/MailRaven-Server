@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Kartikey2011yadav/mailraven-server/internal/core/domain"
@@ -16,6 +17,7 @@ import (
 )
 
 type SetupHandler struct {
+	mu         sync.Mutex
 	userRepo   ports.UserRepository
 	domainRepo ports.DomainRepository
 	logger     *observability.Logger
@@ -66,6 +68,9 @@ func (h *SetupHandler) GetStatus(w http.ResponseWriter, r *http.Request) {
 
 // Complete performs initial server setup: creates domain and admin user
 func (h *SetupHandler) Complete(w http.ResponseWriter, r *http.Request) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
 	// Guard: only works if no users exist
 	counts, err := h.userRepo.Count(r.Context())
 	if err != nil {
