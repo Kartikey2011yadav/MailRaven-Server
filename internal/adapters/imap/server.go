@@ -90,6 +90,6 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 		s.metrics.IncrementActiveIMAP()
 		defer s.metrics.DecrementActiveIMAP()
 	}
-	session := NewSession(conn, s.config, s.logger, s.userRepo, s.emailRepo, s.spamService, s.blobStore, s.notificationBus)
+	session := NewSession(ctx, conn, s.config, s.logger, s.userRepo, s.emailRepo, s.spamService, s.blobStore, s.notificationBus)
 	session.Serve()
 }

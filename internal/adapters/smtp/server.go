@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -248,7 +249,7 @@ func (s *Server) handleEHLO(writer *bufio.Writer, args string, session *domain.S
 	s.send(writer, "250 8BITMIME")
 }
 
-// handleDATA processes the DATA command and message content
+// handleDATA processes the DATA command, streaming to a temp file to avoid memory exhaustion
 func (s *Server) handleDATA(ctx context.Context, reader *bufio.Reader, writer *bufio.Writer, session *domain.SMTPSession, logger *observability.Logger) {
 	if session.Sender == "" || len(session.Recipients) == 0 {
 		s.send(writer, "503 Bad sequence of commands")
@@ -257,36 +258,60 @@ func (s *Server) handleDATA(ctx context.Context, reader *bufio.Reader, writer *b
 
 	s.send(writer, "354 End data with <CR><LF>.<CR><LF>")
 
-	// RFC 5321 Section 4.1.1.4: Read message until "."
-	var messageData []byte
+	// Stream message data to temp file instead of memory buffer
+	tmpFile, err := os.CreateTemp("", "mailraven-data-*")
+	if err != nil {
+		logger.Error("failed to create temp file", "error", err)
+		s.send(writer, "451 Temporary failure")
+		return
+	}
+	tmpPath := tmpFile.Name()
+	defer func() { _ = os.Remove(tmpPath) }()
+
+	var size int64
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
+			_ = tmpFile.Close()
 			logger.Error("failed to read message data", "error", err)
 			s.send(writer, "451 Error reading message")
 			return
 		}
 
-		// Check for end of message
 		if line == ".\r\n" || line == ".\n" {
 			break
 		}
 
-		// RFC 5321 Section 4.5.2: Transparency (remove leading dot)
 		line = strings.TrimPrefix(line, ".")
 
-		messageData = append(messageData, []byte(line)...)
-		session.BytesRecv += int64(len(line))
+		n, err := tmpFile.WriteString(line)
+		if err != nil {
+			_ = tmpFile.Close()
+			logger.Error("failed to write to temp file", "error", err)
+			s.send(writer, "451 Temporary failure")
+			return
+		}
+		size += int64(n)
 
-		// Check size limit
-		if session.BytesRecv > s.config.SMTP.MaxSize {
-			logger.Warn("message too large", "size", session.BytesRecv)
+		if size > s.config.SMTP.MaxSize {
+			_ = tmpFile.Close()
+			logger.Warn("message too large", "size", size)
 			s.send(writer, "552 Message size exceeds maximum")
 			return
 		}
 	}
+	_ = tmpFile.Close()
+	session.BytesRecv = size
 
-	logger.Info("received message", "size", session.BytesRecv)
+	// Read from temp file for processing (path is controlled, not user input)
+	messageData, err := os.ReadFile(tmpPath) //nolint:gosec // path is from os.CreateTemp, not user input
+	if err != nil {
+		logger.Error("failed to read temp file", "error", err)
+		s.send(writer, "451 Temporary failure")
+		return
+	}
+
+	logger.Info("received message", "size", size)
 
 	// Check Spam Content
 	if s.spamFilter != nil {
@@ -299,7 +324,6 @@ func (s *Server) handleDATA(ctx context.Context, reader *bufio.Reader, writer *b
 		res, err := s.spamFilter.CheckContent(ctx, bytes.NewReader(messageData), headers)
 		if err != nil {
 			logger.Error("spam check failed", "error", err)
-			// Fail open
 		} else {
 			if res.Action == domain.SpamActionReject {
 				s.metrics.IncrementMessagesRejected()
@@ -311,7 +335,6 @@ func (s *Server) handleDATA(ctx context.Context, reader *bufio.Reader, writer *b
 				return
 			}
 
-			// Add headers if needed
 			if len(res.Headers) > 0 {
 				var sb bytes.Buffer
 				for k, v := range res.Headers {
@@ -322,7 +345,6 @@ func (s *Server) handleDATA(ctx context.Context, reader *bufio.Reader, writer *b
 		}
 	}
 
-	// Process message through middleware pipeline
 	if err := s.handler(session, messageData); err != nil {
 		logger.Error("failed to process message", "error", err)
 		s.metrics.IncrementMessagesRejected()
@@ -335,8 +357,6 @@ func (s *Server) handleDATA(ctx context.Context, reader *bufio.Reader, writer *b
 		return
 	}
 
-	// RFC 5321 Section 4.1.1.4: Success response
-	// "250 OK" indicates message has been durably saved
 	s.metrics.IncrementMessagesReceived()
 	logger.Info("message accepted")
 	s.send(writer, "250 OK: Message accepted for delivery")

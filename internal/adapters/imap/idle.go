@@ -14,7 +14,7 @@ func (s *Session) handleIdle(cmd *Command) {
 
 	s.send("+ idling")
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 	defer cancel()
 
 	// Subscribe to notifications via the distributed bus

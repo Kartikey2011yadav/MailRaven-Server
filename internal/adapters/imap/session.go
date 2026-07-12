@@ -2,6 +2,7 @@ package imap
 
 import (
 	"bufio"
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -25,6 +26,8 @@ const (
 )
 
 type Session struct {
+	ctx             context.Context
+	cancel          context.CancelFunc
 	conn            net.Conn
 	state           State
 	config          config.IMAPConfig
@@ -42,8 +45,11 @@ type Session struct {
 	selectedMailbox *domain.Mailbox // Currently selected mailbox
 }
 
-func NewSession(conn net.Conn, cfg config.IMAPConfig, logger *observability.Logger, userRepo ports.UserRepository, emailRepo ports.EmailRepository, spamService ports.SpamFilter, blobStore ports.BlobStore, notificationBus ports.NotificationBus) *Session {
+func NewSession(parentCtx context.Context, conn net.Conn, cfg config.IMAPConfig, logger *observability.Logger, userRepo ports.UserRepository, emailRepo ports.EmailRepository, spamService ports.SpamFilter, blobStore ports.BlobStore, notificationBus ports.NotificationBus) *Session {
+	ctx, cancel := context.WithCancel(parentCtx)
 	return &Session{
+		ctx:             ctx,
+		cancel:          cancel,
 		conn:            conn,
 		state:           StateNotAuthenticated,
 		config:          cfg,
@@ -60,6 +66,7 @@ func NewSession(conn net.Conn, cfg config.IMAPConfig, logger *observability.Logg
 }
 
 func (s *Session) Serve() {
+	defer s.cancel()
 	defer s.conn.Close()
 	defer func() {
 		if r := recover(); r != nil {

@@ -1,7 +1,6 @@
 package imap
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -20,7 +19,7 @@ func (s *Session) handleGetQuotaRoot(cmd *Command) {
 	}
 	mailbox := cmd.Args[0]
 
-	ctx := context.Background()
+	ctx := s.ctx
 	user, err := s.userRepo.FindByEmail(ctx, s.user.Email)
 	if err != nil {
 		s.logger.Error("Storage error during GETQUOTAROOT", "error", err)
@@ -58,7 +57,7 @@ func (s *Session) handleGetQuota(cmd *Command) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx := s.ctx
 	user, err := s.userRepo.FindByEmail(ctx, s.user.Email)
 	if err != nil {
 		s.logger.Error("Storage error during GETQUOTA", "error", err)
@@ -113,7 +112,7 @@ func (s *Session) handleSetQuota(cmd *Command) {
 		return
 	}
 
-	ctx := context.Background()
+	ctx := s.ctx
 	err = s.userRepo.UpdateQuota(ctx, targetEmail, limitKB*1024)
 	if err != nil {
 		s.logger.Error("UpdateQuota failed", "error", err)

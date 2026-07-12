@@ -2,7 +2,6 @@ package imap
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"strconv"
@@ -108,7 +107,7 @@ func (s *Session) handleLogin(cmd *Command) {
 	username := cmd.Args[0]
 	password := cmd.Args[1]
 
-	user, err := s.userRepo.Authenticate(context.Background(), username, password)
+	user, err := s.userRepo.Authenticate(s.ctx, username, password)
 	if err != nil {
 		s.logger.Warn("IMAP login failed", "user", username, "error", err)
 		s.send(fmt.Sprintf("%s NO [AUTHENTICATIONFAILED] Authentication failed", cmd.Tag))
@@ -145,7 +144,7 @@ func (s *Session) handleList(cmd *Command) {
 		return
 	}
 
-	mailboxes, err := s.emailRepo.ListMailboxes(context.Background(), s.user.Email)
+	mailboxes, err := s.emailRepo.ListMailboxes(s.ctx, s.user.Email)
 	if err != nil {
 		s.send(fmt.Sprintf("%s NO List failed", cmd.Tag))
 		return
@@ -154,7 +153,7 @@ func (s *Session) handleList(cmd *Command) {
 	foundInbox := false
 	for _, mb := range mailboxes {
 		// ACL check: requires 'l' (lookup) right
-		if err := s.emailService.CheckAccess(context.Background(), mb.UserID, mb.Name, s.user.Email, "l"); err != nil {
+		if err := s.emailService.CheckAccess(s.ctx, mb.UserID, mb.Name, s.user.Email, "l"); err != nil {
 			continue
 		}
 
@@ -181,7 +180,7 @@ func (s *Session) handleCreate(cmd *Command) {
 		return
 	}
 	name := cmd.Args[0]
-	err := s.emailRepo.CreateMailbox(context.Background(), s.user.Email, name)
+	err := s.emailRepo.CreateMailbox(s.ctx, s.user.Email, name)
 	if err != nil {
 		s.send(fmt.Sprintf("%s NO Create failed", cmd.Tag))
 		return
@@ -208,13 +207,13 @@ func (s *Session) handleSelect(cmd *Command) {
 		mailboxName = "INBOX"
 	}
 
-	mb, err := s.emailRepo.GetMailbox(context.Background(), s.user.Email, mailboxName)
+	mb, err := s.emailRepo.GetMailbox(s.ctx, s.user.Email, mailboxName)
 	if err != nil {
 		// Auto-create INBOX if not found
 		if strings.ToUpper(mailboxName) == "INBOX" {
-			err = s.emailRepo.CreateMailbox(context.Background(), s.user.Email, "INBOX")
+			err = s.emailRepo.CreateMailbox(s.ctx, s.user.Email, "INBOX")
 			if err == nil {
-				mb, err = s.emailRepo.GetMailbox(context.Background(), s.user.Email, "INBOX")
+				mb, err = s.emailRepo.GetMailbox(s.ctx, s.user.Email, "INBOX")
 			}
 		}
 	}
@@ -226,7 +225,7 @@ func (s *Session) handleSelect(cmd *Command) {
 
 	// ACL check: requires 'r' (read) right
 	// Note: Owner always has full access via CheckAccess logic
-	if err := s.emailService.CheckAccess(context.Background(), mb.UserID, mb.Name, s.user.Email, "r"); err != nil {
+	if err := s.emailService.CheckAccess(s.ctx, mb.UserID, mb.Name, s.user.Email, "r"); err != nil {
 		s.send(fmt.Sprintf("%s NO [PERMISSION DENIED] Access denied", cmd.Tag))
 		return
 	}
@@ -250,7 +249,7 @@ func (s *Session) handleFetch(cmd *Command) {
 	}
 
 	// ACL check: requires 'r' (read) right
-	if err := s.emailService.CheckAccess(context.Background(), s.selectedMailbox.UserID, s.selectedMailbox.Name, s.user.Email, "r"); err != nil {
+	if err := s.emailService.CheckAccess(s.ctx, s.selectedMailbox.UserID, s.selectedMailbox.Name, s.user.Email, "r"); err != nil {
 		s.send(fmt.Sprintf("%s NO [PERMISSION DENIED] Access denied", cmd.Tag))
 		return
 	}
@@ -296,7 +295,7 @@ func (s *Session) handleUidFetch(tag string, rangeSpec string, items []string) {
 	// Basic parsing
 	min, max := parseUidRange(rangeSpec)
 
-	msgs, err := s.emailRepo.FindByUIDRange(context.Background(), s.user.Email, s.selectedMailbox.Name, min, max)
+	msgs, err := s.emailRepo.FindByUIDRange(s.ctx, s.user.Email, s.selectedMailbox.Name, min, max)
 	if err != nil {
 		s.send(fmt.Sprintf("%s NO DB Error", tag))
 		return
@@ -348,20 +347,20 @@ func (s *Session) handleUidStore(tag string, rangeSpec string, args []string) {
 
 	min, max := parseUidRange(rangeSpec)
 	//nolint:errcheck // We should probably handle error but ignoring for MVP brevity
-	msgs, _ := s.emailRepo.FindByUIDRange(context.Background(), s.user.Email, s.selectedMailbox.Name, min, max)
+	msgs, _ := s.emailRepo.FindByUIDRange(s.ctx, s.user.Email, s.selectedMailbox.Name, min, max)
 
 	for _, msg := range msgs {
 		switch mode {
 		case "+FLAGS":
 			if strings.Contains(mode, "+FLAGS") {
-				_ = s.emailRepo.AddFlags(context.Background(), msg.ID, flags...) //nolint:errcheck
+				_ = s.emailRepo.AddFlags(s.ctx, msg.ID, flags...) //nolint:errcheck
 			}
 		case "-FLAGS":
 			if strings.Contains(mode, "-FLAGS") {
-				_ = s.emailRepo.RemoveFlags(context.Background(), msg.ID, flags...) //nolint:errcheck
+				_ = s.emailRepo.RemoveFlags(s.ctx, msg.ID, flags...) //nolint:errcheck
 			}
 		case "FLAGS":
-			_ = s.emailRepo.SetFlags(context.Background(), msg.ID, flags...) //nolint:errcheck
+			_ = s.emailRepo.SetFlags(s.ctx, msg.ID, flags...) //nolint:errcheck
 		}
 	}
 	s.send(fmt.Sprintf("%s OK UID STORE completed", tag))
@@ -395,7 +394,7 @@ func parseUidRange(rangeSpec string) (uint32, uint32) {
 func (s *Session) handleUidCopy(tag string, rangeSpec string, destName string) {
 	min, max := parseUidRange(rangeSpec)
 
-	msgs, err := s.emailRepo.FindByUIDRange(context.Background(), s.user.Email, s.selectedMailbox.Name, min, max)
+	msgs, err := s.emailRepo.FindByUIDRange(s.ctx, s.user.Email, s.selectedMailbox.Name, min, max)
 	if err != nil {
 		s.send(fmt.Sprintf("%s NO DB Error", tag))
 		return
@@ -411,7 +410,7 @@ func (s *Session) handleUidCopy(tag string, rangeSpec string, destName string) {
 		totalSize += msg.Size
 	}
 
-	ctx := context.Background()
+	ctx := s.ctx
 	user, err := s.userRepo.FindByEmail(ctx, s.user.Email)
 	if err != nil {
 		s.send(fmt.Sprintf("%s NO Storage check failed", tag))
@@ -428,7 +427,7 @@ func (s *Session) handleUidCopy(tag string, rangeSpec string, destName string) {
 		ids = append(ids, m.ID)
 	}
 
-	err = s.emailRepo.CopyMessages(context.Background(), s.user.Email, ids, destName)
+	err = s.emailRepo.CopyMessages(s.ctx, s.user.Email, ids, destName)
 	if err != nil {
 		s.logger.Error("IMAP COPY Error", "error", err)
 		s.send(fmt.Sprintf("%s NO Copy failed", tag))
@@ -447,7 +446,7 @@ func (s *Session) handleUidCopy(tag string, rangeSpec string, destName string) {
 		// Async training
 		trainingMsgs := msgs // Copy slice header
 		go func(messages []*domain.Message, isSpam bool) {
-			ctx := context.Background()
+			ctx := s.ctx
 			for _, msg := range messages {
 				if s.blobStore == nil {
 					continue
@@ -505,7 +504,7 @@ func (s *Session) handleAppend(cmd *Command) {
 	}
 
 	// Quota Check
-	ctx := context.Background()
+	ctx := s.ctx
 	user, err := s.userRepo.FindByEmail(ctx, s.user.Email)
 	if err != nil {
 		s.send(fmt.Sprintf("%s NO Storage check failed", cmd.Tag))

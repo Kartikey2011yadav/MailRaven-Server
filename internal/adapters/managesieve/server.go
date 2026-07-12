@@ -79,6 +79,6 @@ func (s *Server) Stop(ctx context.Context) error {
 }
 
 func (s *Server) handleConn(c net.Conn) {
-	session := NewSession(c, s.repo, s.userRepo, s.logger, s.tlsConfig)
+	session := NewSession(context.Background(), c, s.repo, s.userRepo, s.logger, s.tlsConfig)
 	session.Serve()
 }

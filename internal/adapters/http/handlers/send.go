@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
@@ -138,7 +137,7 @@ func (h *SendHandler) Send(w http.ResponseWriter, r *http.Request) {
 
 	// Store in blob
 	msgUUID := uuid.New().String()
-	blobPath, err := h.blobStore.Write(context.Background(), msgUUID, signedMessage)
+	blobPath, err := h.blobStore.Write(r.Context(), msgUUID, signedMessage)
 	if err != nil {
 		h.logger.Error("failed to write blob", "error", err)
 		http.Error(w, "Storage failure", http.StatusInternalServerError)
@@ -158,7 +157,7 @@ func (h *SendHandler) Send(w http.ResponseWriter, r *http.Request) {
 		RetryCount:  0,
 	}
 
-	if err := h.queueRepo.Enqueue(context.Background(), outMsg); err != nil {
+	if err := h.queueRepo.Enqueue(r.Context(), outMsg); err != nil {
 		h.logger.Error("failed to enqueue message", "error", err)
 		http.Error(w, "Queue failure", http.StatusInternalServerError)
 		return

@@ -16,6 +16,8 @@ import (
 )
 
 type Session struct {
+	ctx       context.Context
+	cancel    context.CancelFunc
 	conn      net.Conn
 	reader    *bufio.Reader
 	writer    *bufio.Writer
@@ -27,7 +29,6 @@ type Session struct {
 
 	state State
 	user  string // Authenticated user email
-	// saslStage removed as unused
 }
 
 type State int
@@ -38,8 +39,11 @@ const (
 	StateLogout
 )
 
-func NewSession(conn net.Conn, repo ports.ScriptRepository, userRepo ports.UserRepository, logger *observability.Logger, tlsConfig *tls.Config) *Session {
+func NewSession(parentCtx context.Context, conn net.Conn, repo ports.ScriptRepository, userRepo ports.UserRepository, logger *observability.Logger, tlsConfig *tls.Config) *Session {
+	ctx, cancel := context.WithCancel(parentCtx)
 	return &Session{
+		ctx:       ctx,
+		cancel:    cancel,
 		conn:      conn,
 		reader:    bufio.NewReader(conn),
 		writer:    bufio.NewWriter(conn),
@@ -52,6 +56,7 @@ func NewSession(conn net.Conn, repo ports.ScriptRepository, userRepo ports.UserR
 }
 
 func (s *Session) Serve() {
+	defer s.cancel()
 	defer s.conn.Close()
 	s.tokenizer = NewTokenizer(s.reader)
 
@@ -139,7 +144,7 @@ func (s *Session) handleRenameScript() {
 	// Rename logic: Get, Save New, Delete Old
 	// Or better, add Rename to repo?
 	// For now, manual implementation
-	ctx := context.Background()
+	ctx := s.ctx
 	script, err := s.repo.Get(ctx, s.user, oldName)
 	if err != nil || script == nil {
 		s.printf("NO \"Script not found\"\r\n")
@@ -246,7 +251,7 @@ func (s *Session) handleAuthenticate() {
 	password := parts[2]
 
 	// Validate with repo
-	user, err := s.userRepo.Authenticate(context.Background(), email, password)
+	user, err := s.userRepo.Authenticate(s.ctx, email, password)
 	if err != nil || user == nil {
 		s.printf("NO \"Authentication failed\"\r\n")
 		return
@@ -281,7 +286,7 @@ func (s *Session) handlePutScript() {
 		UpdatedAt: time.Now(),
 	}
 
-	if err := s.repo.Save(context.Background(), script); err != nil {
+	if err := s.repo.Save(s.ctx, script); err != nil {
 		s.printf("NO \"Save failed: %v\"\r\n", err)
 		return
 	}
@@ -294,7 +299,7 @@ func (s *Session) handleListScripts() {
 		return
 	}
 
-	scripts, err := s.repo.List(context.Background(), s.user)
+	scripts, err := s.repo.List(s.ctx, s.user)
 	if err != nil {
 		s.printf("NO \"List failed\"\r\n")
 		return
@@ -321,7 +326,7 @@ func (s *Session) handleGetScript() {
 		return
 	}
 
-	script, err := s.repo.Get(context.Background(), s.user, name)
+	script, err := s.repo.Get(s.ctx, s.user, name)
 	if err != nil {
 		s.printf("NO \"Script not found\"\r\n")
 		return
@@ -331,7 +336,7 @@ func (s *Session) handleGetScript() {
 }
 
 func (s *Session) deleteScript(name string) {
-	if err := s.repo.Delete(context.Background(), s.user, name); err != nil {
+	if err := s.repo.Delete(s.ctx, s.user, name); err != nil {
 		s.printf("NO \"Delete failed\"\r\n")
 	} else {
 		s.printf("OK\r\n")
@@ -362,7 +367,7 @@ func (s *Session) handleSetActive() {
 		return
 	}
 
-	if err := s.repo.SetActive(context.Background(), s.user, name); err != nil {
+	if err := s.repo.SetActive(s.ctx, s.user, name); err != nil {
 		s.printf("NO \"Activate failed\"\r\n")
 		return
 	}

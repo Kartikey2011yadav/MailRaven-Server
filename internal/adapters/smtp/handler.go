@@ -3,6 +3,7 @@ package smtp
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -62,15 +63,20 @@ func (h *Handler) Handle(session *domain.SMTPSession, rawMessage []byte) error {
 
 	// Step 2: Verify DKIM
 	sessionLogger.Info("verifying DKIM")
-	dkimResult, err := validators.VerifyDKIM(ctx, rawMessage)
+	dkimResult, dkimDomain, err := validators.VerifyDKIM(ctx, rawMessage)
 	if err != nil {
 		sessionLogger.Warn("DKIM verification error", "error", err)
 	}
-	sessionLogger.Info("DKIM result", "result", dkimResult)
+	sessionLogger.Info("DKIM result", "result", dkimResult, "domain", dkimDomain)
 
-	// Step 3: Evaluate DMARC
+	// Step 3: Evaluate DMARC (with alignment)
+	senderParts := strings.SplitN(session.Sender, "@", 2)
+	spfDomain := ""
+	if len(senderParts) == 2 {
+		spfDomain = senderParts[1]
+	}
 	sessionLogger.Info("evaluating DMARC")
-	dmarcResult, dmarcPolicy, err := validators.EvaluateDMARC(ctx, session.Sender, spfResult, dkimResult)
+	dmarcResult, dmarcPolicy, err := validators.EvaluateDMARC(ctx, session.Sender, spfResult, spfDomain, dkimResult, dkimDomain)
 	if err != nil {
 		sessionLogger.Warn("DMARC evaluation error", "error", err)
 	}

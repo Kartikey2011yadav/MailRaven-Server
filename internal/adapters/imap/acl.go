@@ -1,7 +1,6 @@
 package imap
 
 import (
-	"context"
 	"fmt"
 	"strings"
 )
@@ -23,7 +22,7 @@ func (s *Session) handleSetACL(cmd *Command) {
 	identifier := cmd.Args[1]
 	rights := cmd.Args[2]
 
-	ctx := context.Background()
+	ctx := s.ctx
 
 	// 1. Check mailbox exists and ownership
 	// For MVP, we only allow setting ACL on owned mailboxes found by GetMailbox
@@ -56,7 +55,7 @@ func (s *Session) handleDeleteACL(cmd *Command) {
 	mailboxName := cmd.Args[0]
 	identifier := cmd.Args[1]
 
-	ctx := context.Background()
+	ctx := s.ctx
 
 	// 1. Check mailbox exists
 	_, err := s.emailRepo.GetMailbox(ctx, s.user.Email, mailboxName)
@@ -89,7 +88,7 @@ func (s *Session) handleGetACL(cmd *Command) {
 
 	mailboxName := cmd.Args[0]
 
-	ctx := context.Background()
+	ctx := s.ctx
 	mb, err := s.emailRepo.GetMailbox(ctx, s.user.Email, mailboxName)
 	if err != nil {
 		s.send(fmt.Sprintf("%s NO Mailbox not found", cmd.Tag))

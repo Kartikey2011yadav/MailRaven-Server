@@ -23,114 +23,294 @@ const (
 	DKIMPermError DKIMResult = "permerror"
 )
 
-// VerifyDKIM validates DKIM signature in email message
-// Implements RFC 6376 - DomainKeys Identified Mail
-func VerifyDKIM(ctx context.Context, rawMessage []byte) (DKIMResult, error) {
-	// RFC 6376 Section 3.5: Parse DKIM-Signature header
-	signature := extractDKIMSignature(rawMessage)
-	if signature == "" {
-		// No DKIM signature present
-		return DKIMNone, nil
+// VerifyDKIM validates DKIM signature in email message per RFC 6376
+func VerifyDKIM(_ context.Context, rawMessage []byte) (DKIMResult, string, error) {
+	sig := extractDKIMSignature(rawMessage)
+	if sig == "" {
+		return DKIMNone, "", nil
 	}
 
-	// Parse signature parameters
-	// RFC 6376 Section 3.5: Tag-value list
-	params := parseDKIMParams(signature)
+	params := parseDKIMParams(sig)
 
 	domain, ok := params["d"]
 	if !ok {
-		return DKIMPermError, fmt.Errorf("missing domain (d=) tag")
+		return DKIMPermError, "", fmt.Errorf("missing domain (d=) tag")
 	}
 
 	selector, ok := params["s"]
 	if !ok {
-		return DKIMPermError, fmt.Errorf("missing selector (s=) tag")
+		return DKIMPermError, "", fmt.Errorf("missing selector (s=) tag")
 	}
 
-	bodyHash, ok := params["bh"]
+	bodyHashB64, ok := params["bh"]
 	if !ok {
-		return DKIMPermError, fmt.Errorf("missing body hash (bh=) tag")
+		return DKIMPermError, "", fmt.Errorf("missing body hash (bh=) tag")
 	}
 
 	signatureB64, ok := params["b"]
 	if !ok {
-		return DKIMPermError, fmt.Errorf("missing signature (b=) tag")
+		return DKIMPermError, "", fmt.Errorf("missing signature (b=) tag")
 	}
 
-	// RFC 6376 Section 3.6: DNS query for public key
+	headersToVerify := strings.Split(params["h"], ":")
+	for i := range headersToVerify {
+		headersToVerify[i] = strings.TrimSpace(headersToVerify[i])
+	}
+	if len(headersToVerify) == 0 || headersToVerify[0] == "" {
+		return DKIMPermError, "", fmt.Errorf("missing headers (h=) tag")
+	}
+
+	canon := params["c"]
+	if canon == "" {
+		canon = "simple/simple"
+	}
+	canonParts := strings.SplitN(canon, "/", 2)
+	headerCanon := canonParts[0]
+	bodyCanon := headerCanon
+	if len(canonParts) == 2 {
+		bodyCanon = canonParts[1]
+	}
+
+	// DNS lookup for public key
 	dkimRecord := fmt.Sprintf("%s._domainkey.%s", selector, domain)
 	txtRecords, err := net.LookupTXT(dkimRecord)
 	if err != nil {
-		return DKIMTempError, fmt.Errorf("DNS lookup failed: %w", err)
+		return DKIMTempError, domain, fmt.Errorf("DNS lookup failed: %w", err)
 	}
-
 	if len(txtRecords) == 0 {
-		return DKIMFail, fmt.Errorf("no DKIM record found")
+		return DKIMFail, domain, fmt.Errorf("no DKIM record found")
 	}
 
-	// Parse public key from DNS
-	publicKey, err := parseDKIMPublicKey(txtRecords[0])
+	publicKey, err := parseDKIMPublicKey(strings.Join(txtRecords, ""))
 	if err != nil {
-		return DKIMPermError, fmt.Errorf("failed to parse public key: %w", err)
+		return DKIMPermError, domain, fmt.Errorf("failed to parse public key: %w", err)
 	}
 
-	// RFC 6376 Section 3.7: Compute body hash
-	bodyHashComputed := computeBodyHash(rawMessage)
-	bodyHashDecoded, err := base64.StdEncoding.DecodeString(bodyHash)
+	// Verify body hash
+	msgStr := string(rawMessage)
+	bodyStart := strings.Index(msgStr, "\r\n\r\n")
+	body := ""
+	if bodyStart >= 0 {
+		body = msgStr[bodyStart+4:]
+	}
+
+	computedBodyHash := canonicalizeAndHashBody(body, bodyCanon)
+	expectedBodyHash, err := base64.StdEncoding.DecodeString(bodyHashB64)
 	if err != nil {
-		return DKIMFail, fmt.Errorf("invalid body hash encoding")
+		return DKIMFail, domain, fmt.Errorf("invalid body hash encoding")
 	}
-	if string(bodyHashComputed) != string(bodyHashDecoded) {
-		return DKIMFail, fmt.Errorf("body hash mismatch")
+	if string(computedBodyHash) != string(expectedBodyHash) {
+		return DKIMFail, domain, fmt.Errorf("body hash mismatch")
 	}
 
-	// RFC 6376 Section 3.8: Verify signature
+	// Verify header signature
 	signatureBytes, err := base64.StdEncoding.DecodeString(signatureB64)
 	if err != nil {
-		return DKIMPermError, fmt.Errorf("failed to decode signature: %w", err)
+		return DKIMPermError, domain, fmt.Errorf("failed to decode signature: %w", err)
 	}
 
-	// Compute hash of signed headers
-	headerHash := computeHeaderHash(rawMessage, signature)
+	headerHash := canonicalizeAndHashHeaders(rawMessage, headersToVerify, sig, headerCanon)
 
-	// Verify RSA signature
 	err = rsa.VerifyPKCS1v15(publicKey, crypto.SHA256, headerHash, signatureBytes)
 	if err != nil {
-		return DKIMFail, fmt.Errorf("signature verification failed: %w", err)
+		return DKIMFail, domain, fmt.Errorf("signature verification failed: %w", err)
 	}
 
-	return DKIMPass, nil
+	return DKIMPass, domain, nil
 }
 
-// extractDKIMSignature extracts DKIM-Signature header from message
-func extractDKIMSignature(rawMessage []byte) string {
-	lines := strings.Split(string(rawMessage), "\r\n")
-	for _, line := range lines {
-		if strings.HasPrefix(line, "DKIM-Signature:") {
-			return strings.TrimPrefix(line, "DKIM-Signature:")
+// canonicalizeAndHashBody applies RFC 6376 body canonicalization then SHA256
+func canonicalizeAndHashBody(body string, mode string) []byte {
+	h := sha256.New()
+
+	lines := strings.Split(body, "\r\n")
+
+	if mode == "relaxed" {
+		for i, line := range lines {
+			line = strings.TrimRight(line, " \t")
+			var b strings.Builder
+			lastSpace := false
+			for _, r := range line {
+				if r == ' ' || r == '\t' {
+					if !lastSpace {
+						b.WriteRune(' ')
+						lastSpace = true
+					}
+				} else {
+					b.WriteRune(r)
+					lastSpace = false
+				}
+			}
+			lines[i] = b.String()
+		}
+		// Remove trailing empty lines
+		for len(lines) > 0 && lines[len(lines)-1] == "" {
+			lines = lines[:len(lines)-1]
+		}
+	} else {
+		// Simple: remove trailing empty lines only
+		for len(lines) > 0 && lines[len(lines)-1] == "" {
+			lines = lines[:len(lines)-1]
 		}
 	}
-	return ""
+
+	if len(lines) == 0 {
+		h.Write([]byte("\r\n"))
+	} else {
+		for _, line := range lines {
+			h.Write([]byte(line + "\r\n"))
+		}
+	}
+
+	return h.Sum(nil)
 }
 
-// parseDKIMParams parses tag=value pairs from DKIM signature
+// canonicalizeAndHashHeaders builds the header hash input per RFC 6376 Section 3.7
+func canonicalizeAndHashHeaders(rawMessage []byte, headersToVerify []string, dkimSigValue string, mode string) []byte {
+	h := sha256.New()
+
+	headerSection, _ := splitHeaderBody(rawMessage)
+	headerMap := parseHeaders(headerSection)
+
+	for _, name := range headersToVerify {
+		lowerName := strings.ToLower(strings.TrimSpace(name))
+		if values, ok := headerMap[lowerName]; ok && len(values) > 0 {
+			val := values[0]
+			values = values[1:] // consume in order
+			headerMap[lowerName] = values
+
+			if mode == "relaxed" {
+				h.Write([]byte(relaxedHeaderLine(lowerName, val) + "\r\n"))
+			} else {
+				h.Write([]byte(name + ":" + val + "\r\n"))
+			}
+		}
+	}
+
+	// Append DKIM-Signature header with b= value empty
+	dkimSigClean := removeBValue(dkimSigValue)
+	if mode == "relaxed" {
+		h.Write([]byte(relaxedHeaderLine("dkim-signature", dkimSigClean)))
+	} else {
+		h.Write([]byte("DKIM-Signature:" + dkimSigClean))
+	}
+
+	return h.Sum(nil)
+}
+
+func relaxedHeaderLine(name, value string) string {
+	lowerKey := strings.ToLower(strings.TrimSpace(name))
+	cleanValue := strings.ReplaceAll(value, "\r\n", "")
+	cleanValue = strings.ReplaceAll(cleanValue, "\n", "")
+
+	var b strings.Builder
+	lastSpace := false
+	for _, r := range cleanValue {
+		if r == ' ' || r == '\t' {
+			if !lastSpace {
+				b.WriteRune(' ')
+				lastSpace = true
+			}
+		} else {
+			b.WriteRune(r)
+			lastSpace = false
+		}
+	}
+	return lowerKey + ":" + strings.TrimSpace(b.String())
+}
+
+func removeBValue(sigValue string) string {
+	parts := strings.Split(sigValue, ";")
+	for i, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if strings.HasPrefix(trimmed, "b=") {
+			parts[i] = " b="
+		}
+	}
+	return strings.Join(parts, ";")
+}
+
+func splitHeaderBody(raw []byte) (string, string) {
+	s := string(raw)
+	idx := strings.Index(s, "\r\n\r\n")
+	if idx < 0 {
+		return s, ""
+	}
+	return s[:idx], s[idx+4:]
+}
+
+func parseHeaders(headerSection string) map[string][]string {
+	result := make(map[string][]string)
+	lines := strings.Split(headerSection, "\r\n")
+
+	var currentName string
+	var currentValue string
+
+	for _, line := range lines {
+		if len(line) > 0 && (line[0] == ' ' || line[0] == '\t') {
+			currentValue += line
+			continue
+		}
+		if currentName != "" {
+			result[strings.ToLower(currentName)] = append(result[strings.ToLower(currentName)], currentValue)
+		}
+		colonIdx := strings.IndexByte(line, ':')
+		if colonIdx > 0 {
+			currentName = line[:colonIdx]
+			currentValue = line[colonIdx+1:]
+		} else {
+			currentName = ""
+			currentValue = ""
+		}
+	}
+	if currentName != "" {
+		result[strings.ToLower(currentName)] = append(result[strings.ToLower(currentName)], currentValue)
+	}
+	return result
+}
+
+func extractDKIMSignature(rawMessage []byte) string {
+	headerSection, _ := splitHeaderBody(rawMessage)
+	lines := strings.Split(headerSection, "\r\n")
+
+	var sigValue strings.Builder
+	inSig := false
+
+	for _, line := range lines {
+		if strings.HasPrefix(strings.ToLower(line), "dkim-signature:") {
+			inSig = true
+			sigValue.WriteString(strings.TrimPrefix(line, line[:strings.IndexByte(line, ':')+1]))
+			continue
+		}
+		if inSig {
+			if len(line) > 0 && (line[0] == ' ' || line[0] == '\t') {
+				sigValue.WriteString(line)
+			} else {
+				break
+			}
+		}
+	}
+	return sigValue.String()
+}
+
 func parseDKIMParams(signature string) map[string]string {
 	params := make(map[string]string)
-	signature = strings.ReplaceAll(signature, " ", "")
-	signature = strings.ReplaceAll(signature, "\t", "")
+	clean := strings.ReplaceAll(signature, "\r\n", "")
+	clean = strings.ReplaceAll(clean, "\n", "")
 
-	pairs := strings.Split(signature, ";")
+	pairs := strings.Split(clean, ";")
 	for _, pair := range pairs {
+		pair = strings.TrimSpace(pair)
 		parts := strings.SplitN(pair, "=", 2)
 		if len(parts) == 2 {
-			params[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+			key := strings.TrimSpace(parts[0])
+			val := strings.TrimSpace(parts[1])
+			params[key] = val
 		}
 	}
-
 	return params
 }
 
-// parseDKIMPublicKey extracts RSA public key from DKIM DNS record
 func parseDKIMPublicKey(record string) (*rsa.PublicKey, error) {
 	params := parseDKIMParams(record)
 
@@ -155,27 +335,4 @@ func parseDKIMPublicKey(record string) (*rsa.PublicKey, error) {
 	}
 
 	return publicKey, nil
-}
-
-// computeBodyHash computes SHA256 hash of message body (simplified for MVP)
-func computeBodyHash(rawMessage []byte) []byte {
-	// Find body (after \r\n\r\n)
-	parts := strings.SplitN(string(rawMessage), "\r\n\r\n", 2)
-	body := ""
-	if len(parts) == 2 {
-		body = parts[1]
-	}
-
-	hash := sha256.Sum256([]byte(body))
-	return hash[:]
-}
-
-// computeHeaderHash computes SHA256 hash of signed headers (simplified for MVP)
-func computeHeaderHash(rawMessage []byte, signature string) []byte {
-	// Extract headers (before \r\n\r\n)
-	parts := strings.SplitN(string(rawMessage), "\r\n\r\n", 2)
-	headers := parts[0]
-
-	hash := sha256.Sum256([]byte(headers))
-	return hash[:]
 }

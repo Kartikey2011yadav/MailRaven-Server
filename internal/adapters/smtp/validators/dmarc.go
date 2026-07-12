@@ -26,38 +26,31 @@ const (
 	DMARCPolicyReject     DMARCPolicy = "reject"
 )
 
-// EvaluateDMARC checks DMARC policy and validates alignment
-// Implements RFC 7489 - Domain-based Message Authentication, Reporting, and Conformance
-func EvaluateDMARC(ctx context.Context, sender string, spfResult SPFResult, dkimResult DKIMResult) (DMARCResult, DMARCPolicy, error) {
-	// Extract domain from sender
+// EvaluateDMARC checks DMARC policy and validates alignment per RFC 7489
+func EvaluateDMARC(_ context.Context, sender string, spfResult SPFResult, spfDomain string, dkimResult DKIMResult, dkimDomain string) (DMARCResult, DMARCPolicy, error) {
 	parts := strings.Split(sender, "@")
 	if len(parts) != 2 {
 		return DMARCFail, DMARCPolicyNone, fmt.Errorf("invalid sender format")
 	}
-	domain := parts[1]
+	fromDomain := strings.ToLower(parts[1])
 
-	// RFC 7489 Section 6.6.3: DNS query for DMARC policy
-	dmarcRecord := fmt.Sprintf("_dmarc.%s", domain)
+	dmarcRecord := fmt.Sprintf("_dmarc.%s", fromDomain)
 	txtRecords, err := net.LookupTXT(dmarcRecord)
-	if err != nil {
-		// No DMARC record found
+	if err != nil || len(txtRecords) == 0 {
 		return DMARCNone, DMARCPolicyNone, nil
 	}
 
-	if len(txtRecords) == 0 {
+	record := strings.Join(txtRecords, "")
+	if !strings.HasPrefix(record, "v=DMARC1") {
 		return DMARCNone, DMARCPolicyNone, nil
 	}
 
-	// Parse DMARC record
-	// RFC 7489 Section 6.3: DMARC record format
-	policy := parseDMARCPolicy(txtRecords[0])
+	policy, aspf, adkim := parseDMARCRecord(record)
 
-	// RFC 7489 Section 3.1: DMARC evaluation
-	// Check SPF and DKIM alignment
-	spfAligned := spfResult == SPFPass
-	dkimAligned := dkimResult == DKIMPass
+	// RFC 7489 Section 3.1: Check alignment
+	spfAligned := spfResult == SPFPass && checkAlignment(fromDomain, spfDomain, aspf)
+	dkimAligned := dkimResult == DKIMPass && checkAlignment(fromDomain, dkimDomain, adkim)
 
-	// RFC 7489 Section 3.1.1: At least one must pass
 	if spfAligned || dkimAligned {
 		return DMARCPass, policy, nil
 	}
@@ -65,51 +58,67 @@ func EvaluateDMARC(ctx context.Context, sender string, spfResult SPFResult, dkim
 	return DMARCFail, policy, nil
 }
 
-// parseDMARCPolicy extracts policy from DMARC DNS record
-func parseDMARCPolicy(record string) DMARCPolicy {
-	// DMARC record format: v=DMARC1; p=quarantine; ...
-	if !strings.HasPrefix(record, "v=DMARC1") {
-		return DMARCPolicyNone
+// checkAlignment verifies domain alignment per RFC 7489 Section 3.1
+func checkAlignment(fromDomain, authDomain, mode string) bool {
+	if authDomain == "" {
+		return false
 	}
+	fromDomain = strings.ToLower(fromDomain)
+	authDomain = strings.ToLower(authDomain)
+
+	if mode == "s" {
+		return fromDomain == authDomain
+	}
+	// Relaxed (default): organizational domain must match
+	return getOrgDomain(fromDomain) == getOrgDomain(authDomain)
+}
+
+// getOrgDomain extracts the organizational domain (base registerable domain).
+// For "sub.mail.example.com" returns "example.com".
+// Simple heuristic: take last two labels (handles .com, .org, .net, etc.)
+// For ccTLDs like .co.uk, this is imperfect but acceptable for most cases.
+func getOrgDomain(domain string) string {
+	labels := strings.Split(domain, ".")
+	if len(labels) <= 2 {
+		return domain
+	}
+	return strings.Join(labels[len(labels)-2:], ".")
+}
+
+// parseDMARCRecord extracts policy and alignment modes from DMARC record
+func parseDMARCRecord(record string) (DMARCPolicy, string, string) {
+	policy := DMARCPolicyNone
+	aspf := "r" // relaxed default
+	adkim := "r"
 
 	pairs := strings.Split(record, ";")
 	for _, pair := range pairs {
 		pair = strings.TrimSpace(pair)
 		if strings.HasPrefix(pair, "p=") {
-			policyValue := strings.TrimPrefix(pair, "p=")
-			policyValue = strings.TrimSpace(policyValue)
-
-			switch policyValue {
+			switch strings.TrimSpace(strings.TrimPrefix(pair, "p=")) {
 			case "reject":
-				return DMARCPolicyReject
+				policy = DMARCPolicyReject
 			case "quarantine":
-				return DMARCPolicyQuarantine
+				policy = DMARCPolicyQuarantine
 			case "none":
-				return DMARCPolicyNone
-			default:
-				return DMARCPolicyNone
+				policy = DMARCPolicyNone
 			}
+		} else if strings.HasPrefix(pair, "aspf=") {
+			aspf = strings.TrimSpace(strings.TrimPrefix(pair, "aspf="))
+		} else if strings.HasPrefix(pair, "adkim=") {
+			adkim = strings.TrimSpace(strings.TrimPrefix(pair, "adkim="))
 		}
 	}
 
-	// RFC 7489 Section 6.3: Default policy is "none"
-	return DMARCPolicyNone
+	return policy, aspf, adkim
 }
 
 // ShouldRejectMessage determines if message should be rejected based on DMARC
 func ShouldRejectMessage(dmarcResult DMARCResult, dmarcPolicy DMARCPolicy) bool {
-	// RFC 7489 Section 6.3: Policy application
-	if dmarcResult == DMARCFail {
-		return dmarcPolicy == DMARCPolicyReject
-	}
-	return false
+	return dmarcResult == DMARCFail && dmarcPolicy == DMARCPolicyReject
 }
 
 // ShouldQuarantineMessage determines if message should be quarantined
 func ShouldQuarantineMessage(dmarcResult DMARCResult, dmarcPolicy DMARCPolicy) bool {
-	// RFC 7489 Section 6.3: Policy application
-	if dmarcResult == DMARCFail {
-		return dmarcPolicy == DMARCPolicyQuarantine
-	}
-	return false
+	return dmarcResult == DMARCFail && dmarcPolicy == DMARCPolicyQuarantine
 }
