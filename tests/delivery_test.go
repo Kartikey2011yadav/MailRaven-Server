@@ -105,15 +105,10 @@ func TestDeliveryRetry(t *testing.T) {
 		t.Errorf("Expected retry_count 1, got %d", retryCount)
 	}
 
-	// Check backoff (1st retry = 1 minute)
+	// Check backoff (1st retry = 1 minute + up to 20% jitter)
 	nextRetryAt := time.Unix(nextRetryAtUnix, 0)
 	diff := nextRetryAt.Sub(time.Now())
-	// Should be around ~1 minute from now
-	if diff < 55*time.Second || diff > 65*time.Second {
-		// Note: execution time might affect this, but rough check ok.
-		// Actually nextRetryAt is set to time.Now().Add(delay).
-		// So `nextRetryAt` should be roughly Now + 60s.
-		// diff = nextRetryAt - Now ~= 60s.
+	if diff < 50*time.Second || diff > 80*time.Second {
 		t.Errorf("Expected ~1m backoff, got %v", diff)
 	}
 
@@ -139,10 +134,10 @@ func TestDeliveryRetry(t *testing.T) {
 		t.Errorf("Expected retry_count 2, got %d", retryCount)
 	}
 
-	// Check backoff (2nd retry = 5 minutes)
+	// Check backoff (2nd retry = 5 minutes + up to 20% jitter)
 	nextRetryAt = time.Unix(nextRetryAtUnix, 0)
 	diff = nextRetryAt.Sub(time.Now())
-	if diff < 4*time.Minute || diff > 6*time.Minute {
+	if diff < 4*time.Minute || diff > 7*time.Minute {
 		t.Errorf("Expected ~5m backoff, got %v", diff)
 	}
 }
