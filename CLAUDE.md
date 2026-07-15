@@ -6,6 +6,8 @@ MailRaven is an open-source, self-hosted email server designed for simplicity, r
 
 **Goal:** Anyone should be able to pick up this project, deploy it, and run their own full-featured mail server with minimal friction.
 
+**Role Model:** All users get webmail access. Admins get webmail + admin panel. Not all users are admins, but all admins are users.
+
 ## Architecture
 
 Hexagonal (Ports & Adapters) architecture with 5 layers:
@@ -23,18 +25,23 @@ Hexagonal (Ports & Adapters) architecture with 5 layers:
 - **Router**: go-chi/chi v5
 - **Database**: PostgreSQL (default, recommended) via pgx/v5 | SQLite via modernc.org/sqlite
 - **DNS**: miekg/dns (SPF/DKIM/DMARC lookups)
-- **Auth**: golang-jwt/jwt v5
-- **Sieve**: go-sieve (mail filtering)
+- **Auth**: golang-jwt/jwt v5 (7-day expiry, HMAC-SHA256, 32+ char secret required)
+- **Sieve**: go-sieve (mail filtering, 5s execution timeout, 100KB script limit)
 - **Optional distributed**: Redis (cache/pubsub), NATS JetStream (broker), MinIO (blob storage)
 
 ### Frontend (client/)
 - React 19 + TypeScript 5.9
-- Vite 7 (build + HMR)
-- Tailwind CSS 4.1
-- Radix UI (accessible components)
+- Vite 7 (build + HMR), output → `internal/adapters/http/static/dist/`
+- Tailwind CSS 4.1 with dark-first glassmorphism theme
+- shadcn/ui + Radix UI, Framer Motion (animations), Recharts (charts)
 - React Router v7, React Hook Form + Zod validation
 - Axios (HTTP), Sonner (toasts), Lucide (icons)
-- Playwright (e2e tests)
+
+### Design System
+- **Theme**: Dark-first glassmorphism (frosted glass cards, gradient accents, glow effects)
+- **Layout**: Unified sidebar — Mail section for all users, Admin section for admins only
+- **Components**: `glass-card.tsx` for cards, `unified-sidebar.tsx` for navigation
+- **Login**: Animated glassmorphism card with setup detection
 
 ## Project Structure
 
@@ -43,141 +50,130 @@ cmd/
   mailraven/           # Server binary (quickstart, serve, check-config)
   mailraven-cli/       # CLI tool for domain/user management
 client/                # React frontend (Web Admin + Webmail Lite)
-  src/pages/           # Login, Dashboard, Domains, Users, Mail
-  src/components/      # UI components (shadcn/ui pattern)
+  src/pages/           # Login, Dashboard, Domains, Users, Mail (Inbox/Sent/Drafts/Archive/Trash)
+  src/pages/setup/     # First-launch setup wizard (5 steps)
+  src/components/      # UI components (shadcn/ui pattern + unified-sidebar)
+  src/layout/          # UnifiedLayout.tsx (single layout for all routes)
 internal/
   core/
     domain/            # Entities: Message, User, Mailbox, SMTPSession
     ports/             # Interfaces: EmailRepository, BlobStore, Search, Sieve
     services/          # EmailService, UserService, BackupService, SpamProtection
   adapters/
-    smtp/              # SMTP server + DKIM/SPF/DMARC/DANE validators
-    imap/              # IMAP4rev1 with IDLE push support
-    managesieve/       # ManageSieve protocol
-    sieve/             # Sieve interpreter + vacation auto-reply
+    smtp/              # SMTP server (500 conn limit, temp file streaming, DKIM/SPF/DMARC)
+    imap/              # IMAP4rev1 with IDLE push, 500 conn limit, session context
+    managesieve/       # ManageSieve protocol with session context
+    sieve/             # Sieve interpreter + vacation (5s timeout, 100KB limit)
     http/              # REST API handlers + middleware + static file serving
     storage/
-      sqlite/          # SQLite repository + migrations
-      postgres/        # PostgreSQL repository + migrations
+      postgres/        # PostgreSQL repo + migrations (50 max conns, 5min lifetime)
+      sqlite/          # SQLite repo + migrations
       disk/            # Filesystem blob storage
       minio/           # S3-compatible blob storage
-    cache/
-      memory/          # In-memory cache (standalone mode)
-      redis/           # Redis cache + rate limiter
-    broker/
-      local/           # Synchronous local broker
-      nats/            # NATS JetStream broker
-    spam/              # Rspamd, Bayesian, Greylisting, DNSBL, Rate limiting
+    cache/memory/      # In-memory cache (standalone mode)
+    cache/redis/       # Redis cache + rate limiter
+    broker/local/      # Synchronous local broker
+    broker/nats/       # NATS JetStream broker
+    spam/              # Rspamd, Bayesian, Greylisting, DNSBL (3s timeout), Rate limiting
     backup/            # Hot backup utilities
-    pubsub/            # Pub/sub adapters
-    lock/              # Distributed locks
   infra/               # Infrastructure factory (wires adapters by deployment mode)
-  config/              # Configuration loading and validation
+  config/              # Configuration (validates 32+ char JWT secret)
   observability/       # Logging and Prometheus metrics
 deployment/
   kubernetes/          # Kustomize manifests (base, local, keda overlays)
   config.example.yaml  # Full annotated config reference
-  mailraven.service    # Systemd service file
-docs/                  # Architecture, guides, API reference, development
-tests/                 # Integration test suites
 build/
-  Dockerfile           # Multi-stage: Node.js -> Go -> distroless
-  Dockerfile.frontend  # Node.js -> Nginx
-scripts/               # Setup and integration test scripts
+  Dockerfile           # Multi-stage: Node 22 → Go 1.25 → distroless (go mod download, not vendor)
+  Dockerfile.frontend  # Node 22 → Nginx
+tests/                 # Integration tests (all pass in ~14s)
 ```
 
-## Deployment Modes
+## API Endpoints
 
-Configured via `config.yaml` → `mode:` field:
+### Public (no auth)
+- `GET /api/v1/setup/status` — check if setup needed (user count = 0)
+- `POST /api/v1/setup/complete` — initial setup (mutex-protected, creates domain + admin)
+- `POST /api/v1/auth/login` — JWT login (7-day token)
+- `GET /health`, `GET /healthz`, `GET /readyz` — health probes
+- `GET /metrics` — Prometheus metrics
 
-| Mode | Database | Cache | Broker | Blob | Use Case |
-|------|----------|-------|--------|------|----------|
-| **standalone** | PostgreSQL or SQLite | In-memory | Local sync | Disk | Dev, single-user |
-| **docker** | PostgreSQL | Redis | NATS | MinIO | Multi-user, single host |
-| **kubernetes** | PostgreSQL | Redis | NATS | MinIO | Production, HA, autoscaling |
+### Protected (JWT required)
+- Messages: `GET/PATCH /messages`, `GET /messages/{id}`, `POST /messages/send`, `GET /messages/search`
+- Sieve: CRUD at `/sieve/scripts/`
+- Self: `PUT /users/self/password`
 
-**Default database is PostgreSQL.** SQLite is available for lightweight/dev scenarios only.
+### Admin (JWT + admin role)
+- Stats: `GET /admin/stats`
+- Users: CRUD at `/admin/users`
+- Domains: CRUD at `/admin/domains`
+- System: `GET/POST /admin/system/update`, `POST /admin/backup`
+
+## Security Hardening (Completed)
+
+- CORS: credentials only with specific origins (not wildcard)
+- SMTP: CRLF injection prevention, 500-connection semaphore, temp file streaming
+- IMAP: 500-connection semaphore, session context for cancellation
+- Rate limiting: extracts real IP from X-Forwarded-For/X-Real-IP
+- JWT: 32+ character secret enforced in config validation
+- PostgreSQL: connection pool (50 open, 10 idle, 5min lifetime)
+- DNSBL: 3-second timeout per lookup
+- Setup: mutex prevents TOCTOU race condition
+- SPF: 10 DNS lookup limit, loop detection, include error → temperror, ip6 + redirect support
+- DKIM verification: proper RFC 6376 relaxed/simple canonicalization, h= and c= tag parsing
+- DMARC: domain alignment checking (relaxed/strict via aspf=/adkim= tags)
+- Sieve: 5-second execution timeout, 100KB script size limit
+- Delivery: jitter on retry backoff (prevents thundering herd)
+- Context: session contexts in IMAP/ManageSieve, r.Context() in HTTP handlers
+
+## CI/CD
+
+- **CI** (`.github/workflows/ci.yml`): Go 1.25, golangci-lint v2.12.2 (only-new-issues), Node 22, TypeScript type-check, Docker build with GHA cache
+- **CD** (`.github/workflows/cd.yml`): Triggered by CI success or v* tags, pushes to GHCR, multi-platform (amd64/arm64)
+- **Release** (`.github/workflows/release.yml`): Cross-platform Go binaries on GitHub Release
+- **Dependabot**: weekly for gomod, npm, github-actions, docker
+- **Pre-commit hook**: `scripts/pre-commit` — go vet, go build, tsc, eslint
 
 ## Key Commands
 
 ```bash
-# Build
-make build              # Build backend binaries
-make ui                 # Build React frontend
-make all                # Lint + test + build everything
+# Build & Test
+make build                    # Build backend binaries
+make ui                       # Build React frontend
+go test ./internal/... ./cmd/...  # Unit tests (~5s)
+go test -timeout 60s ./tests/...  # Integration tests (~14s)
+cd client && npx tsc -b      # TypeScript check
+cd client && npx eslint .     # Frontend lint
 
 # Development
-make docker-dev         # Start dev environment with hot-reload
-cd client && npm run dev  # Frontend dev server with HMR
+make docker-dev               # Docker dev environment with hot-reload
+cd client && npm run dev      # Frontend dev server (port 5173)
 
-# Testing
-make test               # Unit tests with race detection + coverage
-make test-integration   # Integration tests
-cd client && npm test   # Playwright e2e tests
+# Lint (local)
+golangci-lint run --timeout=5m ./...  # Go lint (v2.12.2 required)
+golangci-lint config verify           # Validate .golangci.yml
 
-# Production
-make docker-up          # Start production Docker Compose stack
-make docker-build       # Build production Docker images
-
-# Setup
-mailraven quickstart    # Interactive setup: generates DKIM keys, config, admin user
-mailraven serve         # Start the server
-mailraven check-config  # Validate configuration
-
-# CLI Management
-mailraven-cli domain add example.com
-mailraven-cli user add user@example.com
+# Docker
+docker build -f build/Dockerfile -t mailraven:latest .
 ```
 
 ## Configuration
 
 Main config: `deployment/config.example.yaml` (copy to `config.yaml`)
 
-Environment variable overrides use `MAILRAVEN_` prefix. Key sections:
-- `mode`: standalone | docker | kubernetes
-- `storage.driver`: postgres (default) | sqlite
-- `storage.dsn`: PostgreSQL connection string
-- `smtp`: Port, hostname, TLS, max message size
-- `api`: Port, JWT secret, CORS
-- `dkim`: Selector, private key path
-- `spam`: Rspamd URL, thresholds, DNSBL lists, rate limits
-- `imap`: Ports, TLS
-- `tls/acme`: Let's Encrypt auto-cert
+Key validation rules:
+- `api.jwt_secret`: minimum 32 characters (enforced)
+- `storage.driver`: defaults to "postgres"
+- `smtp.max_size`: defaults to 10MB
 
-## Email Security Features
+Environment variable overrides use `MAILRAVEN_` prefix.
 
-- SPF, DKIM (2048-bit RSA signing + validation), DMARC
-- MTA-STS, DANE (DNSSEC), TLS-RPT
-- Autodiscover (client auto-configuration)
-- Layered spam protection: Rspamd + Bayesian + Greylisting + DNSBL + Rate limiting
-- Sieve filtering with vacation auto-replies
-- Full-text search (PostgreSQL TSVECTOR or SQLite FTS5)
+## Coding Conventions
 
-## Development Guidelines
-
-- Pure Go, no CGO dependencies — single binary deploys anywhere
-- Hexagonal architecture: all external dependencies behind port interfaces
-- PostgreSQL is the default and recommended database
-- Frontend builds are embedded into the Go binary for single-artifact deployment
-- `internal/infra/` factory wires the correct adapters based on deployment mode
-- Graceful degradation: falls back to in-memory if Redis/NATS unavailable
-
-## Testing
-
-- Unit tests: `go test ./...` (race detection enabled)
-- Integration tests: `go test -tags=integration ./tests/...`
-- Frontend e2e: `cd client && npx playwright test`
-- Docker integration: `./scripts/test_integration_docker.sh`
-
-## Documentation
-
-- `docs/architecture/ARCHITECTURE.md` — Design deep-dive
-- `docs/guides/PRODUCTION.md` — Production deployment, DNS, firewall
-- `docs/guides/CONFIGURATION.md` — Full config reference
-- `docs/guides/KUBERNETES.md` — K8s deployment guide
-- `docs/guides/TECHNICAL_CONCEPTS.md` — Internals and advanced topics
-- `docs/api/API.md` — REST API endpoints
-- `docs/api/CLI.md` — CLI command reference
-- `docs/guides/WebAdmin.md` — Web dashboard usage
-- `docs/development/TESTING.md` — Test setup
-- `docs/development/CLIENT_DEVELOPER_HANDOVER.md` — Mobile client guide
+- No comments unless WHY is non-obvious
+- No CGO — pure Go only
+- All external deps behind port interfaces
+- Assign ignored error returns to `_` (e.g., `_ = conn.Close()`) to satisfy errcheck
+- Use `//nolint:gosec` with explanation when suppressing security linter
+- Frontend: `eslint-disable-line` for intentional setState-in-effect patterns
+- Commits: conventional format (`feat:`, `fix:`, `security:`, `docs:`)
+- No `--no-verify` on commits in production (pre-commit hook runs checks)
